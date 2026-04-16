@@ -1,0 +1,39 @@
+@import "./tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply antialiased text-neutral-600 bg-neutral-50;
+    font-family: var(--font-body-en);
+  }
+
+  [dir="rtl"] {
+    font-family: var(--font-body-ar);
+  }
+
+  h1 {
+    @apply text-3xl font-h1 text-neutral-800;
+  }
+
+  h2 {
+    @apply text-2xl font-h2 text-neutral-800;
+  }
+
+  h3 {
+    @apply text-xl font-h3 text-neutral-800;
+  }
+
+  h4 {
+    @apply text-lg font-h4 text-neutral-800;
+  }
+}
+
+@layer components {
+  /* Example: semantic page shell — extend in app */
+  .fms-page {
+    @apply min-h-screen bg-neutral-50 text-neutral-600;
+  }
+}

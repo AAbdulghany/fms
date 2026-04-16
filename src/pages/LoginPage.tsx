@@ -1,0 +1,83 @@
+import { FormEvent, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+
+import { apiFetch, setTokens, getAccessToken } from "../lib/api";
+
+export function LoginPage() {
+  const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("admin@demo.com");
+  const [password, setPassword] = useState("admin123");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (getAccessToken()) navigate("/", { replace: true });
+  }, [navigate]);
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    try {
+      const res = await apiFetch<{
+        access_token: string;
+        refresh_token: string;
+        user: { locale?: string };
+      }>("/auth/login", { method: "POST", json: { email, password } });
+      setTokens(res.access_token, res.refresh_token);
+      if (res.user?.locale) {
+        void i18n.changeLanguage(res.user.locale);
+        document.documentElement.lang = res.user.locale;
+        document.documentElement.dir = res.user.locale === "ar" ? "rtl" : "ltr";
+        document.body.className =
+          res.user.locale === "ar" ? "fms-page font-body-ar" : "fms-page font-body-en";
+      }
+      navigate("/", { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    }
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-neutral-100 px-4">
+      <form
+        onSubmit={onSubmit}
+        className="w-full max-w-md space-y-4 rounded-xl border border-neutral-200 bg-neutral-0 p-8 shadow-md"
+      >
+        <h1 className="text-center text-2xl font-semibold text-neutral-900">{t("login")}</h1>
+        {error && (
+          <p className="rounded-md bg-error-light px-3 py-2 text-sm text-error-dark">{error}</p>
+        )}
+        <div>
+          <label className="mb-1 block text-sm text-neutral-600">{t("email")}</label>
+          <input
+            className="w-full rounded-md border border-neutral-300 px-3 py-2"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="username"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm text-neutral-600">{t("password")}</label>
+          <input
+            className="w-full rounded-md border border-neutral-300 px-3 py-2"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+          />
+        </div>
+        <button
+          type="submit"
+          className="w-full rounded-md bg-primary-600 py-2 font-medium text-neutral-0 hover:bg-primary-700"
+        >
+          {t("login")}
+        </button>
+        <p className="text-center text-xs text-neutral-500">
+          Demo: admin@demo.com / admin123 / tech@demo.com / tech123
+        </p>
+      </form>
+    </div>
+  );
+}

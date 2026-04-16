@@ -1,0 +1,110 @@
+/* FMS design tokens — source of truth for hex/radius/shadow; referenced by tailwind.theme.js */
+
+:root {
+  /* Primary — Industrial Teal */
+  --color-primary-50: #e6f4f7;
+  --color-primary-100: #b3dee6;
+  --color-primary-200: #80c8d5;
+  --color-primary-300: #4db2c4;
+  --color-primary-400: #269cb3;
+  --color-primary-500: #0d7c8c;
+  --color-primary-600: #0a6270;
+  --color-primary-700: #074954;
+  --color-primary-800: #042f38;
+  --color-primary-900: #02161c;
+
+  /* Secondary — Warm Orange */
+  --color-secondary-50: #fff4e6;
+  --color-secondary-100: #ffe0b3;
+  --color-secondary-200: #ffcc80;
+  --color-secondary-300: #ffb74d;
+  --color-secondary-400: #ffa726;
+  --color-secondary-500: #f57c00;
+  --color-secondary-600: #e65100;
+  --color-secondary-700: #bf360c;
+  --color-secondary-800: #8c2703;
+  --color-secondary-900: #5c1a02;
+
+  /* Neutrals — warm gray */
+  --color-neutral-0: #ffffff;
+  --color-neutral-50: #fafaf9;
+  --color-neutral-100: #f5f5f4;
+  --color-neutral-200: #e7e5e4;
+  --color-neutral-300: #d6d3d1;
+  --color-neutral-400: #a8a29e;
+  --color-neutral-500: #78716c;
+  --color-neutral-600: #57534e;
+  --color-neutral-700: #44403c;
+  --color-neutral-800: #292524;
+  --color-neutral-900: #1c1917;
+
+  /* Semantic */
+  --color-success-light: #d1fae5;
+  --color-success-main: #10b981;
+  --color-success-dark: #047857;
+
+  --color-warning-light: #fef3c7;
+  --color-warning-main: #f59e0b;
+  --color-warning-dark: #b45309;
+
+  --color-error-light: #fee2e2;
+  --color-error-main: #ef4444;
+  --color-error-dark: #b91c1c;
+
+  --color-info-light: #dbeafe;
+  --color-info-main: #3b82f6;
+  --color-info-dark: #1d4ed8;
+
+  /* Work order status */
+  --status-created: #94a3b8;
+  --status-assigned: #3b82f6;
+  --status-in-progress: #f59e0b;
+  --status-on-hold: #8b5cf6;
+  --status-completed: #10b981;
+  --status-verified: #059669;
+  --status-cancelled: #ef4444;
+  --status-rejected: #dc2626;
+
+  /* Urgency */
+  --urgency-normal: #10b981;
+  --urgency-urgent: #f59e0b;
+  --urgency-emergency: #ef4444;
+
+  /* Typography stacks */
+  --font-display-en: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+  --font-body-en: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  --font-display-ar: "IBM Plex Sans Arabic", "Segoe UI", system-ui, sans-serif;
+  --font-body-ar: "Noto Sans Arabic", "Segoe UI", system-ui, sans-serif;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+
+  /* Spacing (for raw CSS; Tailwind spacing scale matches these rem values) */
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-5: 1.25rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-10: 2.5rem;
+  --spacing-12: 3rem;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+}
