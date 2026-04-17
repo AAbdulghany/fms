@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.models import (
+    AssetLifecycleStatus,
     InvoiceStatus,
     ReportStatus,
     Urgency,
@@ -84,6 +85,8 @@ class AssetCreate(BaseModel):
     parent_asset_id: Optional[UUID] = None
     model: Optional[str] = None
     serial: Optional[str] = None
+    max_repair_count: Optional[int] = None
+    max_age_years: Optional[int] = None
 
 
 class AssetOut(BaseModel):
@@ -93,6 +96,10 @@ class AssetOut(BaseModel):
     site_id: UUID
     name: str
     category: str
+    max_repair_count: Optional[int] = None
+    max_age_years: Optional[int] = None
+    current_repair_count: int = 0
+    lifecycle_status: AssetLifecycleStatus = AssetLifecycleStatus.active
 
 
 class ReportTemplateCreate(BaseModel):
@@ -126,6 +133,7 @@ class WorkOrderCreate(BaseModel):
     title: str = ""
     description: str = ""
     template_id: Optional[UUID] = None
+    tags: list[str] = Field(default_factory=list)
 
 
 class WorkOrderUpdate(BaseModel):
@@ -135,6 +143,7 @@ class WorkOrderUpdate(BaseModel):
     urgency: Optional[Urgency] = None
     template_id: Optional[UUID] = None
     assignee_user_id: Optional[UUID] = None
+    tags: Optional[list[str]] = None
 
 
 class WorkOrderOut(BaseModel):
@@ -154,6 +163,7 @@ class WorkOrderOut(BaseModel):
     assignee_user_id: Optional[UUID]
     opened_at: datetime
     closed_at: Optional[datetime]
+    tags: list[str] = []
 
 
 class AssignBody(BaseModel):

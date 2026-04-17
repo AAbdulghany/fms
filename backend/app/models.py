@@ -4,6 +4,7 @@ from datetime import date, datetime, timezone
 from typing import Any, Optional
 
 from sqlalchemy import (
+    ARRAY,
     Boolean,
     Date,
     DateTime,
@@ -76,6 +77,13 @@ class InvoiceStatus(str, enum.Enum):
     void = "void"
 
 
+class AssetLifecycleStatus(str, enum.Enum):
+    active = "active"
+    warning = "warning"
+    end_of_life = "end_of_life"
+    replaced = "replaced"
+
+
 class Tenant(Base):
     __tablename__ = "tenants"
 
@@ -107,6 +115,7 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_platform_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     tenant: Mapped["Tenant"] = relationship(back_populates="users")
@@ -167,6 +176,14 @@ class Asset(Base):
     warranty_until: Mapped[Optional[date]] = mapped_column(Date)
     qr_payload: Mapped[Optional[str]] = mapped_column(String(512))
     metadata_json: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    # P2-F2: Asset Lifecycle Management
+    max_repair_count: Mapped[Optional[int]] = mapped_column(Integer)
+    max_age_years: Mapped[Optional[int]] = mapped_column(Integer)
+    current_repair_count: Mapped[int] = mapped_column(Integer, default=0)
+    lifecycle_status: Mapped[AssetLifecycleStatus] = mapped_column(
+        Enum(AssetLifecycleStatus, name="asset_lifecycle_status", native_enum=False), 
+        default=AssetLifecycleStatus.active
+    )
 
     site: Mapped["Site"] = relationship(back_populates="assets")
     schedules: Mapped[list["MaintenanceSchedule"]] = relationship(back_populates="asset")
@@ -229,6 +246,8 @@ class WorkOrder(Base):
     sla_response_due_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     sla_resolution_due_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    # P2-F3: Maintenance Tags
+    tags: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
 
     report: Mapped[Optional["MaintenanceReport"]] = relationship(
         back_populates="work_order", uselist=False, cascade="all, delete-orphan"
