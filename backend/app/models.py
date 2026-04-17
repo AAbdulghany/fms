@@ -169,7 +169,25 @@ class Asset(Base):
     metadata_json: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
 
     site: Mapped["Site"] = relationship(back_populates="assets")
+    schedules: Mapped[list["MaintenanceSchedule"]] = relationship(back_populates="asset")
 
+
+class MaintenanceSchedule(Base):
+    __tablename__ = "maintenance_schedules"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    asset_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("assets.id"), nullable=False)
+    template_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("report_templates.id"), nullable=False)
+    
+    frequency: Mapped[str] = mapped_column(String(32), nullable=False) # 'daily', 'weekly', 'monthly', 'yearly'
+    last_generated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    next_due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+    asset: Mapped["Asset"] = relationship(back_populates="schedules")
 
 class ReportTemplate(Base):
     __tablename__ = "report_templates"

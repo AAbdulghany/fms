@@ -1,12 +1,11 @@
 from io import BytesIO
-from io import BytesIO
 from typing import Any
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle, Image
 from sqlalchemy.orm import Session
 
 from app.models import Client, Invoice, Tenant, WorkOrder
@@ -92,6 +91,7 @@ def render_report_summary_pdf(
     tenant_name: str,
     work_order_title: str,
     answers: dict[str, Any],
+    template_schema: dict[str, Any] = None,
 ) -> bytes:
     buf = BytesIO()
     doc = SimpleDocTemplate(
@@ -103,19 +103,98 @@ def render_report_summary_pdf(
         bottomMargin=2 * cm,
     )
     styles = getSampleStyleSheet()
+
+    # Custom style for Arabic/Bilingual content
+    arabic_style = ParagraphStyle(
+        "ArabicStyle",
+        parent=styles["Normal"],
+        fontName="Helvetica", # In real prod, this would be a registered Arabic font like NotoSans
+        alignment=2, # Right aligned
+        fontSize=10,
+    )
+
     story: list[Any] = []
-    
-    # Apply reshaping
-    title = reshape_text(f"Maintenance report")
-    story.append(Paragraph(f"<b>{title}</b>", styles["Title"]))
-    story.append(Paragraph(f"{reshape_text('Tenant')}: {reshape_text(tenant_name)}", styles["Normal"]))
-    story.append(Paragraph(f"{reshape_text('Work order')}: {reshape_text(work_order_title)}", styles["Normal"]))
+
+    # Branded Header
+    title_text = reshape_text("Maintenance Report")
+    story.append(Paragraph(f"<center><b style='font-size:18pt'>{title_text}</b></center>", styles["Title"]))
     story.append(Spacer(1, 0.5 * cm))
-    
-    for k, v in (answers or {}).items():
-        key = reshape_text(str(k))
-        val = reshape_text(str(v))
-        story.append(Paragraph(f"<b>{key}</b>: {val}", styles["Normal"]))
-        
+
+    # Report Meta Information Table
+    meta_data = [
+        [reshape_text("Tenant:"), reshape_text(tenant_name), reshape_text("Work Order:"), reshape_text(work_order_title)],
+    ]
+    t_meta = Table(meta_data, colWidths=[3 * cm, 6 * cm, 3 * cm, 6 * cm])
+    t_meta.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("ALIGN", (0, 0), (-1, -1), "LEFT")]))
+    story.append(t_meta)
+    story.append(Spacer(1, 1 * cm))
+
+    # Process Sections from Schema
+    sections = template_schema.get("sections", []) if template_schema else []
+
+    if not sections:
+        # Fallback to raw answers if no schema provided
+        for k, v in (answers or {}).items():
+            key = reshape_text(str(k))
+            val = reshape_text(str(v))
+            story.append(Paragraph(f"<b>{key}</b>: {val}", styles["Normal"]))
+            story.append(Spacer(1, 0.2 * cm))
+    else:
+        for sec in sections:
+            sec_title = reshape_text(sec.get("title", "Section"))
+            story.append(Paragraph(f"<b>{sec_title}</b>", ParagraphStyle("SecTitle", parent=styles["Normal"], fontSize=12, spaceAfter=6)))
+            story.append(Spacer(1, 0.2 * cm))
+
+            for f in sec.get("fields", []):
+                fid = f.get("id")
+                label = reshape_text(f.get("label", fid))
+                val = answers.get(fid)
+
+                if val is None or val == "":
+                    continue
+
+                # Render Label
+                story.append(Paragraph(f"<b>{label}</b>", styles["Normal"]))
+
+                # Handle different value types
+                if f.get("type") == "photo":
+                    # Embed Photos
+                    photos = val if isinstance(val, list) else [val]
+                    # We use a table to layout photos side-by-side
+                    photo_row = []
+                    for photo_url in photos:
+                        try:
+                            # In a real system, we'd fetch the S3 image into BytesIO
+                            # Since we don't have a real S3 client here, we'll place a placeholder
+                            # or a simulated image if the URL is valid.
+                            # For implementation, we'll assume we have a helper that gets the bytes.
+                            img = Image(photo_url, width=4 * cm, height=3 * cm)
+                            photo_row.append(img)
+                        except Exception:
+                            photo_row.append(Paragraph("[Photo Unavailable]", styles["Normal"]))
+
+                    if photo_row:
+                        t_photos = Table([photo_row], colWidths=[4 * cm] * len(photo_row))
+                        t_photos.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
+                        story.append(t_photos)
+                        story.append(Spacer(1, 0.3 * cm))
+
+                elif f.get("type") == "signature":
+                    # Render Signature
+                    try:
+                        sig_img = Image(val, width=5 * cm, height=2 * cm)
+                        story.append(sig_img)
+                    except Exception:
+                        story.append(Paragraph("[Signature Image Unavailable]", styles["Normal"]))
+                    story.append(Spacer(1, 0.3 * cm))
+
+                else:
+                    # Regular text/number
+                    val_text = reshape_text(str(val))
+                    story.append(Paragraph(val_text, styles["Normal"]))
+                    story.append(Spacer(1, 0.2 * cm))
+
+            story.append(Spacer(1, 0.5 * cm))
+
     doc.build(story)
     return buf.getvalue()
