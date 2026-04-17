@@ -10,6 +10,17 @@ interface UserMe {
   role: string;
 }
 
+interface Company {
+  id: string;
+  legal_name: string;
+}
+
+interface Site {
+  id: string;
+  name: string;
+  client_id: string;
+}
+
 export function WorkOrdersPage() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
@@ -17,6 +28,8 @@ export function WorkOrdersPage() {
   const [err, setErr] = useState<string | null>(null);
   const [me, setMe] = useState<UserMe | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [sites, setSites] = useState<Site[]>([]);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -53,8 +66,28 @@ export function WorkOrdersPage() {
     }
   };
 
+  const fetchCompanies = async () => {
+    try {
+      const res = await apiFetch<{ data: Company[] }>("/clients");
+      setCompanies(res.data || []);
+    } catch (e) {
+      console.error("Failed to fetch companies", e);
+    }
+  };
+
+  const fetchSites = async (clientId?: string) => {
+    try {
+      const url = clientId ? `/sites?client_id=${clientId}` : "/sites";
+      const res = await apiFetch<{ data: Site[] }>(url);
+      setSites(res.data || []);
+    } catch (e) {
+      console.error("Failed to fetch sites", e);
+    }
+  };
+
   useEffect(() => {
     void fetchMe();
+    void fetchCompanies();
   }, []);
 
   useEffect(() => {
@@ -63,7 +96,7 @@ export function WorkOrdersPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErr(null); // Reset error
+    setErr(null);
     try {
       await apiFetch("/work-orders", {
         method: "POST",
@@ -77,6 +110,11 @@ export function WorkOrdersPage() {
       const errMsg = e.response?.data?.detail || e.message || "Error creating work order";
       setErr(errMsg);
     }
+  };
+
+  const handleClientChange = (clientId: string) => {
+    setForm({ ...form, client_id: clientId, site_id: "" });
+    void fetchSites(clientId);
   };
 
   // Show filters for client_admin, company_admin, super_admin
@@ -155,24 +193,33 @@ export function WorkOrdersPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700">{t("client_id")}</label>
-                  <input 
+                  <label className="block text-sm font-medium text-neutral-700">{t("company")}</label>
+                  <select
                     className="w-full rounded-md border border-neutral-300 p-2"
-                    placeholder="Enter UUID"
                     value={form.client_id}
-                    onChange={e => setForm({...form, client_id: e.target.value})}
+                    onChange={e => handleClientChange(e.target.value)}
                     required
-                  />
+                  >
+                    <option value="">{t("select_company")}</option>
+                    {companies.map(c => (
+                      <option key={c.id} value={c.id}>{c.legal_name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700">{t("site_id")}</label>
-                  <input 
+                  <label className="block text-sm font-medium text-neutral-700">{t("site")}</label>
+                  <select
                     className="w-full rounded-md border border-neutral-300 p-2"
-                    placeholder="Enter UUID"
                     value={form.site_id}
                     onChange={e => setForm({...form, site_id: e.target.value})}
                     required
-                  />
+                    disabled={!form.client_id}
+                  >
+                    <option value="">{t("select_site")}</option>
+                    {sites.filter(s => s.client_id === form.client_id).map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div className="flex justify-end space-x-3 pt-4">

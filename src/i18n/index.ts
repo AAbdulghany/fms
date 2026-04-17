@@ -69,10 +69,12 @@ const resources = {
       recent_activity: "النشاط الأخير",
       
       // Companies
+      company: "الشركة",
       company_name: "اسم الشركة",
       company_code: "رمز الشركة",
       create_company: "إنشاء شركة",
       no_companies: "لا توجد شركات بعد",
+      select_company: "اختر الشركة",
       sites_count: "عدد المواقع",
       active_wos: "أوامر العمل النشطة",
       contact: "جهة الاتصال",
@@ -82,10 +84,12 @@ const resources = {
       no_sites_for_company: "لا توجد مواقع لهذه الشركة",
       
       // Sites
+      site: "الموقع",
       site_name: "اسم الموقع",
       site_address: "عنوان الموقع",
       site_timezone: "المنطقة الزمنية",
       create_site: "إنشاء موقع",
+      select_site: "اختر الموقع",
       no_sites: "لا توجد مواقع بعد",
       location: "الموقع",
       qr_code: "رمز الاستجابة السريعة",
@@ -185,6 +189,8 @@ const resources = {
       tags: "Tags",
       companies: "Companies",
       sites: "Sites",
+      site: "Site",
+      select_site: "Select Site",
       assets: "Assets",
       users: "Users",
       labor: "Labor Management",
@@ -203,6 +209,10 @@ const resources = {
       my_tasks: "My Tasks",
       company_overview: "Company Overview",
       today_schedule: "Today's Schedule",
+      
+      // Companies
+      company: "Company",
+      select_company: "Select Company",
       recent_work_orders: "Recent Work Orders",
       quick_actions: "Quick Actions",
       view_all: "View All",

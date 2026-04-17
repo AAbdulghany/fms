@@ -102,7 +102,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   return (
     <>
       <aside
-        className={`fixed ${isRTL ? "right-0" : "left-0"} top-0 z-30 h-full w-64 transform border-${isRTL ? "l" : "r"} border-neutral-200 bg-neutral-0 shadow-lg transition-transform duration-300 lg:static lg:translate-x-0 ${
+        className={`fixed ${isRTL ? "right-0" : "left-0"} top-0 z-30 h-full w-64 transform border-${isRTL ? "l" : "r"} border-neutral-200 bg-neutral-0 shadow-lg transition-transform duration-300 lg:relative lg:translate-x-0 ${
           isOpen ? "translate-x-0" : isRTL ? "translate-x-full" : "-translate-x-full"
         }`}
       >

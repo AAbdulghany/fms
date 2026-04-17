@@ -15,6 +15,16 @@ export function LoginPage() {
     if (getAccessToken()) navigate("/", { replace: true });
   }, [navigate]);
 
+  const toggleLang = () => {
+    const next = i18n.language === "ar" ? "en" : "ar";
+    void i18n.changeLanguage(next);
+    localStorage.setItem("app_lang", next);
+    document.documentElement.lang = next;
+    document.documentElement.dir = next === "ar" ? "rtl" : "ltr";
+    document.body.className =
+      next === "ar" ? "fms-page font-body-ar" : "fms-page font-body-en";
+  };
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
@@ -40,6 +50,15 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-neutral-100 px-4">
+      <div className="absolute top-4 right-4">
+        <button
+          type="button"
+          className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-100"
+          onClick={toggleLang}
+        >
+          {i18n.language.toUpperCase()}
+        </button>
+      </div>
       <form
         onSubmit={onSubmit}
         className="w-full max-w-md space-y-4 rounded-xl border border-neutral-200 bg-neutral-0 p-8 shadow-md"
