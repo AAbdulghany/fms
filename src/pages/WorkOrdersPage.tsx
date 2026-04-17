@@ -1,14 +1,21 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiFetch } from "../lib/api";
 import type { PaginatedWorkOrders, WorkOrder } from "../lib/types";
+import { FilterBar } from "../components/FilterBar";
+
+interface UserMe {
+  role: string;
+}
 
 export function WorkOrdersPage() {
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
   const [rows, setRows] = useState<WorkOrder[]>([]);
   const [err, setErr] = useState<string | null>(null);
+  const [me, setMe] = useState<UserMe | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState({
     title: "",
@@ -23,22 +30,42 @@ export function WorkOrdersPage() {
 
   const fetchOrders = async () => {
     try {
-      const res = await apiFetch<PaginatedWorkOrders>("/work-orders");
+      // Build query string from search params
+      const params = new URLSearchParams();
+      searchParams.forEach((value, key) => {
+        if (value) params.append(key, value);
+      });
+      
+      const url = `/work-orders${params.toString() ? `?${params.toString()}` : ""}`;
+      const res = await apiFetch<PaginatedWorkOrders>(url);
       setRows(res.data);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Error");
     }
   };
 
+  const fetchMe = async () => {
+    try {
+      const user = await apiFetch<UserMe>("/users/me");
+      setMe(user);
+    } catch (e) {
+      console.error("Failed to fetch user", e);
+    }
+  };
+
+  useEffect(() => {
+    void fetchMe();
+  }, []);
+
   useEffect(() => {
     void fetchOrders();
-  }, []);
+  }, [searchParams]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr(null); // Reset error
     try {
-      const response = await apiFetch("/work-orders", {
+      await apiFetch("/work-orders", {
         method: "POST",
         body: JSON.stringify(form),
       });
@@ -51,6 +78,9 @@ export function WorkOrdersPage() {
       setErr(errMsg);
     }
   };
+
+  // Show filters for client_admin, company_admin, super_admin
+  const canUseFilters = me && ["client_admin", "company_admin", "super_admin"].includes(me.role);
 
   return (
     <div className="space-y-4">
@@ -65,6 +95,15 @@ export function WorkOrdersPage() {
       </div>
 
       {err && <p className="text-error-main">{err}</p>}
+
+      {canUseFilters && (
+        <FilterBar
+          showStatusFilter
+          showUrgencyFilter
+          showDateRange
+          showSearch
+        />
+      )}
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">

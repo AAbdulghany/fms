@@ -25,7 +25,7 @@ export function WorkOrderDetailPage() {
   const [report, setReport] = useState<MaintenanceReport | null>(null);
   const [template, setTemplate] = useState<ReportTemplate | null>(null);
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
-  const [partsDraft, setPartsDraft] = useState('[{"sku":"FLT-001","quantity":2}]');
+  const [parts, setParts] = useState<Array<{ sku: string; quantity: number }>>([]);
   const [photos, setPhotos] = useState<Record<string, File[]>>({});
   const [me, setMe] = useState<UserMe | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -51,11 +51,12 @@ export function WorkOrderDetailPage() {
         setReport(r);
         const aj = (r.answers_json as Record<string, unknown>) || {};
         setAnswers(aj);
-        setPartsDraft(JSON.stringify(aj.parts_used ?? [{ sku: "FLT-001", quantity: 2 }], null, 2));
+        const partsData = aj.parts_used ?? [{ sku: "FLT-001", quantity: 2 }];
+        setParts(Array.isArray(partsData) ? partsData : []);
       } catch {
         setReport(null);
         setAnswers({});
-        setPartsDraft('[{"sku":"FLT-001","quantity":2}]');
+        setParts([{ sku: "FLT-001", quantity: 2 }]);
       }
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Error");
@@ -176,6 +177,19 @@ export function WorkOrderDetailPage() {
     try {
       await apiFetch(`/work-orders/${id}/generate-invoice`, { method: "POST" });
       setMsg("Invoice created");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Error");
+    }
+  }
+
+  async function approveReport() {
+    if (!id || !report) return;
+    setMsg(null);
+    setErr(null);
+    try {
+      await apiFetch(`/reports/${report.id}/approve`, { method: "POST" });
+      setMsg("Report approved");
+      await load(); // Reload to get updated status
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Error");
     }
