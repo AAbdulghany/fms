@@ -366,6 +366,8 @@ def test_super_admin_can_list_all_work_orders(db_session, super_admin_user, work
 
 def test_super_admin_can_create_work_order(db_session, super_admin_user, client_a, site_a):
     """super_admin can create work orders."""
+    from fastapi import BackgroundTasks
+
     from app.api.routes.work_orders import create_work_order
     from app.schemas import WorkOrderCreate
     from app.models import WorkOrderSource, Urgency
@@ -378,7 +380,7 @@ def test_super_admin_can_create_work_order(db_session, super_admin_user, client_
         urgency=Urgency.normal
     )
     
-    wo = create_work_order(wo_in, db_session, super_admin_user, super_admin_user)
+    wo = create_work_order(wo_in, db_session, super_admin_user, super_admin_user, BackgroundTasks())
     assert wo.title == "New WO"
     assert wo.tenant_id == super_admin_user.tenant_id
 
@@ -484,6 +486,8 @@ def test_company_admin_cannot_list_users(db_session, company_admin_user):
 
 def test_company_admin_can_create_work_orders(db_session, company_admin_user, client_a, site_a):
     """company_admin can create work orders."""
+    from fastapi import BackgroundTasks
+
     from app.api.routes.work_orders import create_work_order
     from app.schemas import WorkOrderCreate
     from app.models import WorkOrderSource, Urgency
@@ -496,7 +500,7 @@ def test_company_admin_can_create_work_orders(db_session, company_admin_user, cl
         urgency=Urgency.normal
     )
     
-    wo = create_work_order(wo_in, db_session, company_admin_user, company_admin_user)
+    wo = create_work_order(wo_in, db_session, company_admin_user, company_admin_user, BackgroundTasks())
     assert wo.title == "Company Admin WO"
 
 
@@ -664,6 +668,8 @@ def test_site_manager_cannot_access_other_site_work_order(
 
 def test_site_manager_can_create_work_orders(db_session, site_manager_user, client_a, site_a):
     """site_manager can create work orders for their sites."""
+    from fastapi import BackgroundTasks
+
     from app.api.routes.work_orders import create_work_order
     from app.schemas import WorkOrderCreate
     from app.models import WorkOrderSource, Urgency
@@ -676,7 +682,7 @@ def test_site_manager_can_create_work_orders(db_session, site_manager_user, clie
         urgency=Urgency.normal
     )
     
-    wo = create_work_order(wo_in, db_session, site_manager_user, site_manager_user)
+    wo = create_work_order(wo_in, db_session, site_manager_user, site_manager_user, BackgroundTasks())
     assert wo.title == "Site Manager WO"
 
 

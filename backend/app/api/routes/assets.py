@@ -77,6 +77,8 @@ def create_asset(
         category=body.category,
         model=body.model,
         serial=body.serial,
+        installed_on=body.installed_on,
+        warranty_until=body.warranty_until,
         max_repair_count=body.max_repair_count,
         max_age_years=body.max_age_years,
     )

@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,6 +14,7 @@ from app.api.routes import (
     invoices,
     labor,
     locations,
+    notifications,
     reports,
     sites,
     templates,
@@ -21,10 +23,12 @@ from app.api.routes import (
 )
 from app.config import get_settings
 from app.database import Base, engine
+from app.schema_ensure import ensure_schema
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    ensure_schema(engine)
     yield
 
 settings = get_settings()
@@ -53,6 +57,12 @@ app.include_router(catalog.router, prefix=api)
 app.include_router(locations.router, prefix=api)
 app.include_router(labor.router, prefix=api)
 app.include_router(dashboard.router, prefix=api)
+app.include_router(notifications.router, prefix=api)
+
+
+@app.get(f"{api}/server-time")
+def server_time() -> dict[str, str]:
+    return {"utc": datetime.now(timezone.utc).isoformat()}
 
 
 @app.get("/health")

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -10,9 +11,21 @@ from app.schemas import LoginRequest, RefreshRequest, TokenResponse, UserPublic
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+def _resolve_login_identifier(body: LoginRequest) -> str:
+    ident = (body.identifier or body.email or "").strip()
+    return ident
+
+
 @router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
-    user = db.query(User).filter(User.email == body.email).first()
+    ident = _resolve_login_identifier(body)
+    if not ident:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail="IDENTIFIER_REQUIRED")
+
+    lower = ident.lower()
+    user = db.query(User).filter(
+        or_(func.lower(User.email) == lower, User.username == lower)
+    ).first()
     if not user or not verify_password(body.password, user.password_hash):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="INVALID_CREDENTIALS")
     if not user.is_active:

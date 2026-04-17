@@ -325,12 +325,12 @@ def test_work_orders_tenant_isolated_patch(
     """Tenant A user cannot update Tenant B's work order."""
     from app.api.routes.work_orders import patch_work_order
     from app.schemas import WorkOrderUpdate
-    from fastapi import HTTPException
+    from fastapi import BackgroundTasks, HTTPException
     
     update = WorkOrderUpdate(title="Hacked Title")
     
     with pytest.raises(HTTPException) as exc_info:
-        patch_work_order(work_order_b.id, update, db_session, user_tenant_a)
+        patch_work_order(work_order_b.id, update, db_session, user_tenant_a, BackgroundTasks())
     
     assert exc_info.value.status_code == 404
 
@@ -655,12 +655,12 @@ def test_cannot_modify_work_order_across_tenants(
     from app.api.routes.work_orders import patch_work_order
     from app.schemas import WorkOrderUpdate
     from app.models import WorkOrderStatus
-    from fastapi import HTTPException
+    from fastapi import BackgroundTasks, HTTPException
     
     update = WorkOrderUpdate(status=WorkOrderStatus.closed)
     
     with pytest.raises(HTTPException) as exc_info:
-        patch_work_order(work_order_b.id, update, db_session, user_tenant_a)
+        patch_work_order(work_order_b.id, update, db_session, user_tenant_a, BackgroundTasks())
     
     assert exc_info.value.status_code == 404
     

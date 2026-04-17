@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Any, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 from app.models import (
     AssetLifecycleStatus,
@@ -23,15 +23,41 @@ class UserPublic(BaseModel):
     tenant_id: UUID
     client_id: Optional[UUID] = None
     email: str
+    username: Optional[str] = None
     full_name: str
     role: UserRole
     locale: str
     is_active: bool
 
 
+class UserBrief(BaseModel):
+    """Minimal user info for work order creator/assignee (Phase 3)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    email: str
+    username: Optional[str] = None
+    full_name: str
+    role: UserRole
+
+
 class LoginRequest(BaseModel):
-    email: EmailStr
+    """Login with username or email (email kept for backward compatibility)."""
+
     password: str
+    identifier: Optional[str] = None
+    email: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _merge_identifier(cls, data: object) -> object:
+        if isinstance(data, dict):
+            ident = data.get("identifier")
+            em = data.get("email")
+            if ident in (None, "") and em not in (None, ""):
+                data["identifier"] = em
+        return data
 
 
 class TokenResponse(BaseModel):
@@ -52,6 +78,27 @@ class ClientCreate(BaseModel):
     billing_email: Optional[EmailStr] = None
 
 
+class ClientProvisionRequest(BaseModel):
+    """Super admin: create company + client admin with generated credentials."""
+
+    legal_name: str = Field(..., min_length=1, max_length=255)
+    manager_full_name: str = Field(..., min_length=1, max_length=255)
+
+
+class ClientProvisionResponse(BaseModel):
+    client: "ClientOut"
+    company_id: UUID
+    company_code: str
+    manager_username: str
+    manager_email: str
+    initial_password: str
+
+
+class ClientUpdate(BaseModel):
+    legal_name: Optional[str] = Field(None, min_length=1, max_length=255)
+    code: Optional[str] = Field(None, max_length=64)
+
+
 class ClientOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -59,6 +106,7 @@ class ClientOut(BaseModel):
     legal_name: str
     code: str
     billing_email: Optional[str]
+    status: str = "active"
 
 
 class SiteCreate(BaseModel):
@@ -78,6 +126,20 @@ class SiteOut(BaseModel):
     status: str
 
 
+class SiteProvisionRequest(BaseModel):
+    client_id: UUID
+    name: str = Field(..., min_length=1, max_length=255)
+    manager_full_name: str = Field(..., min_length=1, max_length=255)
+    timezone: str = "Asia/Riyadh"
+
+
+class SiteProvisionResponse(BaseModel):
+    site: SiteOut
+    manager_username: str
+    manager_email: str
+    initial_password: str
+
+
 class AssetCreate(BaseModel):
     site_id: UUID
     name: str
@@ -86,6 +148,8 @@ class AssetCreate(BaseModel):
     location_id: Optional[UUID] = None
     model: Optional[str] = None
     serial: Optional[str] = None
+    installed_on: Optional[date] = None
+    warranty_until: Optional[date] = None
     max_repair_count: Optional[int] = None
     max_age_years: Optional[int] = None
 
@@ -98,6 +162,10 @@ class AssetOut(BaseModel):
     location_id: Optional[UUID] = None
     name: str
     category: str
+    model: Optional[str] = None
+    serial: Optional[str] = None
+    installed_on: Optional[date] = None
+    warranty_until: Optional[date] = None
     max_repair_count: Optional[int] = None
     max_age_years: Optional[int] = None
     current_repair_count: int = 0
@@ -153,6 +221,7 @@ class WorkOrderOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    tenant_id: UUID
     client_id: UUID
     site_id: UUID
     location_id: Optional[UUID] = None
@@ -164,7 +233,10 @@ class WorkOrderOut(BaseModel):
     title: str
     description: str
     template_id: Optional[UUID]
+    created_by_user_id: Optional[UUID] = None
     assignee_user_id: Optional[UUID]
+    creator: Optional[UserBrief] = None
+    assignee: Optional[UserBrief] = None
     opened_at: datetime
     closed_at: Optional[datetime]
     tags: list[str] = []
@@ -222,6 +294,12 @@ class InvoiceOut(BaseModel):
     currency: str
     due_date: Optional[date]
     line_items: list[InvoiceLineOut] = []
+
+
+class GenerateInvoiceBody(BaseModel):
+    """Optional currency when generating invoice from work order (Phase 3)."""
+
+    currency: Optional[str] = None  # EGP, SAR, USD, EUR
 
 
 class PartCreate(BaseModel):

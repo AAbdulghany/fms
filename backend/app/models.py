@@ -101,12 +101,16 @@ class Tenant(Base):
 
 class User(Base):
     __tablename__ = "users"
-    __table_args__ = (UniqueConstraint("tenant_id", "email", name="uq_user_tenant_email"),)
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "email", name="uq_user_tenant_email"),
+        UniqueConstraint("tenant_id", "username", name="uq_user_tenant_username"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     client_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("clients.id"))
     email: Mapped[str] = mapped_column(String(320), nullable=False)
+    username: Mapped[Optional[str]] = mapped_column(String(64))
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[str] = mapped_column(String(255), default="")
     role: Mapped[UserRole] = mapped_column(Enum(UserRole, name="user_role", native_enum=False), nullable=False)
@@ -138,6 +142,7 @@ class Client(Base):
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     legal_name: Mapped[str] = mapped_column(String(255), nullable=False)
     code: Mapped[str] = mapped_column(String(64), default="")
+    status: Mapped[str] = mapped_column(String(32), default="active")
     billing_email: Mapped[Optional[str]] = mapped_column(String(320))
     metadata_json: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
@@ -278,6 +283,15 @@ class WorkOrder(Base):
     closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     # P2-F3: Maintenance Tags
     tags: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
+
+    creator_user: Mapped[Optional["User"]] = relationship(
+        "User",
+        foreign_keys=[created_by_user_id],
+    )
+    assignee_user: Mapped[Optional["User"]] = relationship(
+        "User",
+        foreign_keys=[assignee_user_id],
+    )
 
     report: Mapped[Optional["MaintenanceReport"]] = relationship(
         back_populates="work_order", uselist=False, cascade="all, delete-orphan"

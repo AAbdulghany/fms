@@ -2,9 +2,9 @@ from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import false, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_user, require_roles
 from app.database import get_db
@@ -24,6 +24,7 @@ from app.schemas import (
     PaginatedMeta,
     PaginatedWorkOrders,
     ReportAnswersUpdate,
+    UserBrief,
     WorkOrderCreate,
     WorkOrderOut,
     WorkOrderUpdate,
@@ -31,6 +32,11 @@ from app.schemas import (
 from app.services.asset_lifecycle import on_work_order_completed
 from app.services.audit import write_audit
 from app.services.report_validation import validate_required_fields
+from app.services.wo_notifications import (
+    notify_work_order_assigned,
+    notify_work_order_created,
+    notify_work_order_status_changed,
+)
 from app.services.work_order_fsm import can_transition
 
 router = APIRouter(prefix="/work-orders", tags=["work-orders"])
@@ -71,6 +77,24 @@ def _access_wo(db: Session, current: User, wo_id: UUID) -> WorkOrder:
         if scoped and wo.site_id not in scoped:
             raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
     return wo
+
+
+def _work_order_to_out(wo: WorkOrder) -> WorkOrderOut:
+    base = WorkOrderOut.model_validate(wo)
+    return base.model_copy(
+        update={
+            "creator": UserBrief.model_validate(wo.creator_user) if wo.creator_user else None,
+            "assignee": UserBrief.model_validate(wo.assignee_user) if wo.assignee_user else None,
+        }
+    )
+
+
+def _reload_wo_with_users(db: Session, wo_id: UUID) -> WorkOrder:
+    return db.execute(
+        select(WorkOrder)
+        .where(WorkOrder.id == wo_id)
+        .options(joinedload(WorkOrder.creator_user), joinedload(WorkOrder.assignee_user))
+    ).scalar_one()
 
 
 @router.get("", response_model=PaginatedWorkOrders)
@@ -140,10 +164,11 @@ def list_work_orders(
             q = q.where(WorkOrder.tags.overlap(tag_list))
     
     total = db.scalar(select(func.count()).select_from(q.subquery()))
+    q = q.options(joinedload(WorkOrder.creator_user), joinedload(WorkOrder.assignee_user))
     q = q.order_by(WorkOrder.opened_at.desc()).offset((page - 1) * page_size).limit(page_size)
     rows = list(db.scalars(q).all())
     return PaginatedWorkOrders(
-        data=[WorkOrderOut.model_validate(r) for r in rows],
+        data=[_work_order_to_out(r) for r in rows],
         meta=PaginatedMeta(page=page, page_size=page_size, total=int(total or 0)),
     )
 
@@ -154,7 +179,8 @@ def create_work_order(
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
     _: Annotated[User, _create_roles],
-) -> WorkOrder:
+    background_tasks: BackgroundTasks,
+) -> WorkOrderOut:
     # P2-F3: Validate tags
     if body.tags:
         validate_tags(body.tags)
@@ -197,8 +223,9 @@ def create_work_order(
         entity_id=str(wo.id),
     )
     db.commit()
-    db.refresh(wo)
-    return wo
+    wo = _reload_wo_with_users(db, wo.id)
+    background_tasks.add_task(notify_work_order_created, wo.id)
+    return _work_order_to_out(wo)
 
 
 @router.get("/{work_order_id}", response_model=WorkOrderOut)
@@ -206,8 +233,23 @@ def get_work_order(
     work_order_id: UUID,
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
-) -> WorkOrder:
-    return _access_wo(db, current, work_order_id)
+) -> WorkOrderOut:
+    wo = db.execute(
+        select(WorkOrder)
+        .where(WorkOrder.id == work_order_id)
+        .options(joinedload(WorkOrder.creator_user), joinedload(WorkOrder.assignee_user))
+    ).scalar_one_or_none()
+    if not wo or wo.tenant_id != current.tenant_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="NOT_FOUND")
+    if current.role == UserRole.technician and wo.assignee_user_id != current.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
+    if current.role == UserRole.client_admin and current.client_id and wo.client_id != current.client_id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
+    if current.role == UserRole.site_manager:
+        scoped = db.scalars(select(UserSiteScope.site_id).where(UserSiteScope.user_id == current.id)).all()
+        if scoped and wo.site_id not in scoped:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
+    return _work_order_to_out(wo)
 
 
 @router.patch("/{work_order_id}", response_model=WorkOrderOut)
@@ -216,18 +258,21 @@ def patch_work_order(
     body: WorkOrderUpdate,
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
-) -> WorkOrder:
+    background_tasks: BackgroundTasks,
+) -> WorkOrderOut:
     wo = _access_wo(db, current, work_order_id)
+    old_status_value: str | None = None
     if body.status is not None:
         if not can_transition(wo.status, body.status):
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_TRANSITION")
-        
+
         old_status = wo.status
+        old_status_value = old_status.value
         wo.status = body.status
-        
+
         if body.status == WorkOrderStatus.closed:
             wo.closed_at = datetime.now(timezone.utc)
-        
+
         # P2-F2: Hook asset lifecycle check when WO completes
         if body.status == WorkOrderStatus.completed and old_status != WorkOrderStatus.completed:
             on_work_order_completed(db, wo)
@@ -255,8 +300,15 @@ def patch_work_order(
         after={"status": wo.status.value},
     )
     db.commit()
-    db.refresh(wo)
-    return wo
+    wo = _reload_wo_with_users(db, wo.id)
+    if body.status is not None and old_status_value is not None and wo.status.value != old_status_value:
+        background_tasks.add_task(
+            notify_work_order_status_changed,
+            wo.id,
+            old_status_value,
+            wo.status.value,
+        )
+    return _work_order_to_out(wo)
 
 
 @router.post("/{work_order_id}/assign", response_model=WorkOrderOut)
@@ -265,6 +317,7 @@ def assign_work_order(
     body: AssignBody,
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
+    background_tasks: BackgroundTasks,
     _: Annotated[
         User,
         Depends(
@@ -275,7 +328,7 @@ def assign_work_order(
             )
         ),
     ],
-) -> WorkOrder:
+) -> WorkOrderOut:
     wo = _access_wo(db, current, work_order_id)
     wo.assignee_user_id = body.assignee_user_id
     if wo.status == WorkOrderStatus.created:
@@ -283,8 +336,9 @@ def assign_work_order(
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_TRANSITION")
         wo.status = WorkOrderStatus.assigned
     db.commit()
-    db.refresh(wo)
-    return wo
+    wo = _reload_wo_with_users(db, wo.id)
+    background_tasks.add_task(notify_work_order_assigned, wo.id)
+    return _work_order_to_out(wo)
 
 
 @router.get("/{work_order_id}/report", response_model=MaintenanceReportOut)

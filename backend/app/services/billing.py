@@ -108,7 +108,12 @@ def ensure_can_invoice(wo: WorkOrder, report: Optional[MaintenanceReport]) -> No
         raise ValueError("WORK_ORDER_NOT_VERIFIED")
 
 
-def build_invoice_for_work_order(db: Session, wo: WorkOrder) -> Invoice:
+ALLOWED_INVOICE_CURRENCIES = frozenset({"EGP", "SAR", "USD", "EUR"})
+
+
+def build_invoice_for_work_order(
+    db: Session, wo: WorkOrder, currency_override: Optional[str] = None
+) -> Invoice:
     report = wo.report
     ensure_can_invoice(wo, report)
     existing = db.scalar(select(Invoice).where(Invoice.work_order_id == wo.id))
@@ -183,6 +188,10 @@ def build_invoice_for_work_order(db: Session, wo: WorkOrder) -> Invoice:
     tax = Decimal("0")
     total = (subtotal + tax).quantize(Decimal("0.01"))
 
+    cur = (currency_override or contract.currency or "SAR").strip().upper()
+    if cur not in ALLOWED_INVOICE_CURRENCIES:
+        raise ValueError("INVALID_CURRENCY")
+
     inv = Invoice(
         tenant_id=wo.tenant_id,
         client_id=wo.client_id,
@@ -193,7 +202,7 @@ def build_invoice_for_work_order(db: Session, wo: WorkOrder) -> Invoice:
         subtotal_sar=subtotal,
         tax_sar=tax,
         total_sar=total,
-        currency=contract.currency or "SAR",
+        currency=cur,
         due_date=date.today(),
         metadata_json={"work_order_id": str(wo.id)},
     )
