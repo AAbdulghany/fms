@@ -3,7 +3,22 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import auth, assets, billing_actions, catalog, clients, invoices, reports, sites, templates, users, work_orders
+from app.api.routes import (
+    auth,
+    assets,
+    billing_actions,
+    catalog,
+    clients,
+    dashboard,
+    invoices,
+    labor,
+    locations,
+    reports,
+    sites,
+    templates,
+    users,
+    work_orders,
+)
 from app.config import get_settings
 from app.database import Base, engine
 
@@ -35,6 +50,9 @@ app.include_router(reports.router, prefix=api)
 app.include_router(invoices.router, prefix=api)
 app.include_router(billing_actions.router, prefix=api)
 app.include_router(catalog.router, prefix=api)
+app.include_router(locations.router, prefix=api)
+app.include_router(labor.router, prefix=api)
+app.include_router(dashboard.router, prefix=api)
 
 
 @app.get("/health")

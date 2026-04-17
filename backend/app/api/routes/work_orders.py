@@ -28,6 +28,7 @@ from app.schemas import (
     WorkOrderOut,
     WorkOrderUpdate,
 )
+from app.services.asset_lifecycle import on_work_order_completed
 from app.services.audit import write_audit
 from app.services.report_validation import validate_required_fields
 from app.services.work_order_fsm import can_transition
@@ -42,6 +43,19 @@ _create_roles = Depends(
         UserRole.site_manager,
     )
 )
+
+# P2-F3: Valid maintenance tags
+VALID_TAGS = {"preventive", "corrective", "protective"}
+
+
+def validate_tags(tags: list[str]) -> None:
+    """Validate that all tags are from the allowed set."""
+    invalid = set(tags) - VALID_TAGS
+    if invalid:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid tags: {', '.join(invalid)}. Valid tags: {', '.join(VALID_TAGS)}"
+        )
 
 
 def _access_wo(db: Session, current: User, wo_id: UUID) -> WorkOrder:
@@ -66,8 +80,18 @@ def list_work_orders(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     status_filter: str | None = Query(None, alias="status"),
+    urgency: str | None = Query(None),
+    client_id: UUID | None = Query(None),
+    site_id: UUID | None = Query(None),
+    assignee_user_id: UUID | None = Query(None),
+    date_from: datetime | None = Query(None),
+    date_to: datetime | None = Query(None),
+    search: str | None = Query(None),
+    tags: str | None = Query(None),  # P2-F3: Comma-separated tags filter
 ) -> PaginatedWorkOrders:
     q = select(WorkOrder).where(WorkOrder.tenant_id == current.tenant_id)
+    
+    # Role-based filtering
     if current.role == UserRole.technician:
         q = q.where(WorkOrder.assignee_user_id == current.id)
     if current.role == UserRole.client_admin and current.client_id:
@@ -78,12 +102,43 @@ def list_work_orders(
             q = q.where(WorkOrder.site_id.in_(scoped))
         else:
             q = q.where(false())
+    
+    # P2-F1 Additional filters
     if status_filter:
         try:
             st = WorkOrderStatus(status_filter)
             q = q.where(WorkOrder.status == st)
         except ValueError:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_STATUS")
+    
+    if urgency:
+        q = q.where(WorkOrder.urgency == urgency)
+    
+    if client_id:
+        q = q.where(WorkOrder.client_id == client_id)
+    
+    if site_id:
+        q = q.where(WorkOrder.site_id == site_id)
+    
+    if assignee_user_id:
+        q = q.where(WorkOrder.assignee_user_id == assignee_user_id)
+    
+    if date_from:
+        q = q.where(WorkOrder.opened_at >= date_from)
+    
+    if date_to:
+        q = q.where(WorkOrder.opened_at <= date_to)
+    
+    if search:
+        q = q.where(WorkOrder.title.ilike(f"%{search}%"))
+    
+    # P2-F3: Tags filter - work orders having any of the specified tags
+    if tags:
+        tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+        if tag_list:
+            validate_tags(tag_list)
+            q = q.where(WorkOrder.tags.overlap(tag_list))
+    
     total = db.scalar(select(func.count()).select_from(q.subquery()))
     q = q.order_by(WorkOrder.opened_at.desc()).offset((page - 1) * page_size).limit(page_size)
     rows = list(db.scalars(q).all())
@@ -100,10 +155,26 @@ def create_work_order(
     current: Annotated[User, Depends(get_current_user)],
     _: Annotated[User, _create_roles],
 ) -> WorkOrder:
+    # P2-F3: Validate tags
+    if body.tags:
+        validate_tags(body.tags)
+    
+    if body.location_id:
+        from app.models import Location
+
+        loc = db.get(Location, body.location_id)
+        if (
+            not loc
+            or loc.tenant_id != current.tenant_id
+            or loc.site_id != body.site_id
+        ):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_LOCATION")
+
     wo = WorkOrder(
         tenant_id=current.tenant_id,
         client_id=body.client_id,
         site_id=body.site_id,
+        location_id=body.location_id,
         asset_id=body.asset_id,
         source=body.source,
         category=body.category,
@@ -113,6 +184,7 @@ def create_work_order(
         template_id=body.template_id,
         created_by_user_id=current.id,
         status=WorkOrderStatus.created,
+        tags=body.tags,
     )
     db.add(wo)
     db.flush()
@@ -149,9 +221,16 @@ def patch_work_order(
     if body.status is not None:
         if not can_transition(wo.status, body.status):
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_TRANSITION")
+        
+        old_status = wo.status
         wo.status = body.status
+        
         if body.status == WorkOrderStatus.closed:
             wo.closed_at = datetime.now(timezone.utc)
+        
+        # P2-F2: Hook asset lifecycle check when WO completes
+        if body.status == WorkOrderStatus.completed and old_status != WorkOrderStatus.completed:
+            on_work_order_completed(db, wo)
     if body.title is not None:
         wo.title = body.title
     if body.description is not None:
@@ -162,6 +241,10 @@ def patch_work_order(
         wo.template_id = body.template_id
     if body.assignee_user_id is not None:
         wo.assignee_user_id = body.assignee_user_id
+    if body.tags is not None:
+        # P2-F3: Validate and update tags
+        validate_tags(body.tags)
+        wo.tags = body.tags
     write_audit(
         db,
         tenant_id=current.tenant_id,

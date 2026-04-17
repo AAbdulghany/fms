@@ -1,5 +1,9 @@
 # How to run NexTask FMS (local development)
 
+**For the up-to-date runbook** (uv, migrations, super-user-only seed), see **[USER_GUIDE.md](./USER_GUIDE.md)**.
+
+---
+
 ## Prerequisites
 
 - **Node.js** 18+ (for the web app)

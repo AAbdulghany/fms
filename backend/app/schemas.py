@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.models import (
+    AssetLifecycleStatus,
     InvoiceStatus,
     ReportStatus,
     Urgency,
@@ -82,8 +83,11 @@ class AssetCreate(BaseModel):
     name: str
     category: str = "general"
     parent_asset_id: Optional[UUID] = None
+    location_id: Optional[UUID] = None
     model: Optional[str] = None
     serial: Optional[str] = None
+    max_repair_count: Optional[int] = None
+    max_age_years: Optional[int] = None
 
 
 class AssetOut(BaseModel):
@@ -91,8 +95,13 @@ class AssetOut(BaseModel):
 
     id: UUID
     site_id: UUID
+    location_id: Optional[UUID] = None
     name: str
     category: str
+    max_repair_count: Optional[int] = None
+    max_age_years: Optional[int] = None
+    current_repair_count: int = 0
+    lifecycle_status: AssetLifecycleStatus = AssetLifecycleStatus.active
 
 
 class ReportTemplateCreate(BaseModel):
@@ -120,12 +129,14 @@ class WorkOrderCreate(BaseModel):
     client_id: UUID
     site_id: UUID
     asset_id: Optional[UUID] = None
+    location_id: Optional[UUID] = None
     source: WorkOrderSource = WorkOrderSource.corrective
     category: str = "general"
     urgency: Urgency = Urgency.normal
     title: str = ""
     description: str = ""
     template_id: Optional[UUID] = None
+    tags: list[str] = Field(default_factory=list)
 
 
 class WorkOrderUpdate(BaseModel):
@@ -135,6 +146,7 @@ class WorkOrderUpdate(BaseModel):
     urgency: Optional[Urgency] = None
     template_id: Optional[UUID] = None
     assignee_user_id: Optional[UUID] = None
+    tags: Optional[list[str]] = None
 
 
 class WorkOrderOut(BaseModel):
@@ -143,6 +155,7 @@ class WorkOrderOut(BaseModel):
     id: UUID
     client_id: UUID
     site_id: UUID
+    location_id: Optional[UUID] = None
     asset_id: Optional[UUID]
     source: WorkOrderSource
     category: str
@@ -154,6 +167,7 @@ class WorkOrderOut(BaseModel):
     assignee_user_id: Optional[UUID]
     opened_at: datetime
     closed_at: Optional[datetime]
+    tags: list[str] = []
 
 
 class AssignBody(BaseModel):
@@ -271,3 +285,126 @@ class PaginatedMeta(BaseModel):
 class PaginatedWorkOrders(BaseModel):
     data: list[WorkOrderOut]
     meta: PaginatedMeta
+
+
+# --- P2-F5 Locations ---
+class LocationCreate(BaseModel):
+    site_id: UUID
+    parent_id: Optional[UUID] = None
+    name: str
+    location_type: str = "other"
+    sort_order: int = 0
+    metadata_json: dict[str, Any] = Field(default_factory=dict)
+
+
+class LocationUpdate(BaseModel):
+    name: Optional[str] = None
+    parent_id: Optional[UUID] = None
+    location_type: Optional[str] = None
+    sort_order: Optional[int] = None
+    metadata_json: Optional[dict[str, Any]] = None
+
+
+class LocationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    site_id: UUID
+    parent_id: Optional[UUID]
+    name: str
+    location_type: str
+    sort_order: int
+
+
+class LocationTreeNode(BaseModel):
+    id: UUID
+    site_id: UUID
+    parent_id: Optional[UUID]
+    name: str
+    location_type: str
+    sort_order: int
+    children: list["LocationTreeNode"] = Field(default_factory=list)
+
+
+LocationTreeNode.model_rebuild()
+
+
+# --- P2-F4 Labor ---
+class TechnicianProfileCreate(BaseModel):
+    user_id: UUID
+    hourly_rate_sar: Decimal = Decimal("0")
+    overtime_multiplier: Decimal = Decimal("1.5")
+    is_active: bool = True
+    skills_json: dict[str, Any] = Field(default_factory=dict)
+
+
+class TechnicianProfileUpdate(BaseModel):
+    hourly_rate_sar: Optional[Decimal] = None
+    overtime_multiplier: Optional[Decimal] = None
+    is_active: Optional[bool] = None
+    skills_json: Optional[dict[str, Any]] = None
+
+
+class TechnicianProfileOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    user_id: UUID
+    hourly_rate_sar: Decimal
+    overtime_multiplier: Decimal
+    is_active: bool
+
+
+class LaborEntryCreate(BaseModel):
+    work_order_id: UUID
+    user_id: UUID
+    work_date: date
+    hours_regular: Decimal
+    hours_overtime: Decimal = Decimal("0")
+    notes: str = ""
+
+
+class LaborEntryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    work_order_id: UUID
+    user_id: UUID
+    work_date: date
+    hours_regular: Decimal
+    hours_overtime: Decimal
+    notes: str
+
+
+class TechnicianScheduleCreate(BaseModel):
+    user_id: UUID
+    day_of_week: int = Field(ge=0, le=6)
+    start_time: str = "09:00"
+    end_time: str = "17:00"
+    is_active: bool = True
+
+
+class TechnicianScheduleOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    user_id: UUID
+    day_of_week: int
+    start_time: str
+    end_time: str
+    is_active: bool
+
+
+# --- P2-F6 Dashboard ---
+class DashboardSummaryOut(BaseModel):
+    role: str
+    clients_count: Optional[int] = None
+    sites_count: Optional[int] = None
+    assets_count: Optional[int] = None
+    open_work_orders: int = 0
+    technicians_count: Optional[int] = None
+    pending_invoices_draft: Optional[int] = None
+    my_assigned_open: Optional[int] = None
+    my_in_progress: Optional[int] = None
+    completed_this_week: int = 0
+    assets_at_eol: Optional[int] = None

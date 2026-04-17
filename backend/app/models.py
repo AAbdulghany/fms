@@ -4,6 +4,7 @@ from datetime import date, datetime, timezone
 from typing import Any, Optional
 
 from sqlalchemy import (
+    ARRAY,
     Boolean,
     Date,
     DateTime,
@@ -76,6 +77,13 @@ class InvoiceStatus(str, enum.Enum):
     void = "void"
 
 
+class AssetLifecycleStatus(str, enum.Enum):
+    active = "active"
+    warning = "warning"
+    end_of_life = "end_of_life"
+    replaced = "replaced"
+
+
 class Tenant(Base):
     __tablename__ = "tenants"
 
@@ -107,6 +115,7 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_platform_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     tenant: Mapped["Tenant"] = relationship(back_populates="users")
@@ -150,6 +159,33 @@ class Site(Base):
 
     client: Mapped["Client"] = relationship(back_populates="sites")
     assets: Mapped[list["Asset"]] = relationship(back_populates="site")
+    locations: Mapped[list["Location"]] = relationship(back_populates="site")
+
+
+class Location(Base):
+    """P2-F5: Hierarchical physical locations under a site (Region → Building → … → Room)."""
+
+    __tablename__ = "locations"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("sites.id"), nullable=False)
+    parent_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("locations.id"))
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    location_type: Mapped[str] = mapped_column(String(32), default="other")  # region, building, floor, zone, room, other
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+    site: Mapped["Site"] = relationship(back_populates="locations")
+    parent: Mapped[Optional["Location"]] = relationship(
+        remote_side="Location.id",
+        back_populates="children",
+    )
+    children: Mapped[list["Location"]] = relationship(
+        "Location",
+        back_populates="parent",
+    )
 
 
 class Asset(Base):
@@ -158,6 +194,7 @@ class Asset(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("sites.id"), nullable=False)
+    location_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("locations.id"))
     parent_asset_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("assets.id"))
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     category: Mapped[str] = mapped_column(String(64), default="general")
@@ -167,8 +204,17 @@ class Asset(Base):
     warranty_until: Mapped[Optional[date]] = mapped_column(Date)
     qr_payload: Mapped[Optional[str]] = mapped_column(String(512))
     metadata_json: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    # P2-F2: Asset Lifecycle Management
+    max_repair_count: Mapped[Optional[int]] = mapped_column(Integer)
+    max_age_years: Mapped[Optional[int]] = mapped_column(Integer)
+    current_repair_count: Mapped[int] = mapped_column(Integer, default=0)
+    lifecycle_status: Mapped[AssetLifecycleStatus] = mapped_column(
+        Enum(AssetLifecycleStatus, name="asset_lifecycle_status", native_enum=False), 
+        default=AssetLifecycleStatus.active
+    )
 
     site: Mapped["Site"] = relationship(back_populates="assets")
+    location: Mapped[Optional["Location"]] = relationship()
     schedules: Mapped[list["MaintenanceSchedule"]] = relationship(back_populates="asset")
 
 
@@ -210,6 +256,7 @@ class WorkOrder(Base):
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     client_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("clients.id"), nullable=False)
     site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("sites.id"), nullable=False)
+    location_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("locations.id"))
     asset_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("assets.id"))
     source: Mapped[WorkOrderSource] = mapped_column(
         Enum(WorkOrderSource, name="work_order_source", native_enum=False), default=WorkOrderSource.corrective
@@ -229,6 +276,8 @@ class WorkOrder(Base):
     sla_response_due_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     sla_resolution_due_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    # P2-F3: Maintenance Tags
+    tags: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
 
     report: Mapped[Optional["MaintenanceReport"]] = relationship(
         back_populates="work_order", uselist=False, cascade="all, delete-orphan"
@@ -341,6 +390,56 @@ class InvoiceLineItem(Base):
     source_ref: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
 
     invoice: Mapped["Invoice"] = relationship(back_populates="line_items")
+
+
+class TechnicianProfile(Base):
+    """P2-F4: Hourly rates and skills for technicians."""
+
+    __tablename__ = "technician_profiles"
+    __table_args__ = (UniqueConstraint("tenant_id", "user_id", name="uq_tech_profile_tenant_user"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    hourly_rate_sar: Mapped[Any] = mapped_column(Numeric(12, 2), default=0)
+    overtime_multiplier: Mapped[Any] = mapped_column(Numeric(6, 4), default=1.5)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    skills_json: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class LaborEntry(Base):
+    """P2-F4: Logged hours against a work order."""
+
+    __tablename__ = "labor_entries"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    work_order_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("work_orders.id"), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    work_date: Mapped[date] = mapped_column(Date, nullable=False)
+    hours_regular: Mapped[Any] = mapped_column(Numeric(8, 2), nullable=False)
+    hours_overtime: Mapped[Any] = mapped_column(Numeric(8, 2), default=0)
+    notes: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class TechnicianSchedule(Base):
+    """P2-F4: Weekly availability window per technician."""
+
+    __tablename__ = "technician_schedules"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "user_id", "day_of_week", name="uq_tech_schedule_day"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    day_of_week: Mapped[int] = mapped_column(Integer, nullable=False)  # 0=Monday .. 6=Sunday (ISO-like)
+    start_time: Mapped[str] = mapped_column(String(8), nullable=False)  # HH:MM
+    end_time: Mapped[str] = mapped_column(String(8), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
 class AuditLog(Base):

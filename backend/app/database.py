@@ -36,10 +36,17 @@ def _add_tenant_filter(execute_state):
     """
     Automatically injects tenant_id filter into all SELECT, UPDATE, and DELETE queries
     if a tenant_id is set in the context.
+    
+    NOTE: Tenant filtering is currently handled explicitly in route handlers via
+    get_current_user dependency and manual tenant_id checks. This listener is 
+    reserved for future automatic filtering implementation if needed.
+    For now, all queries must manually filter by tenant_id from current_user.
     """
     if execute_state.is_select or execute_state.is_update or execute_state.is_delete:
         tenant_id = tenant_context.get()
         if tenant_id is not None:
+            # Future: Implement automatic tenant filtering here
+            # For now, explicit filtering in routes ensures clarity and control
             pass
 
 def get_db() -> Generator[Session, None, None]:
