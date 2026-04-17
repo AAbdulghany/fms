@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -32,10 +32,34 @@ def _access_invoice(db: Session, current: User, inv_id: UUID) -> Invoice:
 def list_invoices(
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
+    status: str | None = Query(None),
+    client_id: UUID | None = Query(None),
+    date_from: datetime | None = Query(None),
+    date_to: datetime | None = Query(None),
 ) -> list[Invoice]:
     q = select(Invoice).where(Invoice.tenant_id == current.tenant_id)
+    
+    # Role-based filtering
     if current.role == UserRole.client_admin and current.client_id:
         q = q.where(Invoice.client_id == current.client_id)
+    
+    # P2-F1 Additional filters
+    if status:
+        try:
+            st = InvoiceStatus(status)
+            q = q.where(Invoice.status == st)
+        except ValueError:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_STATUS")
+    
+    if client_id:
+        q = q.where(Invoice.client_id == client_id)
+    
+    if date_from:
+        q = q.where(Invoice.issued_at >= date_from)
+    
+    if date_to:
+        q = q.where(Invoice.issued_at <= date_to)
+    
     q = q.options(selectinload(Invoice.line_items)).order_by(Invoice.number.desc())
     rows = db.scalars(q).all()
     return list(rows)

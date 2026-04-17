@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user, require_roles
 from app.database import get_db
-from app.models import User, UserRole, WorkOrder
+from app.models import Invoice, User, UserRole, WorkOrder
 from app.schemas import InvoiceOut
 from app.services.audit import write_audit
 from app.services.billing import build_invoice_for_work_order
