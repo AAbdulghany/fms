@@ -68,8 +68,8 @@ export function WorkOrdersPage() {
 
   const fetchCompanies = async () => {
     try {
-      const res = await apiFetch<{ data: Company[] }>("/clients");
-      setCompanies(res.data || []);
+      const res = await apiFetch<Company[]>("/clients");
+      setCompanies(res);
     } catch (e) {
       console.error("Failed to fetch companies", e);
     }
@@ -78,8 +78,8 @@ export function WorkOrdersPage() {
   const fetchSites = async (clientId?: string) => {
     try {
       const url = clientId ? `/sites?client_id=${clientId}` : "/sites";
-      const res = await apiFetch<{ data: Site[] }>(url);
-      setSites(res.data || []);
+      const res = await apiFetch<Site[]>(url);
+      setSites(res);
     } catch (e) {
       console.error("Failed to fetch sites", e);
     }
@@ -100,7 +100,16 @@ export function WorkOrdersPage() {
     try {
       await apiFetch("/work-orders", {
         method: "POST",
-        body: JSON.stringify(form),
+        json: {
+          title: form.title,
+          description: form.description,
+          urgency: form.urgency,
+          client_id: form.client_id,
+          site_id: form.site_id,
+          asset_id: form.asset_id || undefined,
+          source: form.source,
+          category: form.category,
+        },
       });
       setIsModalOpen(false);
       setForm({ title: "", description: "", urgency: "normal", client_id: "", site_id: "", asset_id: "", source: "corrective", category: "general" });
@@ -248,6 +257,8 @@ export function WorkOrdersPage() {
             <tr>
               <th className="px-4 py-3 font-medium">{t("title")}</th>
               <th className="px-4 py-3 font-medium">{t("status")}</th>
+              <th className="px-4 py-3 font-medium">{t("created_by")}</th>
+              <th className="px-4 py-3 font-medium">{t("assigned_to")}</th>
               <th className="px-4 py-3 font-medium">ID</th>
             </tr>
           </thead>
@@ -261,6 +272,12 @@ export function WorkOrdersPage() {
                 </td>
                 <td className="px-4 py-3">
                   <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs">{w.status}</span>
+                </td>
+                <td className="px-4 py-3 text-sm text-neutral-700">
+                  {w.creator?.full_name || w.creator?.email || "—"}
+                </td>
+                <td className="px-4 py-3 text-sm text-neutral-700">
+                  {w.assignee?.full_name || w.assignee?.email || "—"}
                 </td>
                 <td className="px-4 py-3 font-mono text-xs text-neutral-500">{w.id}</td>
               </tr>

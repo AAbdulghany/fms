@@ -31,6 +31,7 @@ export function WorkOrderDetailPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [nextStatus, setNextStatus] = useState<WorkOrderStatus | "">("");
+  const [invoiceCurrency, setInvoiceCurrency] = useState("SAR");
 
   const load = async () => {
     if (!id) return;
@@ -175,7 +176,10 @@ export function WorkOrderDetailPage() {
     setMsg(null);
     setErr(null);
     try {
-      await apiFetch(`/work-orders/${id}/generate-invoice`, { method: "POST" });
+      await apiFetch(`/work-orders/${id}/generate-invoice`, {
+        method: "POST",
+        json: { currency: invoiceCurrency },
+      });
       setMsg("Invoice created");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Error");
@@ -223,6 +227,48 @@ export function WorkOrderDetailPage() {
         </p>
       </div>
 
+      <div className="grid gap-4 rounded-lg border border-neutral-200 bg-neutral-0 p-4 md:grid-cols-2">
+        <div>
+          <div className="text-xs font-medium text-neutral-500">{t("created_by")}</div>
+          {wo.creator ? (
+            <div className="mt-2 flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-800">
+                {(wo.creator.full_name || wo.creator.email || "?").slice(0, 1).toUpperCase()}
+              </div>
+              <div>
+                <div className="text-sm font-medium text-neutral-900">
+                  {wo.creator.full_name || wo.creator.email}
+                </div>
+                <div className="text-xs text-neutral-500">{wo.creator.role}</div>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-1 text-sm text-neutral-400">—</p>
+          )}
+          <p className="mt-2 text-xs text-neutral-500">
+            {t("created_at")}: {new Date(wo.opened_at).toLocaleString()}
+          </p>
+        </div>
+        <div>
+          <div className="text-xs font-medium text-neutral-500">{t("assigned_to")}</div>
+          {wo.assignee ? (
+            <div className="mt-2 flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-success-light text-sm font-semibold text-success-dark">
+                {(wo.assignee.full_name || wo.assignee.email || "?").slice(0, 1).toUpperCase()}
+              </div>
+              <div>
+                <div className="text-sm font-medium text-neutral-900">
+                  {wo.assignee.full_name || wo.assignee.email}
+                </div>
+                <div className="text-xs text-neutral-500">{wo.assignee.role}</div>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-1 text-sm text-neutral-400">{t("not_assigned")}</p>
+          )}
+        </div>
+      </div>
+
       {msg && <p className="rounded-md bg-success-light px-3 py-2 text-success-dark">{msg}</p>}
       {err && <p className="rounded-md bg-error-light px-3 py-2 text-error-dark">{err}</p>}
 
@@ -262,13 +308,28 @@ export function WorkOrderDetailPage() {
             Apply
           </button>
           {wo.status === "verified" && (
-            <button
-              type="button"
-              className="rounded-md bg-primary-600 px-3 py-2 text-sm text-neutral-0"
-              onClick={() => void generateInvoice()}
-            >
-              {t("generate_invoice")}
-            </button>
+            <>
+              <div>
+                <label className="mb-1 block text-xs text-neutral-500">{t("invoice_currency")}</label>
+                <select
+                  className="rounded-md border border-neutral-300 px-2 py-2 text-sm"
+                  value={invoiceCurrency}
+                  onChange={(e) => setInvoiceCurrency(e.target.value)}
+                >
+                  <option value="SAR">SAR</option>
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="EGP">EGP</option>
+                </select>
+              </div>
+              <button
+                type="button"
+                className="rounded-md bg-primary-600 px-3 py-2 text-sm text-neutral-0"
+                onClick={() => void generateInvoice()}
+              >
+                {t("generate_invoice")}
+              </button>
+            </>
           )}
         </div>
       )}

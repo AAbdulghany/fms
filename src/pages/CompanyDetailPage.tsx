@@ -1,9 +1,20 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 import type { Company, Site } from "../lib/types";
 import { EmptyState } from "../components/EmptyState";
+import { CompanyEditModal } from "../components/CompanyEditModal";
+import { SiteProvisionModal } from "../components/SiteProvisionModal";
+import { ProvisionCredentialsModal } from "../components/ProvisionCredentialsModal";
+
+type ClientApi = {
+  id: string;
+  legal_name: string;
+  code: string;
+  billing_email: string | null;
+  status: string;
+};
 
 export default function CompanyDetailPage() {
   const { t } = useTranslation();
@@ -14,15 +25,45 @@ export default function CompanyDetailPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"sites" | "work-orders" | "invoices" | "settings">("sites");
   const [searchQuery, setSearchQuery] = useState("");
+  const [editOpen, setEditOpen] = useState(false);
+  const [addSiteOpen, setAddSiteOpen] = useState(false);
+  const [siteCreds, setSiteCreds] = useState<{ username: string; email: string; initialPassword: string } | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    if (!id) return;
     void (async () => {
       try {
-        const companyData = await apiFetch<Company>(`/companies/${id}`);
-        setCompany(companyData);
+        const c = await apiFetch<ClientApi>(`/clients/${id}`);
+        const st = c.status === "archived" ? "archived" : "active";
+        setCompany({
+          id: c.id,
+          name: c.legal_name,
+          code: c.code,
+          contact_email: c.billing_email ?? "",
+          status: st as Company["status"],
+          created_at: new Date().toISOString(),
+        });
 
-        const sitesData = await apiFetch<Site[]>(`/companies/${id}/sites`);
-        setSites(sitesData);
+        type SiteApi = {
+          id: string;
+          client_id: string;
+          name: string;
+          timezone: string;
+          status: string;
+        };
+        const sitesData = await apiFetch<SiteApi[]>(`/sites?client_id=${id}`);
+        setSites(
+          sitesData.map((s) => ({
+            id: s.id,
+            company_id: s.client_id,
+            name: s.name,
+            address: "",
+            city: "",
+            country: "",
+            timezone: s.timezone,
+            status: s.status === "active" ? "active" : "inactive",
+          }))
+        );
       } catch (error) {
         console.error("Failed to fetch company data", error);
       } finally {
@@ -30,6 +71,22 @@ export default function CompanyDetailPage() {
       }
     })();
   }, [id]);
+
+  useEffect(() => {
+    setLoading(true);
+    load();
+  }, [load]);
+
+  async function confirmArchive() {
+    if (!id || !company) return;
+    if (!window.confirm(t("archive_company_confirm"))) return;
+    try {
+      await apiFetch(`/clients/${id}/archive`, { method: "POST" });
+      navigate("/companies");
+    } catch (e) {
+      console.error(e);
+    }
+  }
 
   if (loading) {
     return (
@@ -39,7 +96,7 @@ export default function CompanyDetailPage() {
     );
   }
 
-  if (!company) {
+  if (!company || !id) {
     return (
       <div className="text-center text-neutral-600">
         <p>{t("error")}</p>
@@ -48,13 +105,39 @@ export default function CompanyDetailPage() {
   }
 
   const filteredSites = sites.filter((site) =>
-    site.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    site.city.toLowerCase().includes(searchQuery.toLowerCase())
+    site.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <div className="space-y-6">
-      {/* Breadcrumb */}
+      <ProvisionCredentialsModal
+        open={!!siteCreds}
+        title={t("site_created_credentials")}
+        username={siteCreds?.username ?? ""}
+        email={siteCreds?.email ?? ""}
+        initialPassword={siteCreds?.initialPassword ?? ""}
+        onClose={() => setSiteCreds(null)}
+      />
+
+      <CompanyEditModal
+        open={editOpen}
+        companyId={id}
+        initialLegalName={company.name}
+        initialCode={company.code}
+        onClose={() => setEditOpen(false)}
+        onSaved={load}
+      />
+
+      <SiteProvisionModal
+        open={addSiteOpen}
+        clientId={id}
+        onClose={() => setAddSiteOpen(false)}
+        onProvisioned={(c) => {
+          setSiteCreds(c);
+          load();
+        }}
+      />
+
       <nav className="flex items-center gap-2 text-sm text-neutral-600">
         <Link to="/dashboard" className="hover:text-primary-600">
           {t("dashboard")}
@@ -67,33 +150,39 @@ export default function CompanyDetailPage() {
         <span className="font-medium text-neutral-900">{company.name}</span>
       </nav>
 
-      {/* Header */}
       <div className="rounded-lg border border-neutral-200 bg-neutral-0 p-6 shadow-sm">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <h1 className="text-3xl font-semibold text-neutral-900">{company.name}</h1>
-            <p className="mt-1 text-sm text-neutral-600">
-              {company.contact_email}
-              {company.contact_phone && ` • ${company.contact_phone}`}
+            <p className="mt-1 font-mono text-xs text-neutral-500">
+              {t("company_id_label")}: {company.id}
             </p>
+            <p className="mt-1 font-mono text-sm text-neutral-600">
+              {t("company_code")}: {company.code}
+            </p>
+            {company.contact_email ? (
+              <p className="mt-1 text-sm text-neutral-600">{company.contact_email}</p>
+            ) : null}
           </div>
           <div className="flex gap-2">
             <button
+              type="button"
               className="rounded-lg border border-neutral-300 bg-neutral-0 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
-              onClick={() => alert("Edit company - to be implemented")}
+              onClick={() => setEditOpen(true)}
             >
               {t("edit")}
             </button>
             <button
-              className="rounded-lg border border-neutral-300 bg-neutral-0 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
-              onClick={() => alert("Archive company - to be implemented")}
+              type="button"
+              className="rounded-lg border border-neutral-300 bg-neutral-0 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-50"
+              disabled={company.status === "archived"}
+              onClick={() => void confirmArchive()}
             >
               {t("archive")}
             </button>
           </div>
         </div>
 
-        {/* Stats */}
         <div className="mt-4 flex gap-6 border-t border-neutral-100 pt-4">
           <div className="flex items-center gap-2">
             <span
@@ -107,7 +196,7 @@ export default function CompanyDetailPage() {
             </span>
           </div>
           <div className="text-sm text-neutral-600">
-            <span className="font-medium text-neutral-900">{company.sites_count ?? 0}</span> {t("sites_count")}
+            <span className="font-medium text-neutral-900">{company.sites_count ?? sites.length}</span> {t("sites_count")}
           </div>
           <div className="text-sm text-neutral-600">
             <span className="font-medium text-neutral-900">{company.active_wo_count ?? 0}</span> {t("active_wos")}
@@ -115,10 +204,10 @@ export default function CompanyDetailPage() {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="border-b border-neutral-200">
         <nav className="flex gap-6">
           <button
+            type="button"
             onClick={() => setActiveTab("sites")}
             className={`border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
               activeTab === "sites"
@@ -129,6 +218,7 @@ export default function CompanyDetailPage() {
             {t("sites_count")}
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab("work-orders")}
             className={`border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
               activeTab === "work-orders"
@@ -139,6 +229,7 @@ export default function CompanyDetailPage() {
             {t("work_orders")}
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab("invoices")}
             className={`border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
               activeTab === "invoices"
@@ -151,10 +242,8 @@ export default function CompanyDetailPage() {
         </nav>
       </div>
 
-      {/* Tab Content */}
       {activeTab === "sites" && (
         <div className="space-y-4">
-          {/* Toolbar */}
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <input
@@ -166,14 +255,15 @@ export default function CompanyDetailPage() {
               />
             </div>
             <button
-              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
-              onClick={() => alert("Add site - to be implemented")}
+              type="button"
+              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 disabled:opacity-50"
+              disabled={company.status === "archived"}
+              onClick={() => setAddSiteOpen(true)}
             >
               + {t("add_site")}
             </button>
           </div>
 
-          {/* Sites List */}
           {sites.length === 0 ? (
             <EmptyState
               icon={
@@ -187,10 +277,10 @@ export default function CompanyDetailPage() {
                 </svg>
               }
               title={t("no_sites_for_company")}
-              description="Add a site to start managing assets and work orders."
+              description={t("site_empty_hint")}
               action={{
                 label: `+ ${t("add_site")}`,
-                onClick: () => alert("Add site - to be implemented"),
+                onClick: () => setAddSiteOpen(true),
               }}
             />
           ) : filteredSites.length === 0 ? (
@@ -221,7 +311,7 @@ export default function CompanyDetailPage() {
                       {t("site_name")}
                     </th>
                     <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
-                      {t("location")}
+                      {t("site_timezone")}
                     </th>
                     <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
                       {t("assets")}
@@ -238,18 +328,10 @@ export default function CompanyDetailPage() {
                       onClick={() => navigate(`/sites/${site.id}`)}
                       className="cursor-pointer transition-colors hover:bg-neutral-50"
                     >
-                      <td className="px-6 py-4 text-sm font-medium text-primary-600">
-                        {site.name}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-neutral-900">
-                        {site.city}, {site.country}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-900">
-                        {site.asset_count ?? 0}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-900">
-                        {site.active_wo_count ?? 0}
-                      </td>
+                      <td className="px-6 py-4 text-sm font-medium text-primary-600">{site.name}</td>
+                      <td className="px-6 py-4 text-sm text-neutral-900">{site.timezone}</td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-900">{site.asset_count ?? 0}</td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-900">{site.active_wo_count ?? 0}</td>
                     </tr>
                   ))}
                 </tbody>

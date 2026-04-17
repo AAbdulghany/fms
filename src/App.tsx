@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { NotificationProvider } from "./contexts/NotificationContext";
 import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -18,7 +19,8 @@ import LocationsPage from "./pages/LocationsPage";
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
+      <NotificationProvider>
+        <Routes>
         <Route path="/login" element={<LoginPage />} />
 
         <Route
@@ -167,7 +169,8 @@ export default function App() {
         />
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
+        </Routes>
+      </NotificationProvider>
     </BrowserRouter>
   );
 }

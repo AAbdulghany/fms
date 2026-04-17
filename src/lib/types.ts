@@ -25,8 +25,16 @@ export type WorkOrderStatus =
   | "cancelled"
   | "closed";
 
+export interface WorkOrderUserBrief {
+  id: string;
+  email: string;
+  full_name: string;
+  role: UserRole;
+}
+
 export interface WorkOrder {
   id: string;
+  tenant_id?: string;
   client_id: string;
   site_id: string;
   asset_id: string | null;
@@ -37,7 +45,11 @@ export interface WorkOrder {
   title: string;
   description: string;
   template_id: string | null;
+  created_by_user_id?: string | null;
   assignee_user_id: string | null;
+  creator?: WorkOrderUserBrief | null;
+  assignee?: WorkOrderUserBrief | null;
+  tags?: string[];
   opened_at: string;
   closed_at: string | null;
 }
@@ -87,7 +99,7 @@ export interface Company {
   code: string;
   contact_email: string;
   contact_phone?: string;
-  status: "active" | "inactive" | "suspended";
+  status: "active" | "inactive" | "suspended" | "archived";
   sites_count?: number;
   active_wo_count?: number;
   created_at: string;

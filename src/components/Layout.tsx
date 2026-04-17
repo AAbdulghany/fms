@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { clearTokens } from "../lib/api";
 import { Sidebar } from "./Sidebar";
+import ClockWidget from "./ClockWidget";
+import NotificationBell from "./NotificationBell";
 
 interface LayoutProps {
   children: ReactNode;
@@ -64,6 +66,8 @@ export function Layout({ children }: LayoutProps) {
             </div>
 
             <div className="flex items-center gap-2 sm:gap-4">
+              <ClockWidget />
+              <NotificationBell />
               <button
                 type="button"
                 className="rounded-md border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-100 sm:px-3 sm:py-1.5 sm:text-sm"

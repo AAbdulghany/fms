@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { apiFetch } from "../lib/api";
 import type { Invoice } from "../lib/types";
+import { formatMoneyAmount } from "../lib/formatCurrency";
 
 export function InvoicesPage() {
   const { t } = useTranslation();
@@ -30,7 +31,7 @@ export function InvoicesPage() {
             <tr>
               <th className="px-4 py-3 font-medium">#</th>
               <th className="px-4 py-3 font-medium">{t("status")}</th>
-              <th className="px-4 py-3 font-medium">Total</th>
+              <th className="px-4 py-3 font-medium">{t("invoice_currency")} / Total</th>
             </tr>
           </thead>
           <tbody>
@@ -39,7 +40,7 @@ export function InvoicesPage() {
                 <td className="px-4 py-3 font-mono text-xs">{inv.number}</td>
                 <td className="px-4 py-3">{inv.status}</td>
                 <td className="px-4 py-3">
-                  {inv.total_sar} {inv.currency}
+                  {formatMoneyAmount(inv.total_sar, inv.currency || "SAR")}
                 </td>
               </tr>
             ))}

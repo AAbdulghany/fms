@@ -4,11 +4,27 @@ import { useTranslation } from "react-i18next";
 
 import { apiFetch, setTokens, getAccessToken } from "../lib/api";
 
+function formatLoginError(err: unknown): string {
+  if (!(err instanceof Error)) return "Login failed";
+  try {
+    const j = JSON.parse(err.message) as { detail?: unknown };
+    const d = j.detail;
+    if (typeof d === "string") return d;
+    if (Array.isArray(d) && d[0] && typeof (d[0] as { msg?: string }).msg === "string") {
+      return (d[0] as { msg: string }).msg;
+    }
+  } catch {
+    /* not JSON */
+  }
+  if (err.message.length > 200) return "Login failed";
+  return err.message;
+}
+
 export function LoginPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("admin@demo.com");
-  const [password, setPassword] = useState("admin123");
+  const [identifier, setIdentifier] = useState("super@demo.com");
+  const [password, setPassword] = useState("super123");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -33,7 +49,7 @@ export function LoginPage() {
         access_token: string;
         refresh_token: string;
         user: { locale?: string };
-      }>("/auth/login", { method: "POST", json: { email, password } });
+      }>("/auth/login", { method: "POST", json: { identifier, password } });
       setTokens(res.access_token, res.refresh_token);
       if (res.user?.locale) {
         void i18n.changeLanguage(res.user.locale);
@@ -44,7 +60,7 @@ export function LoginPage() {
       }
       navigate("/", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(formatLoginError(err));
     }
   }
 
@@ -68,12 +84,12 @@ export function LoginPage() {
           <p className="rounded-md bg-error-light px-3 py-2 text-sm text-error-dark">{error}</p>
         )}
         <div>
-          <label className="mb-1 block text-sm text-neutral-600">{t("email")}</label>
+          <label className="mb-1 block text-sm text-neutral-600">{t("login_identifier")}</label>
           <input
             className="w-full rounded-md border border-neutral-300 px-3 py-2"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="text"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
             autoComplete="username"
           />
         </div>
@@ -94,7 +110,7 @@ export function LoginPage() {
           {t("login")}
         </button>
         <p className="text-center text-xs text-neutral-500">
-          Demo: admin@demo.com / admin123 / tech@demo.com / tech123
+          seed_super: super@demo.com / super123 · full seed: admin@demo.com / admin123
         </p>
       </form>
     </div>

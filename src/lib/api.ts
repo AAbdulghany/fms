@@ -85,12 +85,18 @@ export async function apiFetch<T>(
   return res.text() as Promise<T>;
 }
 
+function notifyAuthTokenChanged() {
+  window.dispatchEvent(new Event("fms-auth-token-changed"));
+}
+
 export function setTokens(access: string, refresh: string) {
   localStorage.setItem("access_token", access);
   localStorage.setItem("refresh_token", refresh);
+  notifyAuthTokenChanged();
 }
 
 export function clearTokens() {
   localStorage.removeItem("access_token");
   localStorage.removeItem("refresh_token");
+  notifyAuthTokenChanged();
 }
