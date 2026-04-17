@@ -3,7 +3,8 @@ export type UserRole =
   | "company_admin" 
   | "client_admin" 
   | "site_manager" 
-  | "technician";
+  | "technician"
+  | "manager";
 
 export interface User {
   id: string;
@@ -159,6 +160,8 @@ export interface DashboardStats {
   companies_count?: number;
   active_wo_count: number;
   pending_invoices_amount?: string;
+  /** Draft invoices count (from /dashboard/summary) */
+  pending_invoices_draft?: number;
   technicians_count?: number;
   my_tasks_count?: number;
   in_progress_count?: number;
@@ -167,4 +170,19 @@ export interface DashboardStats {
   assets_count?: number;
   overdue_maintenance_count?: number;
   assets_at_eol_count?: number;
+}
+
+/** GET /dashboard/summary */
+export interface DashboardSummary {
+  role: string;
+  clients_count?: number | null;
+  sites_count?: number | null;
+  assets_count?: number | null;
+  open_work_orders: number;
+  technicians_count?: number | null;
+  pending_invoices_draft?: number | null;
+  my_assigned_open?: number | null;
+  my_in_progress?: number | null;
+  completed_this_week: number;
+  assets_at_eol?: number | null;
 }

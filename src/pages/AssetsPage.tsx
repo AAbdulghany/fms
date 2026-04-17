@@ -5,8 +5,6 @@ import { apiFetch } from "../lib/api";
 import type { Asset, AssetLifecycleStatus } from "../lib/types";
 import { EmptyState } from "../components/EmptyState";
 import { AssetLifecycleBadge } from "../components/AssetLifecycleBadge";
-import { FilterBar } from "../components/FilterBar";
-
 export default function AssetsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();

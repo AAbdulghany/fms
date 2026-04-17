@@ -145,7 +145,9 @@ export default function App() {
         <Route
           path="/labor"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "company_admin"]}>
+            <ProtectedRoute
+              allowedRoles={["super_admin", "company_admin", "manager", "technician"]}
+            >
               <Layout>
                 <LaborPage />
               </Layout>

@@ -912,3 +912,36 @@ def test_manager_cannot_create_sites(db_session, manager_user):
         dep(manager_user)
     
     assert exc_info.value.status_code == 403
+
+
+# --- Milestone 4: dashboard, locations ---
+
+
+def test_dashboard_summary_super_admin(db_session, super_admin_user):
+    from app.api.routes.dashboard import dashboard_summary
+
+    out = dashboard_summary(db_session, super_admin_user)
+    assert out.role == "super_admin"
+    assert isinstance(out.open_work_orders, int)
+
+
+def test_dashboard_summary_technician(db_session, technician_user):
+    from app.api.routes.dashboard import dashboard_summary
+
+    out = dashboard_summary(db_session, technician_user)
+    assert out.role == "technician"
+    assert out.my_assigned_open is not None
+
+
+def test_super_admin_can_create_location(db_session, super_admin_user, site_a):
+    from app.api.routes.locations import create_location
+    from app.schemas import LocationCreate
+
+    loc = create_location(
+        LocationCreate(site_id=site_a.id, name="Floor 1", location_type="floor"),
+        db_session,
+        super_admin_user,
+        super_admin_user,
+    )
+    assert loc.name == "Floor 1"
+    assert loc.site_id == site_a.id

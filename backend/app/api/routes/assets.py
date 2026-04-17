@@ -62,9 +62,16 @@ def create_asset(
     site = db.get(Site, body.site_id)
     if not site or site.tenant_id != current.tenant_id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_SITE")
+    if body.location_id:
+        from app.models import Location
+
+        loc = db.get(Location, body.location_id)
+        if not loc or loc.tenant_id != current.tenant_id or loc.site_id != body.site_id:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_LOCATION")
     a = Asset(
         tenant_id=current.tenant_id,
         site_id=body.site_id,
+        location_id=body.location_id,
         parent_asset_id=body.parent_asset_id,
         name=body.name,
         category=body.category,

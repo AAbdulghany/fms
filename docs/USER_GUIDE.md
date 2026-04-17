@@ -62,7 +62,8 @@ This reads `pyproject.toml` and `uv.lock` and installs into the project `.venv`.
 
 ## 4. Apply database migrations
 
-Alembic configuration is `backend/alembic.ini` (scripts under `backend/migrations`).
+Alembic configuration is `backend/alembic.ini` (scripts under `backend/migrations`).  
+Milestone 4 adds locations, labor, and dashboard tables (`9a2b3c4d5e6f_milestone4_locations_labor_dashboard`); always run `upgrade head` after pulling.
 
 **From the repository root:**
 

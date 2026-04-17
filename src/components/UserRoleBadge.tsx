@@ -11,6 +11,7 @@ const ROLE_COLORS: Record<UserRole, string> = {
   client_admin: "bg-teal-100 text-teal-700",
   site_manager: "bg-green-100 text-green-700",
   technician: "bg-orange-100 text-orange-700",
+  manager: "bg-amber-100 text-amber-800",
 };
 
 export function UserRoleBadge({ role }: UserRoleBadgeProps) {

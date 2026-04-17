@@ -159,10 +159,22 @@ def create_work_order(
     if body.tags:
         validate_tags(body.tags)
     
+    if body.location_id:
+        from app.models import Location
+
+        loc = db.get(Location, body.location_id)
+        if (
+            not loc
+            or loc.tenant_id != current.tenant_id
+            or loc.site_id != body.site_id
+        ):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_LOCATION")
+
     wo = WorkOrder(
         tenant_id=current.tenant_id,
         client_id=body.client_id,
         site_id=body.site_id,
+        location_id=body.location_id,
         asset_id=body.asset_id,
         source=body.source,
         category=body.category,

@@ -3,7 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiFetch } from "../lib/api";
-import type { PaginatedWorkOrders, User, DashboardStats, WorkOrder } from "../lib/types";
+import type {
+  PaginatedWorkOrders,
+  User,
+  DashboardStats,
+  DashboardSummary,
+  WorkOrder,
+} from "../lib/types";
 import { StatsCard } from "../components/StatsCard";
 
 export function DashboardPage() {
@@ -20,25 +26,22 @@ export function DashboardPage() {
         const userData = await apiFetch<User>("/users/me");
         setUser(userData);
 
-        // Fetch work orders
-        const wo = await apiFetch<PaginatedWorkOrders>("/work-orders?page_size=100");
-        const activeWOs = wo.data.filter((w) => !["closed", "cancelled"].includes(w.status));
-        
-        // Get recent work orders (last 5)
+        const summary = await apiFetch<DashboardSummary>("/dashboard/summary");
+
+        const wo = await apiFetch<PaginatedWorkOrders>("/work-orders?page_size=5");
         setRecentWOs(wo.data.slice(0, 5));
 
-        // Build stats based on role
         const dashStats: DashboardStats = {
-          active_wo_count: activeWOs.length,
-          my_tasks_count: activeWOs.filter((w) => w.assignee_user_id === userData.id && w.status === "assigned").length,
-          in_progress_count: activeWOs.filter((w) => w.assignee_user_id === userData.id && w.status === "in_progress").length,
-          completed_week_count: wo.data.filter((w) => {
-            if (w.status !== "completed" || !w.closed_at) return false;
-            const closedDate = new Date(w.closed_at);
-            const weekAgo = new Date();
-            weekAgo.setDate(weekAgo.getDate() - 7);
-            return closedDate >= weekAgo;
-          }).length,
+          active_wo_count: summary.open_work_orders,
+          companies_count: summary.clients_count ?? undefined,
+          sites_count: summary.sites_count ?? undefined,
+          assets_count: summary.assets_count ?? undefined,
+          technicians_count: summary.technicians_count ?? undefined,
+          pending_invoices_draft: summary.pending_invoices_draft ?? undefined,
+          my_tasks_count: summary.my_assigned_open ?? undefined,
+          in_progress_count: summary.my_in_progress ?? undefined,
+          completed_week_count: summary.completed_this_week,
+          assets_at_eol_count: summary.assets_at_eol ?? undefined,
         };
 
         setStats(dashStats);
@@ -96,8 +99,8 @@ export function DashboardPage() {
             onClick={() => navigate("/work-orders")}
           />
           <StatsCard
-            label={t("invoices")}
-            value={stats.pending_invoices_amount ? `SAR ${stats.pending_invoices_amount}` : "SAR 0"}
+            label={t("invoice_drafts")}
+            value={stats.pending_invoices_draft ?? 0}
             onClick={() => navigate("/invoices")}
           />
           <StatsCard
@@ -139,8 +142,8 @@ export function DashboardPage() {
             onClick={() => navigate("/work-orders")}
           />
           <StatsCard
-            label={t("invoices")}
-            value={stats.pending_invoices_amount ? `SAR ${stats.pending_invoices_amount}` : "SAR 0"}
+            label={t("invoice_drafts")}
+            value={stats.pending_invoices_draft ?? 0}
             onClick={() => navigate("/invoices")}
           />
         </div>

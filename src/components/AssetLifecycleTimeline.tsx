@@ -5,7 +5,7 @@ interface AssetLifecycleTimelineProps {
   events?: AssetLifecycleEvent[];
 }
 
-export function AssetLifecycleTimeline({ asset, events = [] }: AssetLifecycleTimelineProps) {
+export function AssetLifecycleTimeline({ asset, events: _events = [] }: AssetLifecycleTimelineProps) {
   const currentAge = asset.age_years;
   const expectedLifespan = asset.expected_lifespan_years;
   const percentComplete = Math.min((currentAge / expectedLifespan) * 100, 100);
