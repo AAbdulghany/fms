@@ -72,17 +72,22 @@ export function WorkOrderDetailPage() {
     setMsg(null);
     setErr(null);
     let payload = { ...answers };
+    payload = { ...payload, parts_used: parts };
+
+    // Upload photos and get file identifiers
+    const photoRefs: Record<string, string[]> = {};
     try {
-      payload = { ...payload, parts_used: JSON.parse(partsDraft) as unknown };
-    } catch {
-      setErr("Invalid parts JSON");
+      for (const [fieldId, files] of Object.entries(photos)) {
+        const uploadedIds = await Promise.all(
+          files.map((f) => uploadFile(f))
+        );
+        photoRefs[fieldId] = uploadedIds;
+      }
+    } catch (e) {
+      setErr("Photo upload failed");
       return;
     }
-    // Store photo filenames as placeholders (actual upload handled separately)
-    const photoRefs: Record<string, string[]> = {};
-    Object.entries(photos).forEach(([fieldId, files]) => {
-      photoRefs[fieldId] = files.map((f) => f.name);
-    });
+
     if (Object.keys(photoRefs).length > 0) {
       payload = { ...payload, photos: photoRefs };
     }
@@ -114,19 +119,36 @@ export function WorkOrderDetailPage() {
     }
   }
 
-  async function approveReport() {
-    if (!report) return;
-    setMsg(null);
-    setErr(null);
+  async function uploadFile(file: File) {
     try {
-      const r = await apiFetch<MaintenanceReport>(`/reports/${report.id}/approve`, {
-        method: "POST",
-        json: {},
+      // 1. Get presigned URL from backend
+      const { url, fileId } = await apiFetch<{ url: string; fileId: string }>(
+        `/uploads/presign`,
+        {
+          method: "POST",
+          json: { filename: file.name, content_type: file.type },
+        }
+      );
+
+      // 2. Upload binary to S3/MinIO
+      const uploadRes = await fetch(url, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
       });
-      setReport(r);
-      setMsg("Approved");
+
+      if (!uploadRes.ok) throw new Error("S3 upload failed");
+
+      // 3. Complete the upload to let backend know it's finished
+      await apiFetch(`/uploads/complete`, {
+        method: "POST",
+        json: { fileId },
+      });
+
+      return fileId;
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Error");
+      console.error("Upload failed", e);
+      throw e;
     }
   }
 
@@ -293,17 +315,56 @@ export function WorkOrderDetailPage() {
                   }
                   if (field.type === "parts_used") {
                     return (
-                      <div key={field.id}>
+                      <div key={field.id} className="space-y-3">
                         <label className="mb-1 block text-sm text-neutral-700">
-                          Parts (JSON array)
+                          {t("parts_used") || "Parts Used"}
                         </label>
-                        <textarea
-                          className="w-full rounded-md border border-neutral-300 px-3 py-2 font-mono text-sm"
-                          rows={4}
-                          disabled={!canEditReport || report?.status !== "draft"}
-                          value={partsDraft}
-                          onChange={(e) => setPartsDraft(e.target.value)}
-                        />
+                        <div className="space-y-2">
+                          {parts.map((part, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                className="flex-1 rounded-md border border-neutral-300 px-3 py-1 text-sm"
+                                value={part.sku}
+                                disabled={!canEditReport || report?.status !== "draft"}
+                                onChange={(e) => {
+                                  const newParts = [...parts];
+                                  newParts[idx].sku = e.target.value;
+                                  setParts(newParts);
+                                }}
+                                placeholder="SKU"
+                              />
+                              <input
+                                type="number"
+                                className="w-20 rounded-md border border-neutral-300 px-3 py-1 text-sm"
+                                value={part.quantity}
+                                disabled={!canEditReport || report?.status !== "draft"}
+                                onChange={(e) => {
+                                  const newParts = [...parts];
+                                  newParts[idx].quantity = parseInt(e.target.value, 10) || 0;
+                                  setParts(newParts);
+                                }}
+                              />
+                              <button
+                                type="button"
+                                className="text-error-main hover:text-error-dark"
+                                disabled={!canEditReport || report?.status !== "draft"}
+                                onClick={() => setParts(parts.filter((_, i) => i !== idx))}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                          {canEditReport && report?.status === "draft" && (
+                            <button
+                              type="button"
+                              className="text-xs text-primary-600 hover:underline"
+                              onClick={() => setParts([...parts, { sku: "", quantity: 1 }])}
+                            >
+                              + {t("add_part") || "Add Part"}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     );
                   }

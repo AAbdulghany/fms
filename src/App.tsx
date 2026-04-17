@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -12,15 +12,34 @@ import { WorkOrdersPage } from "./pages/WorkOrdersPage";
 function Layout({ children }: { children: ReactNode }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchRole() {
+      try {
+        const response = await fetch("/api/v1/users/me");
+        if (response.ok) {
+          const data = await response.json();
+          setUserRole(data.role);
+        }
+      } catch (e) {
+        console.error("Failed to fetch user role", e);
+      }
+    }
+    fetchRole();
+  }, []);
 
   const toggleLang = () => {
     const next = i18n.language === "ar" ? "en" : "ar";
     void i18n.changeLanguage(next);
+    localStorage.setItem("app_lang", next);
     document.documentElement.lang = next;
     document.documentElement.dir = next === "ar" ? "rtl" : "ltr";
     document.body.className =
       next === "ar" ? "fms-page font-body-ar" : "fms-page font-body-en";
   };
+
+  const canViewInvoices = ["super_admin", "company_admin", "client_admin"].includes(userRole || "");
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -36,9 +55,11 @@ function Layout({ children }: { children: ReactNode }) {
             <Link className="hover:text-primary-600" to="/work-orders">
               {t("work_orders")}
             </Link>
-            <Link className="hover:text-primary-600" to="/invoices">
-              {t("invoices")}
-            </Link>
+            {canViewInvoices && (
+              <Link className="hover:text-primary-600" to="/invoices">
+                {t("invoices")}
+              </Link>
+            )}
             <button
               type="button"
               className="rounded-md border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-100"
