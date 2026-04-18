@@ -16,17 +16,26 @@ def _resolve_login_identifier(body: LoginRequest) -> str:
     return ident
 
 
+def _authenticate_user_by_identifier(db: Session, ident: str, password: str) -> User | None:
+    lower = ident.lower()
+    candidates = db.query(User).filter(
+        or_(func.lower(User.email) == lower, func.lower(User.username) == lower)
+    ).all()
+
+    matching = [u for u in candidates if verify_password(password, u.password_hash)]
+    if len(matching) != 1:
+        return None
+    return matching[0]
+
+
 @router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
     ident = _resolve_login_identifier(body)
     if not ident:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail="IDENTIFIER_REQUIRED")
 
-    lower = ident.lower()
-    user = db.query(User).filter(
-        or_(func.lower(User.email) == lower, User.username == lower)
-    ).first()
-    if not user or not verify_password(body.password, user.password_hash):
+    user = _authenticate_user_by_identifier(db, ident, body.password)
+    if not user:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="INVALID_CREDENTIALS")
     if not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="USER_INACTIVE")
