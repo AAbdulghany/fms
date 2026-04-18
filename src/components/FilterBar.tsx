@@ -110,8 +110,8 @@ export function FilterBar({
   const hasActiveFilters = Object.values(filters).some((val) => val !== "");
 
   return (
-    <div className="w-full min-w-0 overflow-x-hidden rounded-lg border border-neutral-200 bg-neutral-0 p-4">
-      <div className="flex w-full min-w-0 flex-wrap items-end gap-x-3 gap-y-3">
+    <div className="w-full min-w-0 rounded-lg border border-neutral-200 bg-neutral-0 p-4">
+      <div className="flex w-full min-w-0 flex-nowrap items-end gap-x-3 overflow-x-auto pb-0.5">
         {showSearch && (
           <div className="w-full min-w-0 max-w-[220px] shrink-0 sm:w-[min(100%,220px)]">
             <label className="mb-1 block text-xs font-medium text-neutral-700">
@@ -137,7 +137,7 @@ export function FilterBar({
               value={filters.status || ""}
               onChange={(e) => updateFilter("status", e.target.value)}
             >
-              <option value="">All statuses</option>
+              <option value="">{t("filter_all")}</option>
               {availableStatuses.map((status) => (
                 <option key={status} value={status}>
                   {status}
@@ -157,7 +157,7 @@ export function FilterBar({
               value={filters.urgency || ""}
               onChange={(e) => updateFilter("urgency", e.target.value)}
             >
-              <option value="">All urgencies</option>
+              <option value="">{t("filter_all")}</option>
               {availableUrgencies.map((urgency) => (
                 <option key={urgency} value={urgency}>
                   {t(urgency)}
@@ -180,7 +180,7 @@ export function FilterBar({
                 setFilters((prev) => ({ ...prev, clientId: v, siteId: "" }));
               }}
             >
-              <option value="">{t("filter_all_companies")}</option>
+              <option value="">{t("filter_all")}</option>
               {companies.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.legal_name}
@@ -200,7 +200,7 @@ export function FilterBar({
               value={filters.siteId || ""}
               onChange={(e) => updateFilter("siteId", e.target.value)}
             >
-              <option value="">{t("filter_all_sites")}</option>
+              <option value="">{t("filter_all")}</option>
               {sites
                 .filter((s) => !filters.clientId || s.client_id === filters.clientId)
                 .map((s) => (
@@ -228,7 +228,7 @@ export function FilterBar({
         )}
 
         {showDateRange && (
-          <div className="flex min-w-0 shrink-0 flex-wrap items-end gap-x-3 gap-y-2">
+          <div className="flex min-w-0 shrink-0 flex-nowrap items-end gap-x-3">
             <div className="w-[min(100%,10.5rem)] shrink-0">
               <label className="mb-1 block text-xs font-medium text-neutral-700">
                 From

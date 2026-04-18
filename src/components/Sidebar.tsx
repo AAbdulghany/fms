@@ -102,7 +102,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   return (
     <>
       <aside
-        className={`max-lg:fixed ${isRTL ? "max-lg:right-0 max-lg:left-auto" : "max-lg:left-0"} max-lg:top-14 max-lg:z-30 max-lg:h-[calc(100vh-3.5rem)] w-64 shrink-0 transform border-${isRTL ? "l" : "r"} border-neutral-200 bg-neutral-0 shadow-lg transition-transform duration-300 lg:fu lg:top-auto lg:z-auto lg:h-full lg:min-h-0 lg:translate-x-0 lg:self-stretch ${
+        className={`max-lg:fixed ${isRTL ? "max-lg:right-0 max-lg:left-auto" : "max-lg:left-0"} max-lg:top-14 max-lg:bottom-0 max-lg:z-30 w-64 shrink-0 transform ${isRTL ? "border-l" : "border-r"} border-neutral-200 bg-neutral-0 shadow-lg transition-transform duration-300 lg:relative lg:top-auto lg:z-auto lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:translate-x-0 lg:self-stretch ${
           isOpen ? "translate-x-0" : isRTL ? "translate-x-full" : "-translate-x-full"
         }`}
       >

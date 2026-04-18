@@ -33,7 +33,7 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div
-      className="flex min-h-screen flex-col overflow-x-hidden bg-neutral-50"
+      className="grid min-h-screen min-h-dvh grid-rows-[auto_minmax(0,1fr)] overflow-x-hidden bg-neutral-50"
       dir={isRTL ? "rtl" : "ltr"}
     >
       <header className="relative z-40 shrink-0 border-b border-neutral-200 bg-neutral-0 shadow-sm">
@@ -87,7 +87,7 @@ export function Layout({ children }: LayoutProps) {
         </div>
       </header>
 
-      <div className="flex min-h-0 min-w-0 flex-1 items-stretch">
+      <div className="flex h-full min-h-0 min-w-0 items-stretch">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <div
