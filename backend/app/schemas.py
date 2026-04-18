@@ -124,6 +124,10 @@ class SiteOut(BaseModel):
     name: str
     timezone: str
     status: str
+    address: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
+    company_name: Optional[str] = None
 
 
 class SiteProvisionRequest(BaseModel):
@@ -237,6 +241,8 @@ class WorkOrderOut(BaseModel):
     assignee_user_id: Optional[UUID]
     creator: Optional[UserBrief] = None
     assignee: Optional[UserBrief] = None
+    company_name: Optional[str] = None
+    site_name: Optional[str] = None
     opened_at: datetime
     closed_at: Optional[datetime]
     tags: list[str] = []
@@ -257,6 +263,7 @@ class MaintenanceReportOut(BaseModel):
     work_order_id: UUID
     template_id: UUID
     template_version: int
+    template_snapshot_json: dict[str, Any]
     answers_json: dict[str, Any]
     status: ReportStatus
 
@@ -486,3 +493,59 @@ class DashboardSummaryOut(BaseModel):
     my_in_progress: Optional[int] = None
     completed_this_week: int = 0
     assets_at_eol: Optional[int] = None
+
+
+# --- Comments ---
+class CommentCreate(BaseModel):
+    content: str = Field(min_length=1, max_length=5000)
+
+
+class CommentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    work_order_id: UUID
+    user_id: UUID
+    user_name: Optional[str] = None
+    content: str
+    created_at: datetime
+    updated_at: datetime
+
+
+# --- Work Order Documents ---
+class DocumentCreate(BaseModel):
+    file_name: str = Field(min_length=1, max_length=255)
+    file_size: int = Field(gt=0)
+    file_type: str = Field(min_length=1, max_length=100)
+    file_url: str = Field(min_length=1, max_length=512)
+    description: Optional[str] = None
+
+
+class DocumentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    work_order_id: UUID
+    uploaded_by_user_id: UUID
+    uploaded_by_name: Optional[str] = None
+    file_name: str
+    file_size: int
+    file_type: str
+    file_url: str
+    description: Optional[str] = None
+    created_at: datetime
+
+
+# --- Audit Logs ---
+class AuditLogOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    actor_user_id: Optional[UUID] = None
+    actor_name: Optional[str] = None
+    action: str
+    entity_type: str
+    entity_id: Optional[str] = None
+    before_json: Optional[dict[str, Any]] = None
+    after_json: Optional[dict[str, Any]] = None
+    created_at: datetime

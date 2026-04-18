@@ -292,11 +292,15 @@ class WorkOrder(Base):
         "User",
         foreign_keys=[assignee_user_id],
     )
+    client: Mapped["Client"] = relationship("Client", foreign_keys=[client_id])
+    site: Mapped["Site"] = relationship("Site", foreign_keys=[site_id])
 
     report: Mapped[Optional["MaintenanceReport"]] = relationship(
         back_populates="work_order", uselist=False, cascade="all, delete-orphan"
     )
     invoice: Mapped[Optional["Invoice"]] = relationship(back_populates="work_order", uselist=False)
+    comments: Mapped[list["Comment"]] = relationship(back_populates="work_order", cascade="all, delete-orphan")
+    documents: Mapped[list["WorkOrderDocument"]] = relationship(back_populates="work_order", cascade="all, delete-orphan")
 
 
 class MaintenanceReport(Base):
@@ -456,6 +460,39 @@ class TechnicianSchedule(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    work_order_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("work_orders.id"), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+
+    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
+    work_order: Mapped["WorkOrder"] = relationship("WorkOrder", back_populates="comments")
+
+
+class WorkOrderDocument(Base):
+    __tablename__ = "work_order_documents"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    work_order_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("work_orders.id"), nullable=False)
+    uploaded_by_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    file_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    file_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    file_url: Mapped[str] = mapped_column(String(512), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+    uploaded_by: Mapped["User"] = relationship("User", foreign_keys=[uploaded_by_user_id])
+    work_order: Mapped["WorkOrder"] = relationship("WorkOrder", back_populates="documents")
+
+
 class AuditLog(Base):
     __tablename__ = "audit_logs"
 
@@ -468,3 +505,5 @@ class AuditLog(Base):
     before_json: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB)
     after_json: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+    actor_user: Mapped[Optional["User"]] = relationship("User", foreign_keys=[actor_user_id])

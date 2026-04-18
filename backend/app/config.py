@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
     database_url: str = "postgresql+psycopg2://fms:fms@localhost:5432/fms"
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    # Server-side exports (e.g. maintenance report PDF snapshots)
+    data_dir: str = "data"
 
 
 @lru_cache
