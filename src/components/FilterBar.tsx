@@ -2,6 +2,17 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
+export interface FilterBarCompany {
+  id: string;
+  legal_name: string;
+}
+
+export interface FilterBarSite {
+  id: string;
+  name: string;
+  client_id: string;
+}
+
 interface FilterBarProps {
   onFilterChange?: (filters: FilterValues) => void;
   showStatusFilter?: boolean;
@@ -9,6 +20,10 @@ interface FilterBarProps {
   showDateRange?: boolean;
   showSearch?: boolean;
   showCategoryFilter?: boolean;
+  showCompanyFilter?: boolean;
+  showSiteFilter?: boolean;
+  companies?: FilterBarCompany[];
+  sites?: FilterBarSite[];
   availableStatuses?: string[];
   availableUrgencies?: string[];
 }
@@ -25,6 +40,20 @@ export interface FilterValues {
   category?: string;
 }
 
+function filtersToSearchParams(filters: FilterValues): URLSearchParams {
+  const params = new URLSearchParams();
+  if (filters.search?.trim()) params.set("search", filters.search.trim());
+  if (filters.status) params.set("status", filters.status);
+  if (filters.urgency) params.set("urgency", filters.urgency);
+  if (filters.dateFrom) params.set("date_from", filters.dateFrom);
+  if (filters.dateTo) params.set("date_to", filters.dateTo);
+  if (filters.clientId) params.set("client_id", filters.clientId);
+  if (filters.siteId) params.set("site_id", filters.siteId);
+  if (filters.assigneeUserId) params.set("assignee_user_id", filters.assigneeUserId);
+  if (filters.category) params.set("category", filters.category);
+  return params;
+}
+
 export function FilterBar({
   onFilterChange,
   showStatusFilter = false,
@@ -32,6 +61,10 @@ export function FilterBar({
   showDateRange = false,
   showSearch = true,
   showCategoryFilter = false,
+  showCompanyFilter = false,
+  showSiteFilter = false,
+  companies = [],
+  sites = [],
   availableStatuses = ["created", "assigned", "in_progress", "completed", "verified", "closed", "cancelled"],
   availableUrgencies = ["normal", "urgent", "emergency"],
 }: FilterBarProps) {
@@ -51,18 +84,9 @@ export function FilterBar({
   });
 
   useEffect(() => {
-    // Update URL params whenever filters change
-    const params = new URLSearchParams();
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value) {
-        params.set(key, value);
-      }
-    });
+    const params = filtersToSearchParams(filters);
     setSearchParams(params, { replace: true });
-    
-    if (onFilterChange) {
-      onFilterChange(filters);
-    }
+    onFilterChange?.(filters);
   }, [filters, onFilterChange, setSearchParams]);
 
   const updateFilter = (key: keyof FilterValues, value: string) => {
@@ -86,16 +110,16 @@ export function FilterBar({
   const hasActiveFilters = Object.values(filters).some((val) => val !== "");
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-neutral-0 p-4">
-      <div className="flex flex-wrap items-end gap-3">
+    <div className="w-full min-w-0 overflow-x-hidden rounded-lg border border-neutral-200 bg-neutral-0 p-4">
+      <div className="flex w-full min-w-0 flex-wrap items-end gap-x-3 gap-y-3">
         {showSearch && (
-          <div className="flex-1 min-w-[200px]">
+          <div className="w-full min-w-0 max-w-[220px] shrink-0 sm:w-[min(100%,220px)]">
             <label className="mb-1 block text-xs font-medium text-neutral-700">
               Search
             </label>
             <input
               type="text"
-              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              className="w-full min-w-0 rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
               placeholder="Search..."
               value={filters.search || ""}
               onChange={(e) => updateFilter("search", e.target.value)}
@@ -104,7 +128,7 @@ export function FilterBar({
         )}
 
         {showStatusFilter && (
-          <div className="min-w-[150px]">
+          <div className="min-w-0 w-[min(100%,10rem)] shrink-0 sm:w-40">
             <label className="mb-1 block text-xs font-medium text-neutral-700">
               {t("status")}
             </label>
@@ -124,7 +148,7 @@ export function FilterBar({
         )}
 
         {showUrgencyFilter && (
-          <div className="min-w-[150px]">
+          <div className="min-w-0 w-[min(100%,10rem)] shrink-0 sm:w-40">
             <label className="mb-1 block text-xs font-medium text-neutral-700">
               {t("urgency")}
             </label>
@@ -143,8 +167,53 @@ export function FilterBar({
           </div>
         )}
 
+        {showCompanyFilter && companies.length > 0 && (
+          <div className="min-w-0 w-[min(100%,12rem)] shrink-0 sm:min-w-[11rem] sm:max-w-[14rem]">
+            <label className="mb-1 block text-xs font-medium text-neutral-700">
+              {t("company")}
+            </label>
+            <select
+              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              value={filters.clientId || ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                setFilters((prev) => ({ ...prev, clientId: v, siteId: "" }));
+              }}
+            >
+              <option value="">{t("filter_all_companies")}</option>
+              {companies.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.legal_name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {showSiteFilter && sites.length > 0 && (
+          <div className="min-w-0 w-[min(100%,12rem)] shrink-0 sm:min-w-[11rem] sm:max-w-[14rem]">
+            <label className="mb-1 block text-xs font-medium text-neutral-700">
+              {t("site")}
+            </label>
+            <select
+              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              value={filters.siteId || ""}
+              onChange={(e) => updateFilter("siteId", e.target.value)}
+            >
+              <option value="">{t("filter_all_sites")}</option>
+              {sites
+                .filter((s) => !filters.clientId || s.client_id === filters.clientId)
+                .map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+            </select>
+          </div>
+        )}
+
         {showCategoryFilter && (
-          <div className="min-w-[150px]">
+          <div className="min-w-0 w-[min(100%,10rem)] shrink-0 sm:w-40">
             <label className="mb-1 block text-xs font-medium text-neutral-700">
               Category
             </label>
@@ -159,30 +228,30 @@ export function FilterBar({
         )}
 
         {showDateRange && (
-          <>
-            <div className="min-w-[150px]">
+          <div className="flex min-w-0 shrink-0 flex-wrap items-end gap-x-3 gap-y-2">
+            <div className="w-[min(100%,10.5rem)] shrink-0">
               <label className="mb-1 block text-xs font-medium text-neutral-700">
                 From
               </label>
               <input
                 type="date"
-                className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                className="w-full min-w-0 rounded-md border border-neutral-300 px-2 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                 value={filters.dateFrom || ""}
                 onChange={(e) => updateFilter("dateFrom", e.target.value)}
               />
             </div>
-            <div className="min-w-[150px]">
+            <div className="w-[min(100%,10.5rem)] shrink-0">
               <label className="mb-1 block text-xs font-medium text-neutral-700">
                 To
               </label>
               <input
                 type="date"
-                className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                className="w-full min-w-0 rounded-md border border-neutral-300 px-2 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                 value={filters.dateTo || ""}
                 onChange={(e) => updateFilter("dateTo", e.target.value)}
               />
             </div>
-          </>
+          </div>
         )}
 
         {hasActiveFilters && (

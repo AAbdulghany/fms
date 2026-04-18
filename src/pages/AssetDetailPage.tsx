@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { apiFetch } from "../lib/api";
+import { urgencyBadgeClass, workOrderStatusPillClass } from "../lib/workOrderDisplay";
 import type { Asset, WorkOrder, PaginatedWorkOrders } from "../lib/types";
 import { AssetLifecycleBadge } from "../components/AssetLifecycleBadge";
 import { AssetLifecycleTimeline } from "../components/AssetLifecycleTimeline";
@@ -336,9 +337,7 @@ export default function AssetDetailPage() {
                       </td>
                       <td className="px-6 py-4 text-sm text-neutral-900">{wo.description}</td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm">
-                        <span className="rounded-full bg-primary-100 px-2.5 py-0.5 text-xs font-medium text-primary-700">
-                          {wo.status}
-                        </span>
+                        <span className={workOrderStatusPillClass(wo.status)}>{wo.status}</span>
                       </td>
                     </tr>
                   ))}
@@ -386,22 +385,10 @@ export default function AssetDetailPage() {
                       </td>
                       <td className="px-6 py-4 text-sm text-neutral-900">{wo.title}</td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm">
-                        <span className="rounded-full bg-primary-100 px-2.5 py-0.5 text-xs font-medium text-primary-700">
-                          {wo.status}
-                        </span>
+                        <span className={workOrderStatusPillClass(wo.status)}>{wo.status}</span>
                       </td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm">
-                        <span
-                          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                            wo.urgency === "emergency"
-                              ? "bg-error-light text-error-dark"
-                              : wo.urgency === "urgent"
-                              ? "bg-warning-light text-warning-dark"
-                              : "bg-neutral-100 text-neutral-700"
-                          }`}
-                        >
-                          {t(wo.urgency)}
-                        </span>
+                        <span className={urgencyBadgeClass(wo.urgency)}>{t(wo.urgency)}</span>
                       </td>
                     </tr>
                   ))}

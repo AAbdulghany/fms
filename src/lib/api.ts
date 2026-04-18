@@ -85,6 +85,30 @@ export async function apiFetch<T>(
   return res.text() as Promise<T>;
 }
 
+/** Authenticated binary download (e.g. generated report PDF). */
+export async function apiFetchBlob(path: string): Promise<Blob> {
+  let res = await request(path, { method: "GET" });
+
+  if (res.status === 401 && !path.startsWith("/auth/")) {
+    const nextAccessToken = await tryRefreshToken();
+    if (nextAccessToken) {
+      res = await request(path, { method: "GET" }, nextAccessToken);
+    } else {
+      redirectToLogin();
+      throw new Error(JSON.stringify({ detail: "INVALID_TOKEN" }));
+    }
+  }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    if (res.status === 401) {
+      redirectToLogin();
+    }
+    throw new Error(JSON.stringify(err));
+  }
+  return res.blob();
+}
+
 function notifyAuthTokenChanged() {
   window.dispatchEvent(new Event("fms-auth-token-changed"));
 }

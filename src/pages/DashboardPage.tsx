@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiFetch } from "../lib/api";
+import { urgencyBadgeClass, workOrderStatusPillClass } from "../lib/workOrderDisplay";
 import type {
   PaginatedWorkOrders,
   User,
@@ -189,10 +190,10 @@ export function DashboardPage() {
               <thead className="border-b border-neutral-200 bg-neutral-50">
                 <tr>
                   <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
-                    ID
+                    {t("title")}
                   </th>
                   <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
-                    {t("title")}
+                    {t("company")}
                   </th>
                   <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
                     {t("status")}
@@ -209,27 +210,17 @@ export function DashboardPage() {
                     onClick={() => navigate(`/work-orders/${wo.id}`)}
                     className="cursor-pointer transition-colors hover:bg-neutral-50"
                   >
-                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-primary-600">
-                      {wo.id.slice(0, 8)}
+                    <td className="px-6 py-4 text-sm font-medium text-primary-600">
+                      {wo.title || wo.id.slice(0, 8)}
                     </td>
-                    <td className="px-6 py-4 text-sm text-neutral-900">{wo.title}</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm">
-                      <span className="rounded-full bg-primary-100 px-2.5 py-0.5 text-xs font-medium text-primary-700">
-                        {wo.status}
-                      </span>
+                    <td className="px-6 py-4 text-sm text-neutral-900">
+                      {wo.company_name || "—"}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm">
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          wo.urgency === "emergency"
-                            ? "bg-error-light text-error-dark"
-                            : wo.urgency === "urgent"
-                            ? "bg-warning-light text-warning-dark"
-                            : "bg-neutral-100 text-neutral-700"
-                        }`}
-                      >
-                        {t(wo.urgency)}
-                      </span>
+                      <span className={workOrderStatusPillClass(wo.status)}>{wo.status}</span>
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm">
+                      <span className={urgencyBadgeClass(wo.urgency)}>{t(wo.urgency)}</span>
                     </td>
                   </tr>
                 ))}

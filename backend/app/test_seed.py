@@ -9,6 +9,7 @@ from app.models import (
     WorkOrderStatus, Urgency, WorkOrderSource
 )
 from app.core.security import hash_password
+from app.standard_inspection_report_schema import STANDARD_INSPECTION_SCHEMA
 
 def seed_data():
     db = SessionLocal()
@@ -29,7 +30,17 @@ def seed_data():
         db.add(client)
         db.flush()
         
-        site = Site(tenant_id=t_id, client_id=client.id, name="Main Corporate HQ", timezone="Asia/Riyadh")
+        site = Site(
+            tenant_id=t_id,
+            client_id=client.id,
+            name="Main Corporate HQ",
+            timezone="Asia/Riyadh",
+            address_json={
+                "address": "456 Business Park Avenue",
+                "city": "Jeddah",
+                "country": "Saudi Arabia"
+            }
+        )
         db.add(site)
         db.flush()
         print(f"Created Client {client.legal_name} and Site {site.name}")
@@ -45,7 +56,7 @@ def seed_data():
             tenant_id=t_id,
             name="Standard Inspection",
             code="STD-INSP",
-            schema_json={"sections": [{"id": "s1", "fields": [{"id": "f1", "type": "checklist", "label": "Clean?", "options": ["Yes", "No"]}]}]}
+            schema_json=STANDARD_INSPECTION_SCHEMA,
         )
         db.add(tmpl)
         db.flush()

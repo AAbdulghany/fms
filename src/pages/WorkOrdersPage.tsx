@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiFetch } from "../lib/api";
-import type { PaginatedWorkOrders, WorkOrder } from "../lib/types";
+import type { PaginatedWorkOrders, ReportTemplate, WorkOrder } from "../lib/types";
+import { urgencyBadgeClass, workOrderStatusPillClass } from "../lib/workOrderDisplay";
 import { FilterBar } from "../components/FilterBar";
 
 interface UserMe {
@@ -24,12 +25,15 @@ interface Site {
 export function WorkOrdersPage() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [rows, setRows] = useState<WorkOrder[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [me, setMe] = useState<UserMe | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
+  const [templates, setTemplates] = useState<ReportTemplate[]>([]);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -39,6 +43,7 @@ export function WorkOrdersPage() {
     asset_id: "",
     source: "corrective",
     category: "general",
+    template_id: "",
   });
 
   const fetchOrders = async () => {
@@ -85,14 +90,46 @@ export function WorkOrdersPage() {
     }
   };
 
+  const fetchTemplates = async () => {
+    try {
+      const res = await apiFetch<ReportTemplate[]>("/report-templates");
+      setTemplates(res);
+    } catch (e) {
+      console.error("Failed to fetch templates", e);
+    }
+  };
+
   useEffect(() => {
     void fetchMe();
     void fetchCompanies();
+    void fetchTemplates();
   }, []);
+
+  const clientIdInUrl = searchParams.get("client_id");
+  useEffect(() => {
+    void fetchSites(clientIdInUrl || undefined);
+  }, [clientIdInUrl]);
 
   useEffect(() => {
     void fetchOrders();
   }, [searchParams]);
+
+  useEffect(() => {
+    const state = location.state as { prefillClientId?: string; prefillSiteId?: string } | null;
+    const prefillClientId = state?.prefillClientId;
+    const prefillSiteId = state?.prefillSiteId;
+    if (prefillClientId && prefillSiteId) {
+      setForm((f) => ({
+        ...f,
+        client_id: prefillClientId,
+        site_id: prefillSiteId,
+      }));
+      void fetchSites(prefillClientId);
+      setIsModalOpen(true);
+      // Clear the state to prevent reopening on navigation back
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.state, location.pathname, navigate]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,10 +146,11 @@ export function WorkOrdersPage() {
           asset_id: form.asset_id || undefined,
           source: form.source,
           category: form.category,
+          template_id: form.template_id || undefined,
         },
       });
       setIsModalOpen(false);
-      setForm({ title: "", description: "", urgency: "normal", client_id: "", site_id: "", asset_id: "", source: "corrective", category: "general" });
+      setForm({ title: "", description: "", urgency: "normal", client_id: "", site_id: "", asset_id: "", source: "corrective", category: "general", template_id: "" });
       void fetchOrders();
     } catch (e: any) {
       console.error("Work Order Creation Error:", e);
@@ -149,6 +187,10 @@ export function WorkOrdersPage() {
           showUrgencyFilter
           showDateRange
           showSearch
+          showCompanyFilter
+          showSiteFilter
+          companies={companies}
+          sites={sites}
         />
       )}
 
@@ -231,6 +273,24 @@ export function WorkOrdersPage() {
                   </select>
                 </div>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700">
+                  {t("report_template") || "Report Template"} <span className="text-xs text-neutral-500">(Optional)</span>
+                </label>
+                <select
+                  className="w-full rounded-md border border-neutral-300 p-2"
+                  value={form.template_id}
+                  onChange={e => setForm({...form, template_id: e.target.value})}
+                >
+                  <option value="">{t("no_template") || "No template"}</option>
+                  {templates.map(tmpl => (
+                    <option key={tmpl.id} value={tmpl.id}>{tmpl.name}</option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-neutral-500">
+                  {t("template_hint") || "Select a template to enable report filling for this work order"}
+                </p>
+              </div>
               <div className="flex justify-end space-x-3 pt-4">
                 <button 
                   type="button"
@@ -255,31 +315,55 @@ export function WorkOrdersPage() {
         <table className="min-w-full text-start text-sm">
           <thead className="bg-neutral-100 text-neutral-700">
             <tr>
-              <th className="px-4 py-3 font-medium">{t("title")}</th>
-              <th className="px-4 py-3 font-medium">{t("status")}</th>
-              <th className="px-4 py-3 font-medium">{t("created_by")}</th>
-              <th className="px-4 py-3 font-medium">{t("assigned_to")}</th>
-              <th className="px-4 py-3 font-medium">ID</th>
+              <th className="px-3 py-3 font-medium whitespace-nowrap">{t("title")}</th>
+              <th className="px-3 py-3 font-medium whitespace-nowrap">{t("status")}</th>
+              <th className="px-3 py-3 font-medium whitespace-nowrap">{t("company")}</th>
+              <th className="px-3 py-3 font-medium whitespace-nowrap">{t("site")}</th>
+              <th className="px-3 py-3 font-medium whitespace-nowrap">{t("created_by")}</th>
+              <th className="px-3 py-3 font-medium whitespace-nowrap">{t("assigned_to")}</th>
+              <th className="px-3 py-3 font-medium whitespace-nowrap">{t("source")}</th>
+              <th className="px-3 py-3 font-medium whitespace-nowrap">{t("category")}</th>
+              <th className="px-3 py-3 font-medium whitespace-nowrap">{t("urgency")}</th>
+              <th className="px-3 py-3 font-medium whitespace-nowrap">{t("date_created")}</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((w) => (
               <tr key={w.id} className="border-t border-neutral-200 hover:bg-neutral-50">
-                <td className="px-4 py-3">
+                <td className="px-3 py-3 whitespace-nowrap">
                   <Link className="text-primary-600 hover:underline" to={`/work-orders/${w.id}`}>
                     {w.title || w.id.slice(0, 8)}
                   </Link>
                 </td>
-                <td className="px-4 py-3">
-                  <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs">{w.status}</span>
+                <td className="px-3 py-3 whitespace-nowrap">
+                  <span className={workOrderStatusPillClass(w.status)}>{w.status}</span>
                 </td>
-                <td className="px-4 py-3 text-sm text-neutral-700">
+                <td className="max-w-[10rem] truncate px-3 py-3 text-sm text-neutral-700" title={w.company_name || undefined}>
+                  {w.company_name || "—"}
+                </td>
+                <td className="max-w-[10rem] truncate px-3 py-3 text-sm text-neutral-700" title={w.site_name || undefined}>
+                  {w.site_name || "—"}
+                </td>
+                <td className="max-w-[9rem] truncate px-3 py-3 text-sm text-neutral-700" title={w.creator?.full_name || w.creator?.email || undefined}>
                   {w.creator?.full_name || w.creator?.email || "—"}
                 </td>
-                <td className="px-4 py-3 text-sm text-neutral-700">
+                <td className="max-w-[9rem] truncate px-3 py-3 text-sm text-neutral-700" title={w.assignee?.full_name || w.assignee?.email || undefined}>
                   {w.assignee?.full_name || w.assignee?.email || "—"}
                 </td>
-                <td className="px-4 py-3 font-mono text-xs text-neutral-500">{w.id}</td>
+                <td className="px-3 py-3 text-sm text-neutral-700 whitespace-nowrap">
+                  {["corrective", "preventive", "request", "protective"].includes(w.source) ? t(w.source) : w.source}
+                </td>
+                <td className="max-w-[8rem] truncate px-3 py-3 text-sm text-neutral-700" title={w.category}>
+                  {w.category || "—"}
+                </td>
+                <td className="px-3 py-3 text-sm whitespace-nowrap">
+                  <span className={urgencyBadgeClass(w.urgency)}>
+                    {["normal", "urgent", "emergency"].includes(w.urgency) ? t(w.urgency) : w.urgency}
+                  </span>
+                </td>
+                <td className="px-3 py-3 text-sm text-neutral-600 whitespace-nowrap">
+                  {new Date(w.opened_at).toLocaleString()}
+                </td>
               </tr>
             ))}
           </tbody>

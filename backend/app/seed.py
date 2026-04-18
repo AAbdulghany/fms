@@ -62,7 +62,17 @@ def run() -> None:
         db.add(client)
         db.flush()
 
-        site = Site(tenant_id=t.id, client_id=client.id, name="Tower A", timezone="Asia/Riyadh")
+        site = Site(
+            tenant_id=t.id,
+            client_id=client.id,
+            name="Tower A",
+            timezone="Asia/Riyadh",
+            address_json={
+                "address": "123 King Fahd Road",
+                "city": "Riyadh",
+                "country": "Saudi Arabia"
+            }
+        )
         db.add(site)
         db.flush()
 
