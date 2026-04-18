@@ -68,12 +68,13 @@ export default function NotificationBell() {
                         <div className="mt-1 text-xs text-neutral-500">{(n.created_at || "").slice(0, 16)}</div>
                       </Link>
                     ) : (
-                      <div className={`px-4 py-3 text-sm ${!n.read ? "bg-primary-50/50" : ""}`}
+                      <button
+                        type="button"
+                        className={`w-full px-4 py-3 text-start text-sm hover:bg-neutral-50 ${!n.read ? "bg-primary-50/50" : ""}`}
                         onClick={() => markRead(n.id)}
-                        role="presentation"
                       >
                         {n.title}
-                      </div>
+                      </button>
                     )}
                   </li>
                 ))}

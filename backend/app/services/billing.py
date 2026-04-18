@@ -114,6 +114,12 @@ ALLOWED_INVOICE_CURRENCIES = frozenset({"EGP", "SAR", "USD", "EUR"})
 def build_invoice_for_work_order(
     db: Session, wo: WorkOrder, currency_override: Optional[str] = None
 ) -> Invoice:
+    """Create a draft invoice from an approved work order.
+
+    All line items and totals are computed in **SAR** (pricing profiles use ``*_sar`` fields).
+    ``Invoice.currency`` is the **presentation / contractual** currency code; there is **no FX
+    conversion** yet—non-SAR values label the same SAR amounts for display until rates exist.
+    """
     report = wo.report
     ensure_can_invoice(wo, report)
     existing = db.scalar(select(Invoice).where(Invoice.work_order_id == wo.id))

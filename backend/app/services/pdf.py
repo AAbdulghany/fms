@@ -45,14 +45,22 @@ def render_invoice_pdf(
     story.append(Paragraph(f"<b>{title}</b>", styles["Title"]))
     story.append(Spacer(1, 0.5 * cm))
 
+    # Numeric amounts are always SAR from billing; invoice.currency is presentation-only until FX exists.
     meta_data = [
         [reshape_text("Tenant"), tenant.name if tenant else ""],
         [reshape_text("Client"), client.legal_name if client else ""],
         [reshape_text("Work order"), str(wo.id) if wo else ""],
         [reshape_text("Status"), invoice.status.value],
-        [reshape_text(f"Total ({cur})"), str(invoice.total_sar)],
-        [reshape_text("Currency"), cur],
+        [reshape_text("Total (SAR)"), str(invoice.total_sar)],
+        [reshape_text("Display currency"), cur],
     ]
+    if cur != "SAR":
+        meta_data.append(
+            [
+                reshape_text("Note"),
+                reshape_text("Amounts are SAR-denominated; display currency is for labeling only."),
+            ]
+        )
     t_meta = Table(meta_data, colWidths=[4 * cm, 12 * cm])
     t_meta.setStyle(
         TableStyle(
@@ -71,8 +79,8 @@ def render_invoice_pdf(
             reshape_text("Type"),
             reshape_text("Description"),
             "Qty",
-            reshape_text(f"Unit ({cur})"),
-            reshape_text(f"Amount ({cur})"),
+            reshape_text("Unit (SAR)"),
+            reshape_text("Amount (SAR)"),
         ]
     ]
     rows = hdr + [

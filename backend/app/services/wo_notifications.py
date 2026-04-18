@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from uuid import UUID
 
 from sqlalchemy import select
@@ -32,7 +33,12 @@ async def notify_work_order_created(wo_id: UUID) -> None:
             await manager.send_to_user(wo.assignee_user_id, payload)
         assignee = wo.assignee_user
         if assignee and assignee.email:
-            send_work_order_assigned_email(assignee.email, wo.title or "Work order", str(wo.id))
+            await asyncio.to_thread(
+                send_work_order_assigned_email,
+                assignee.email,
+                wo.title or "Work order",
+                str(wo.id),
+            )
     finally:
         db.close()
 
@@ -58,7 +64,12 @@ async def notify_work_order_assigned(wo_id: UUID) -> None:
         )
         assignee = wo.assignee_user
         if assignee and assignee.email:
-            send_work_order_assigned_email(assignee.email, wo.title or "Work order", str(wo.id))
+            await asyncio.to_thread(
+                send_work_order_assigned_email,
+                assignee.email,
+                wo.title or "Work order",
+                str(wo.id),
+            )
     finally:
         db.close()
 
@@ -96,7 +107,8 @@ async def notify_work_order_status_changed(
         for uid in targets:
             user = db.get(User, uid)
             if user and user.email:
-                send_work_order_status_email(
+                await asyncio.to_thread(
+                    send_work_order_status_email,
                     user.email,
                     wo.title or "Work order",
                     old_status,
