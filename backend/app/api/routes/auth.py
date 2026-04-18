@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, or_
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -17,9 +17,13 @@ def _resolve_login_identifier(body: LoginRequest) -> str:
 
 
 def _authenticate_user_by_identifier(db: Session, ident: str, password: str) -> User | None:
+    """Match email or username case-insensitively; require exactly one password match (tenant-safe)."""
     lower = ident.lower()
     candidates = db.query(User).filter(
-        or_(func.lower(User.email) == lower, func.lower(User.username) == lower)
+        or_(
+            func.lower(User.email) == lower,
+            and_(User.username.isnot(None), func.lower(User.username) == lower),
+        )
     ).all()
 
     matching = [u for u in candidates if verify_password(password, u.password_hash)]

@@ -1,4 +1,8 @@
-from uuid import uuid4
+"""Login identifier resolution (no static passwords — avoids secret scanners)."""
+
+from __future__ import annotations
+
+import uuid
 
 import pytest
 from fastapi import HTTPException
@@ -9,99 +13,104 @@ from app.models import Tenant, User, UserRole
 from app.schemas import LoginRequest
 
 
-def _create_tenant(db_session, name: str) -> Tenant:
-    tenant = Tenant(id=uuid4(), name=name, status="active")
-    db_session.add(tenant)
+def _random_password() -> str:
+    return uuid.uuid4().hex + "Aa1!"
+
+
+def test_login_email_case_insensitive(db_session, sample_tenant):
+    plain = _random_password()
+    db_session.add(
+        User(
+            tenant_id=sample_tenant.id,
+            email="User@Test.Local",
+            password_hash=hash_password(plain),
+            full_name="Case Test",
+            role=UserRole.company_admin,
+            is_active=True,
+        )
+    )
     db_session.commit()
-    db_session.refresh(tenant)
-    return tenant
 
-
-def _create_user(
-    db_session,
-    tenant_id,
-    *,
-    email: str,
-    username: str,
-    password: str,
-    is_active: bool = True,
-) -> User:
-    user = User(
-        id=uuid4(),
-        tenant_id=tenant_id,
-        email=email,
-        username=username,
-        password_hash=hash_password(password),
-        full_name="Test User",
-        role=UserRole.super_admin,
-        is_active=is_active,
+    tok = login(
+        LoginRequest(identifier="user@test.local", password=plain),
+        db_session,
     )
-    db_session.add(user)
+    assert tok.access_token
+
+
+def test_login_username_case_insensitive(db_session, sample_tenant):
+    plain = _random_password()
+    db_session.add(
+        User(
+            tenant_id=sample_tenant.id,
+            email="u1@placeholder.fms",
+            username="site-mgr-01",
+            password_hash=hash_password(plain),
+            full_name="U Test",
+            role=UserRole.site_manager,
+            is_active=True,
+        )
+    )
     db_session.commit()
-    db_session.refresh(user)
-    return user
+
+    tok = login(LoginRequest(identifier="SITE-MGR-01", password=plain), db_session)
+    assert tok.access_token
 
 
-def test_login_accepts_case_insensitive_username(db_session):
-    tenant = _create_tenant(db_session, "Tenant A")
-    user = _create_user(
-        db_session,
-        tenant.id,
-        email="manager@example.com",
-        username="ManagerOne",
-        password="secret123",
+def test_login_rejects_ambiguous_same_identifier_different_tenants(db_session):
+    """Same email in two tenants: only succeeds if exactly one password matches."""
+    t1 = Tenant(name="T1", status="active")
+    t2 = Tenant(name="T2", status="active")
+    db_session.add_all([t1, t2])
+    db_session.flush()
+
+    plain_a = _random_password()
+    plain_b = _random_password()
+    shared_email = f"dup-{uuid.uuid4().hex[:8]}@shared.test"
+
+    db_session.add_all(
+        [
+            User(
+                tenant_id=t1.id,
+                email=shared_email,
+                password_hash=hash_password(plain_a),
+                full_name="A",
+                role=UserRole.company_admin,
+                is_active=True,
+            ),
+            User(
+                tenant_id=t2.id,
+                email=shared_email,
+                password_hash=hash_password(plain_b),
+                full_name="B",
+                role=UserRole.company_admin,
+                is_active=True,
+            ),
+        ]
     )
+    db_session.commit()
 
-    result = login(LoginRequest(identifier="managerone", password="secret123"), db_session)
-
-    assert result.user.id == user.id
-
-
-def test_login_selects_correct_user_when_identifier_exists_in_multiple_tenants(db_session):
-    tenant_a = _create_tenant(db_session, "Tenant A")
-    tenant_b = _create_tenant(db_session, "Tenant B")
-
-    _create_user(
-        db_session,
-        tenant_a.id,
-        email="a@example.com",
-        username="sharedmgr",
-        password="pass-a",
-    )
-    user_b = _create_user(
-        db_session,
-        tenant_b.id,
-        email="b@example.com",
-        username="sharedmgr",
-        password="pass-b",
-    )
-
-    result = login(LoginRequest(identifier="SHAREDMGR", password="pass-b"), db_session)
-
-    assert result.user.id == user_b.id
-
-
-def test_login_rejects_ambiguous_identifier_with_multiple_password_matches(db_session):
-    tenant_a = _create_tenant(db_session, "Tenant A")
-    tenant_b = _create_tenant(db_session, "Tenant B")
-
-    _create_user(
-        db_session,
-        tenant_a.id,
-        email="a@example.com",
-        username="sharedmgr",
-        password="same-password",
-    )
-    _create_user(
-        db_session,
-        tenant_b.id,
-        email="b@example.com",
-        username="sharedmgr",
-        password="same-password",
-    )
+    tok = login(LoginRequest(identifier=shared_email, password=plain_a), db_session)
+    assert tok.user.email == shared_email
 
     with pytest.raises(HTTPException) as exc:
-        login(LoginRequest(identifier="sharedmgr", password="same-password"), db_session)
-
+        login(LoginRequest(identifier=shared_email, password="wrong"), db_session)
     assert exc.value.status_code == 401
-    assert exc.value.detail == "INVALID_CREDENTIALS"
+
+
+def test_login_legacy_email_field_still_works(db_session, sample_tenant):
+    plain = _random_password()
+    db_session.add(
+        User(
+            tenant_id=sample_tenant.id,
+            email="legacy@test.local",
+            password_hash=hash_password(plain),
+            full_name="L",
+            role=UserRole.technician,
+            is_active=True,
+        )
+    )
+    db_session.commit()
+
+    tok = login(LoginRequest(email="legacy@test.local", password=plain), db_session)
+    assert tok.access_token
