@@ -1,23 +1,64 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "../lib/api";
 import type { Asset, AssetLifecycleStatus } from "../lib/types";
 import { EmptyState } from "../components/EmptyState";
 import { AssetLifecycleBadge } from "../components/AssetLifecycleBadge";
+import { AssetRegisterModal } from "../components/AssetRegisterModal";
+
+type AssetOutApi = {
+  id: string;
+  site_id: string;
+  name: string;
+  category: string;
+  lifecycle_status: AssetLifecycleStatus;
+  current_repair_count: number;
+  max_age_years?: number | null;
+  installed_on?: string | null;
+};
+
+function mapToDisplayAsset(a: AssetOutApi): Asset {
+  let ageYears = 0;
+  if (a.installed_on) {
+    const d = new Date(a.installed_on);
+    ageYears = Math.max(0, (Date.now() - d.getTime()) / (365.25 * 24 * 3600 * 1000));
+  }
+  return {
+    id: a.id,
+    asset_id: `${a.id.slice(0, 8)}…`,
+    site_id: a.site_id,
+    company_id: "",
+    type: a.category,
+    category: a.category,
+    lifecycle_status: a.lifecycle_status,
+    age_years: ageYears,
+    repair_count: a.current_repair_count,
+    installation_date: a.installed_on ?? "",
+    expected_lifespan_years: a.max_age_years ?? 5,
+    lifespan_percentage: 50,
+  };
+}
+
 export default function AssetsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialSiteId = searchParams.get("site_id") || undefined;
+  const openOnLoad = searchParams.get("register") === "1";
+
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [lifecycleFilter, setLifecycleFilter] = useState<AssetLifecycleStatus | "all">("all");
+  const [registerOpen, setRegisterOpen] = useState(openOnLoad);
 
-  useEffect(() => {
+  const loadAssets = () => {
     void (async () => {
       try {
-        const data = await apiFetch<Asset[]>("/assets");
-        setAssets(data);
+        const q = initialSiteId ? `?site_id=${encodeURIComponent(initialSiteId)}` : "";
+        const data = await apiFetch<AssetOutApi[]>(`/assets${q}`);
+        setAssets(data.map(mapToDisplayAsset));
       } catch (error) {
         console.error("Failed to fetch assets", error);
         setAssets([]);
@@ -25,7 +66,11 @@ export default function AssetsPage() {
         setLoading(false);
       }
     })();
-  }, []);
+  };
+
+  useEffect(() => {
+    loadAssets();
+  }, [initialSiteId]);
 
   const filteredAssets = assets.filter((asset) => {
     const query = searchQuery.toLowerCase();
@@ -55,8 +100,9 @@ export default function AssetsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-semibold text-neutral-900">{t("assets")}</h1>
         <button
+          type="button"
           className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
-          onClick={() => alert("Register asset - to be implemented")}
+          onClick={() => setRegisterOpen(true)}
         >
           + {t("register_asset")}
         </button>
@@ -150,7 +196,7 @@ export default function AssetsPage() {
           description="Register your first asset to start tracking lifecycle and maintenance history."
           action={{
             label: `+ ${t("register_asset")}`,
-            onClick: () => alert("Register asset - to be implemented"),
+            onClick: () => setRegisterOpen(true),
           }}
         />
       ) : filteredAssets.length === 0 ? (
@@ -245,6 +291,13 @@ export default function AssetsPage() {
           </div>
         </div>
       )}
+
+      <AssetRegisterModal
+        open={registerOpen}
+        onClose={() => setRegisterOpen(false)}
+        onCreated={() => loadAssets()}
+        initialSiteId={initialSiteId}
+      />
     </div>
   );
 }

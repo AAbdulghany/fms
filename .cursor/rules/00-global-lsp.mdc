@@ -1,0 +1,8 @@
+---
+alwaysApply: true
+description: Global rule to strictly enforce LSP usage instead of text search/grep
+globs: *
+---
+When exploring the codebase to understand symbols, functions, or classes, strictly prioritize using Language Server (LSP) features (like Go to Definition, Find All References, and Document Symbols). 
+
+Do NOT use raw text search (like `grep` or `rg`) unless semantic tools fail or you are explicitly asked to look for specific hardcoded strings.

@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Any, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 from app.models import (
     AssetLifecycleStatus,
@@ -23,15 +23,106 @@ class UserPublic(BaseModel):
     tenant_id: UUID
     client_id: Optional[UUID] = None
     email: str
+    username: Optional[str] = None
     full_name: str
     role: UserRole
     locale: str
     is_active: bool
 
 
+class UserListOut(BaseModel):
+    """Extended user representation used in list / admin views."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    tenant_id: UUID
+    client_id: Optional[UUID] = None
+    email: str
+    username: Optional[str] = None
+    full_name: str
+    role: UserRole
+    locale: str
+    status: str = "active"
+    last_login_at: Optional[datetime] = None
+
+    @classmethod
+    def from_user(cls, user: Any) -> "UserListOut":
+        return cls(
+            id=user.id,
+            tenant_id=user.tenant_id,
+            client_id=user.client_id,
+            email=user.email,
+            username=user.username,
+            full_name=user.full_name,
+            role=user.role,
+            locale=user.locale,
+            status="active" if user.is_active else "inactive",
+            last_login_at=user.last_login_at,
+        )
+
+
+class UserPatchMe(BaseModel):
+    """Payload for PATCH /users/me. Username is intentionally excluded."""
+
+    full_name: Optional[str] = Field(None, min_length=1, max_length=255)
+    password: Optional[str] = Field(None, min_length=6, max_length=128)
+
+
+class UserCreateBody(BaseModel):
+    """company_admin or super_admin creating a new user."""
+
+    email: str
+    full_name: str = Field(..., min_length=1, max_length=255)
+    role: UserRole
+    password: Optional[str] = Field(None, min_length=6, max_length=128)
+    locale: str = "ar"
+    phone: Optional[str] = None
+    client_id: Optional[UUID] = None
+
+
+class UserCreateResponse(BaseModel):
+    user: UserPublic
+    initial_password: Optional[str] = None
+
+
+class UserPatchBody(BaseModel):
+    """Payload for PATCH /users/{id}."""
+
+    full_name: Optional[str] = Field(None, min_length=1, max_length=255)
+    is_active: Optional[bool] = None
+    role: Optional[UserRole] = None
+    locale: Optional[str] = None
+
+
+class UserBrief(BaseModel):
+    """Minimal user info for work order creator/assignee (Phase 3)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    email: str
+    username: Optional[str] = None
+    full_name: str
+    role: UserRole
+
+
 class LoginRequest(BaseModel):
-    email: EmailStr
+    """Login with username or email (email kept for backward compatibility)."""
+
     password: str
+    identifier: Optional[str] = None
+    email: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _merge_identifier(cls, data: object) -> object:
+        if isinstance(data, dict):
+            ident = data.get("identifier")
+            em = data.get("email")
+            if ident in (None, "") and em not in (None, ""):
+                data["identifier"] = em
+        return data
 
 
 class TokenResponse(BaseModel):
@@ -40,6 +131,7 @@ class TokenResponse(BaseModel):
     expires_in: int
     token_type: str = "bearer"
     user: UserPublic
+    must_change_password: bool = False
 
 
 class RefreshRequest(BaseModel):
@@ -50,6 +142,29 @@ class ClientCreate(BaseModel):
     legal_name: str
     code: str = ""
     billing_email: Optional[EmailStr] = None
+    activity_type: Optional[str] = Field(None, max_length=64)
+
+
+class ClientProvisionRequest(BaseModel):
+    """Super admin: create company + client admin with generated credentials."""
+
+    legal_name: str = Field(..., min_length=1, max_length=255)
+    manager_full_name: str = Field(..., min_length=1, max_length=255)
+    activity_type: Optional[str] = Field(None, max_length=64)
+
+
+class ClientProvisionResponse(BaseModel):
+    client: "ClientOut"
+    company_id: UUID
+    company_code: str
+    manager_username: str
+    manager_email: str
+    initial_password: str
+
+
+class ClientUpdate(BaseModel):
+    legal_name: Optional[str] = Field(None, min_length=1, max_length=255)
+    code: Optional[str] = Field(None, max_length=64)
 
 
 class ClientOut(BaseModel):
@@ -59,6 +174,8 @@ class ClientOut(BaseModel):
     legal_name: str
     code: str
     billing_email: Optional[str]
+    status: str = "active"
+    activity_type: Optional[str] = None
 
 
 class SiteCreate(BaseModel):
@@ -76,6 +193,26 @@ class SiteOut(BaseModel):
     name: str
     timezone: str
     status: str
+    address: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
+    company_name: Optional[str] = None
+
+
+class SiteProvisionRequest(BaseModel):
+    client_id: UUID
+    name: str = Field(..., min_length=1, max_length=255)
+    manager_full_name: str = Field(..., min_length=1, max_length=255)
+    timezone: str = "Asia/Riyadh"
+    country: Optional[str] = Field(None, max_length=100)
+    city: Optional[str] = Field(None, max_length=100)
+
+
+class SiteProvisionResponse(BaseModel):
+    site: SiteOut
+    manager_username: str
+    manager_email: str
+    initial_password: str
 
 
 class AssetCreate(BaseModel):
@@ -86,6 +223,8 @@ class AssetCreate(BaseModel):
     location_id: Optional[UUID] = None
     model: Optional[str] = None
     serial: Optional[str] = None
+    installed_on: Optional[date] = None
+    warranty_until: Optional[date] = None
     max_repair_count: Optional[int] = None
     max_age_years: Optional[int] = None
 
@@ -98,6 +237,10 @@ class AssetOut(BaseModel):
     location_id: Optional[UUID] = None
     name: str
     category: str
+    model: Optional[str] = None
+    serial: Optional[str] = None
+    installed_on: Optional[date] = None
+    warranty_until: Optional[date] = None
     max_repair_count: Optional[int] = None
     max_age_years: Optional[int] = None
     current_repair_count: int = 0
@@ -153,6 +296,7 @@ class WorkOrderOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    tenant_id: UUID
     client_id: UUID
     site_id: UUID
     location_id: Optional[UUID] = None
@@ -164,7 +308,12 @@ class WorkOrderOut(BaseModel):
     title: str
     description: str
     template_id: Optional[UUID]
+    created_by_user_id: Optional[UUID] = None
     assignee_user_id: Optional[UUID]
+    creator: Optional[UserBrief] = None
+    assignee: Optional[UserBrief] = None
+    company_name: Optional[str] = None
+    site_name: Optional[str] = None
     opened_at: datetime
     closed_at: Optional[datetime]
     tags: list[str] = []
@@ -172,6 +321,10 @@ class WorkOrderOut(BaseModel):
 
 class AssignBody(BaseModel):
     assignee_user_id: UUID
+
+
+class DeclineRequestBody(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=2000)
 
 
 class ReportAnswersUpdate(BaseModel):
@@ -185,6 +338,7 @@ class MaintenanceReportOut(BaseModel):
     work_order_id: UUID
     template_id: UUID
     template_version: int
+    template_snapshot_json: dict[str, Any]
     answers_json: dict[str, Any]
     status: ReportStatus
 
@@ -222,6 +376,12 @@ class InvoiceOut(BaseModel):
     currency: str
     due_date: Optional[date]
     line_items: list[InvoiceLineOut] = []
+
+
+class GenerateInvoiceBody(BaseModel):
+    """Optional currency when generating invoice from work order (Phase 3)."""
+
+    currency: Optional[str] = None  # EGP, SAR, USD, EUR
 
 
 class PartCreate(BaseModel):
@@ -408,3 +568,59 @@ class DashboardSummaryOut(BaseModel):
     my_in_progress: Optional[int] = None
     completed_this_week: int = 0
     assets_at_eol: Optional[int] = None
+
+
+# --- Comments ---
+class CommentCreate(BaseModel):
+    content: str = Field(min_length=1, max_length=5000)
+
+
+class CommentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    work_order_id: UUID
+    user_id: UUID
+    user_name: Optional[str] = None
+    content: str
+    created_at: datetime
+    updated_at: datetime
+
+
+# --- Work Order Documents ---
+class DocumentCreate(BaseModel):
+    file_name: str = Field(min_length=1, max_length=255)
+    file_size: int = Field(gt=0)
+    file_type: str = Field(min_length=1, max_length=100)
+    file_url: str = Field(min_length=1, max_length=512)
+    description: Optional[str] = None
+
+
+class DocumentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    work_order_id: UUID
+    uploaded_by_user_id: UUID
+    uploaded_by_name: Optional[str] = None
+    file_name: str
+    file_size: int
+    file_type: str
+    file_url: str
+    description: Optional[str] = None
+    created_at: datetime
+
+
+# --- Audit Logs ---
+class AuditLogOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    actor_user_id: Optional[UUID] = None
+    actor_name: Optional[str] = None
+    action: str
+    entity_type: str
+    entity_id: Optional[str] = None
+    before_json: Optional[dict[str, Any]] = None
+    after_json: Optional[dict[str, Any]] = None
+    created_at: datetime

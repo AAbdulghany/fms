@@ -4,6 +4,27 @@ import { useTranslation } from "react-i18next";
 import { apiFetch } from "../lib/api";
 import type { Company } from "../lib/types";
 import { EmptyState } from "../components/EmptyState";
+import { CompanyCreateModal } from "../components/CompanyCreateModal";
+
+type ClientApi = {
+  id: string;
+  legal_name: string;
+  code: string;
+  billing_email: string | null;
+  status?: string;
+};
+
+function mapClientToCompany(c: ClientApi): Company {
+  const st = c.status === "archived" ? "archived" : "active";
+  return {
+    id: c.id,
+    name: c.legal_name,
+    code: c.code,
+    contact_email: c.billing_email ?? "",
+    status: st,
+    created_at: new Date().toISOString(),
+  };
+}
 
 export default function CompaniesPage() {
   const { t } = useTranslation();
@@ -11,12 +32,13 @@ export default function CompaniesPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
 
-  useEffect(() => {
+  const loadCompanies = () => {
     void (async () => {
       try {
-        const data = await apiFetch<Company[]>("/companies");
-        setCompanies(data);
+        const data = await apiFetch<ClientApi[]>("/clients");
+        setCompanies(data.map(mapClientToCompany));
       } catch (error) {
         console.error("Failed to fetch companies", error);
         setCompanies([]);
@@ -24,6 +46,10 @@ export default function CompaniesPage() {
         setLoading(false);
       }
     })();
+  };
+
+  useEffect(() => {
+    loadCompanies();
   }, []);
 
   const filteredCompanies = companies.filter((company) => {
@@ -49,13 +75,11 @@ export default function CompaniesPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-semibold text-neutral-900">{t("companies")}</h1>
         <button
+          type="button"
           className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
-          onClick={() => {
-            // TODO: Open create company modal
-            alert("Create company modal - to be implemented");
-          }}
+          onClick={() => setCreateOpen(true)}
         >
-          + {t("create_company")}
+          + {t("add_company")}
         </button>
       </div>
 
@@ -90,8 +114,8 @@ export default function CompaniesPage() {
           title={t("no_companies")}
           description="Add your first client company to start managing their sites and work orders."
           action={{
-            label: `+ ${t("create_company")}`,
-            onClick: () => alert("Create company modal - to be implemented"),
+            label: `+ ${t("add_company")}`,
+            onClick: () => setCreateOpen(true),
           }}
         />
       ) : filteredCompanies.length === 0 ? (
@@ -221,6 +245,12 @@ export default function CompaniesPage() {
           </div>
         </>
       )}
+
+      <CompanyCreateModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={() => loadCompanies()}
+      />
     </div>
   );
 }

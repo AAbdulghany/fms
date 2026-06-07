@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { NotificationProvider } from "./contexts/NotificationContext";
 import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -14,11 +15,13 @@ import AssetDetailPage from "./pages/AssetDetailPage";
 import UsersPage from "./pages/UsersPage";
 import LaborPage from "./pages/LaborPage";
 import LocationsPage from "./pages/LocationsPage";
+import { ProfilePage } from "./pages/ProfilePage";
 
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
+      <NotificationProvider>
+        <Routes>
         <Route path="/login" element={<LoginPage />} />
 
         <Route
@@ -166,8 +169,20 @@ export default function App() {
           }
         />
 
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <ProfilePage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
+        </Routes>
+      </NotificationProvider>
     </BrowserRouter>
   );
 }

@@ -78,6 +78,7 @@ export default {
       completed: "var(--status-completed)",
       verified: "var(--status-verified)",
       cancelled: "var(--status-cancelled)",
+      closed: "var(--status-closed)",
       rejected: "var(--status-rejected)",
     },
     urgency: {

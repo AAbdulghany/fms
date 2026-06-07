@@ -102,11 +102,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   return (
     <>
       <aside
-        className={`fixed ${isRTL ? "right-0" : "left-0"} top-0 z-30 h-full w-64 transform border-${isRTL ? "l" : "r"} border-neutral-200 bg-neutral-0 shadow-lg transition-transform duration-300 lg:relative lg:translate-x-0 ${
+        className={`max-lg:fixed ${isRTL ? "max-lg:right-0 max-lg:left-auto" : "max-lg:left-0"} max-lg:top-14 max-lg:bottom-0 max-lg:z-30 w-64 shrink-0 transform ${isRTL ? "border-l" : "border-r"} border-neutral-200 bg-neutral-0 shadow-lg transition-transform duration-300 lg:relative lg:top-auto lg:z-auto lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:translate-x-0 lg:self-stretch ${
           isOpen ? "translate-x-0" : isRTL ? "translate-x-full" : "-translate-x-full"
         }`}
       >
-        <div className="flex h-full flex-col">
+        <div className="flex h-full min-h-0 w-full flex-col">
           <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-4 lg:hidden">
             <span className="text-lg font-semibold text-primary-600 font-display-ar">
               {t("app_title")}
@@ -170,6 +170,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
           {user && (
             <div className="border-t border-neutral-200 px-4 py-3">
+              <Link
+                to="/profile"
+                onClick={onClose}
+                className="mb-2 block truncate text-sm font-medium text-primary-600 hover:underline"
+              >
+                {t("profile")}
+              </Link>
               <div className="text-xs text-neutral-500">{t("logged_in_as")}</div>
               <div className="mt-1 truncate text-sm font-medium text-neutral-900">
                 {user.full_name}

@@ -11,6 +11,11 @@ from sqlalchemy.orm import Session
 from app.models import Client, Invoice, Tenant, WorkOrder
 from app.services.arabic_utils import reshape_text
 
+
+def _invoice_currency_label(invoice: Invoice) -> str:
+    return (invoice.currency or "SAR").strip().upper() or "SAR"
+
+
 def render_invoice_pdf(
     db: Session,
     *,
@@ -21,6 +26,7 @@ def render_invoice_pdf(
     wo = db.get(WorkOrder, invoice.work_order_id)
     db.refresh(invoice)
     line_items = list(invoice.line_items)
+    cur = _invoice_currency_label(invoice)
 
     buf = BytesIO()
     doc = SimpleDocTemplate(
@@ -39,13 +45,22 @@ def render_invoice_pdf(
     story.append(Paragraph(f"<b>{title}</b>", styles["Title"]))
     story.append(Spacer(1, 0.5 * cm))
 
+    # Numeric amounts are always SAR from billing; invoice.currency is presentation-only until FX exists.
     meta_data = [
         [reshape_text("Tenant"), tenant.name if tenant else ""],
         [reshape_text("Client"), client.legal_name if client else ""],
         [reshape_text("Work order"), str(wo.id) if wo else ""],
         [reshape_text("Status"), invoice.status.value],
         [reshape_text("Total (SAR)"), str(invoice.total_sar)],
+        [reshape_text("Display currency"), cur],
     ]
+    if cur != "SAR":
+        meta_data.append(
+            [
+                reshape_text("Note"),
+                reshape_text("Amounts are SAR-denominated; display currency is for labeling only."),
+            ]
+        )
     t_meta = Table(meta_data, colWidths=[4 * cm, 12 * cm])
     t_meta.setStyle(
         TableStyle(
@@ -59,7 +74,15 @@ def render_invoice_pdf(
     story.append(t_meta)
     story.append(Spacer(1, 0.8 * cm))
 
-    hdr = [[reshape_text("Type"), reshape_text("Description"), "Qty", "Unit", "Amount"]]
+    hdr = [
+        [
+            reshape_text("Type"),
+            reshape_text("Description"),
+            "Qty",
+            reshape_text("Unit (SAR)"),
+            reshape_text("Amount (SAR)"),
+        ]
+    ]
     rows = hdr + [
         [
             reshape_text(li.line_type),

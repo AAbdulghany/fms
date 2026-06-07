@@ -2,9 +2,53 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { apiFetch } from "../lib/api";
-import type { Asset, WorkOrder, PaginatedWorkOrders } from "../lib/types";
+import { urgencyBadgeClass, workOrderStatusPillClass } from "../lib/workOrderDisplay";
+import type { Asset, AssetLifecycleStatus, WorkOrder, PaginatedWorkOrders } from "../lib/types";
 import { AssetLifecycleBadge } from "../components/AssetLifecycleBadge";
 import { AssetLifecycleTimeline } from "../components/AssetLifecycleTimeline";
+
+type AssetOutApi = {
+  id: string;
+  site_id: string;
+  name: string;
+  category: string;
+  model?: string | null;
+  serial?: string | null;
+  installed_on?: string | null;
+  warranty_until?: string | null;
+  max_repair_count?: number | null;
+  max_age_years?: number | null;
+  current_repair_count: number;
+  lifecycle_status: AssetLifecycleStatus;
+  location_id?: string | null;
+};
+
+function mapToAsset(a: AssetOutApi): Asset {
+  let ageYears = 0;
+  if (a.installed_on) {
+    const d = new Date(a.installed_on);
+    ageYears = Math.max(0, (Date.now() - d.getTime()) / (365.25 * 24 * 3600 * 1000));
+  }
+  const maxAge = a.max_age_years ?? 5;
+  return {
+    id: a.id,
+    asset_id: a.name || `${a.id.slice(0, 8)}…`,
+    site_id: a.site_id,
+    company_id: "",
+    type: a.name || a.category,
+    category: a.category,
+    model: a.model ?? undefined,
+    serial_number: a.serial ?? undefined,
+    lifecycle_status: a.lifecycle_status,
+    age_years: ageYears,
+    repair_count: a.current_repair_count,
+    installation_date: a.installed_on ?? "",
+    expected_lifespan_years: maxAge,
+    lifespan_percentage: a.installed_on
+      ? Math.min(100, Math.round((ageYears / maxAge) * 100))
+      : 0,
+  };
+}
 
 export default function AssetDetailPage() {
   const { t } = useTranslation();
@@ -18,8 +62,8 @@ export default function AssetDetailPage() {
   useEffect(() => {
     void (async () => {
       try {
-        const assetData = await apiFetch<Asset>(`/assets/${id}`);
-        setAsset(assetData);
+        const assetData = await apiFetch<AssetOutApi>(`/assets/${id}`);
+        setAsset(mapToAsset(assetData));
 
         // Fetch work orders for this asset
         const woData = await apiFetch<PaginatedWorkOrders>(`/work-orders?asset_id=${id}&page_size=50`);
@@ -82,7 +126,7 @@ export default function AssetDetailPage() {
           <div className="flex gap-2">
             <button
               className="rounded-lg border border-neutral-300 bg-neutral-0 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
-              onClick={() => alert("Edit asset - to be implemented")}
+              onClick={() => { /* edit asset – future implementation */ }}
             >
               {t("edit")}
             </button>
@@ -144,7 +188,7 @@ export default function AssetDetailPage() {
               <p className="mt-1 text-sm text-warning-dark">Replacement work order recommended.</p>
               <button
                 className="mt-2 rounded-lg bg-warning-dark px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-warning-main"
-                onClick={() => alert("Create replacement WO - to be implemented")}
+                onClick={() => navigate("/work-orders")}
               >
                 {t("create_work_order")}
               </button>
@@ -186,7 +230,7 @@ export default function AssetDetailPage() {
               ) : (
                 <button
                   className="mt-2 rounded-lg bg-error-dark px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-error-main"
-                  onClick={() => alert("Create replacement WO - to be implemented")}
+                  onClick={() => navigate("/work-orders")}
                 >
                   {t("create_work_order")}
                 </button>
@@ -336,9 +380,7 @@ export default function AssetDetailPage() {
                       </td>
                       <td className="px-6 py-4 text-sm text-neutral-900">{wo.description}</td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm">
-                        <span className="rounded-full bg-primary-100 px-2.5 py-0.5 text-xs font-medium text-primary-700">
-                          {wo.status}
-                        </span>
+                        <span className={workOrderStatusPillClass(wo.status)}>{wo.status}</span>
                       </td>
                     </tr>
                   ))}
@@ -386,22 +428,10 @@ export default function AssetDetailPage() {
                       </td>
                       <td className="px-6 py-4 text-sm text-neutral-900">{wo.title}</td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm">
-                        <span className="rounded-full bg-primary-100 px-2.5 py-0.5 text-xs font-medium text-primary-700">
-                          {wo.status}
-                        </span>
+                        <span className={workOrderStatusPillClass(wo.status)}>{wo.status}</span>
                       </td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm">
-                        <span
-                          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                            wo.urgency === "emergency"
-                              ? "bg-error-light text-error-dark"
-                              : wo.urgency === "urgent"
-                              ? "bg-warning-light text-warning-dark"
-                              : "bg-neutral-100 text-neutral-700"
-                          }`}
-                        >
-                          {t(wo.urgency)}
-                        </span>
+                        <span className={urgencyBadgeClass(wo.urgency)}>{t(wo.urgency)}</span>
                       </td>
                     </tr>
                   ))}

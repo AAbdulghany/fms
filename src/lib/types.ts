@@ -16,6 +16,8 @@ export interface User {
 }
 
 export type WorkOrderStatus =
+  | "requested"
+  | "declined"
   | "created"
   | "assigned"
   | "in_progress"
@@ -25,8 +27,16 @@ export type WorkOrderStatus =
   | "cancelled"
   | "closed";
 
+export interface WorkOrderUserBrief {
+  id: string;
+  email: string;
+  full_name: string;
+  role: UserRole;
+}
+
 export interface WorkOrder {
   id: string;
+  tenant_id?: string;
   client_id: string;
   site_id: string;
   asset_id: string | null;
@@ -37,7 +47,13 @@ export interface WorkOrder {
   title: string;
   description: string;
   template_id: string | null;
+  created_by_user_id?: string | null;
   assignee_user_id: string | null;
+  creator?: WorkOrderUserBrief | null;
+  assignee?: WorkOrderUserBrief | null;
+  company_name?: string | null;
+  site_name?: string | null;
+  tags?: string[];
   opened_at: string;
   closed_at: string | null;
 }
@@ -52,6 +68,7 @@ export interface MaintenanceReport {
   work_order_id: string;
   template_id: string;
   template_version: number;
+  template_snapshot_json?: Record<string, unknown>;
   answers_json: Record<string, unknown>;
   status: string;
 }
@@ -60,6 +77,41 @@ export interface ReportTemplate {
   id: string;
   name: string;
   schema_json: Record<string, unknown>;
+}
+
+export interface AuditLog {
+  id: string;
+  actor_user_id: string | null;
+  actor_name: string | null;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  before_json: Record<string, unknown> | null;
+  after_json: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface Comment {
+  id: string;
+  work_order_id: string;
+  user_id: string;
+  user_name: string | null;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkOrderDocument {
+  id: string;
+  work_order_id: string;
+  uploaded_by_user_id: string;
+  uploaded_by_name: string | null;
+  file_name: string;
+  file_size: number;
+  file_type: string;
+  file_url: string;
+  description: string | null;
+  created_at: string;
 }
 
 export interface Invoice {
@@ -87,7 +139,7 @@ export interface Company {
   code: string;
   contact_email: string;
   contact_phone?: string;
-  status: "active" | "inactive" | "suspended";
+  status: "active" | "inactive" | "suspended" | "archived";
   sites_count?: number;
   active_wo_count?: number;
   created_at: string;

@@ -1,6 +1,8 @@
 from app.models import WorkOrderStatus
 
 ALLOWED: dict[WorkOrderStatus, set[WorkOrderStatus]] = {
+    WorkOrderStatus.requested: {WorkOrderStatus.created, WorkOrderStatus.declined},
+    WorkOrderStatus.declined: set(),
     WorkOrderStatus.created: {WorkOrderStatus.assigned, WorkOrderStatus.cancelled},
     WorkOrderStatus.assigned: {
         WorkOrderStatus.in_progress,

@@ -38,7 +38,7 @@
   --color-neutral-800: #292524;
   --color-neutral-900: #1c1917;
 
-  /* Semantic */
+  /* Semantic (align with design: success #10B981, warning #F59E0B, error #EF4444, info #3B82F6) */
   --color-success-light: #d1fae5;
   --color-success-main: #10b981;
   --color-success-dark: #047857;
@@ -55,7 +55,7 @@
   --color-info-main: #3b82f6;
   --color-info-dark: #1d4ed8;
 
-  /* Work order status */
+  /* Work order status accent (reference / charts; UI pills use Tailwind in workOrderDisplay.ts) */
   --status-created: #94a3b8;
   --status-assigned: #3b82f6;
   --status-in-progress: #f59e0b;
@@ -65,7 +65,7 @@
   --status-cancelled: #ef4444;
   --status-rejected: #dc2626;
 
-  /* Urgency */
+  /* Urgency accent (borders/fills use workOrderDisplay urgencyBadgeClass) */
   --urgency-normal: #10b981;
   --urgency-urgent: #f59e0b;
   --urgency-emergency: #ef4444;

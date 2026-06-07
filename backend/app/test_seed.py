@@ -9,6 +9,7 @@ from app.models import (
     WorkOrderStatus, Urgency, WorkOrderSource
 )
 from app.core.security import hash_password
+from app.standard_inspection_report_schema import STANDARD_INSPECTION_SCHEMA
 
 def seed_data():
     db = SessionLocal()
@@ -29,7 +30,17 @@ def seed_data():
         db.add(client)
         db.flush()
         
-        site = Site(tenant_id=t_id, client_id=client.id, name="Main Corporate HQ", timezone="Asia/Riyadh")
+        site = Site(
+            tenant_id=t_id,
+            client_id=client.id,
+            name="Main Corporate HQ",
+            timezone="Asia/Riyadh",
+            address_json={
+                "address": "456 Business Park Avenue",
+                "city": "Jeddah",
+                "country": "Saudi Arabia"
+            }
+        )
         db.add(site)
         db.flush()
         print(f"Created Client {client.legal_name} and Site {site.name}")
@@ -45,27 +56,26 @@ def seed_data():
             tenant_id=t_id,
             name="Standard Inspection",
             code="STD-INSP",
-            schema_json={"sections": [{"id": "s1", "fields": [{"id": "f1", "type": "checklist", "label": "Clean?", "options": ["Yes", "No"]}]}]}
+            schema_json=STANDARD_INSPECTION_SCHEMA,
         )
         db.add(tmpl)
         db.flush()
 
-        # 5. Create Test Users
-        pwd = hash_password("password123")
+        # 5. Create Test Users (passwords match LoginPage + app.seed docs)
         users_data = [
-            {"email": "super@demo.com", "role": UserRole.super_admin, "is_platform": True},
-            {"email": "admin@demo.com", "role": UserRole.company_admin, "is_platform": False},
-            {"email": "client@demo.com", "role": UserRole.client_admin, "is_platform": False, "client_id": client.id},
-            {"email": "site@demo.com", "role": UserRole.site_manager, "is_platform": False},
-            {"email": "tech@demo.com", "role": UserRole.technician, "is_platform": False},
-            {"email": "manager@demo.com", "role": UserRole.manager, "is_platform": False},
+            {"email": "super@demo.com", "password": "super123", "role": UserRole.super_admin, "is_platform": True},
+            {"email": "admin@demo.com", "password": "admin123", "role": UserRole.company_admin, "is_platform": False},
+            {"email": "client@demo.com", "password": "client123", "role": UserRole.client_admin, "is_platform": False, "client_id": client.id},
+            {"email": "site@demo.com", "password": "site123", "role": UserRole.site_manager, "is_platform": False},
+            {"email": "tech@demo.com", "password": "tech123", "role": UserRole.technician, "is_platform": False},
+            {"email": "manager@demo.com", "password": "manager123", "role": UserRole.manager, "is_platform": False},
         ]
 
         for u_data in users_data:
             user = User(
                 tenant_id=t_id,
                 email=u_data["email"],
-                password_hash=pwd,
+                password_hash=hash_password(u_data["password"]),
                 role=u_data["role"],
                 is_platform_admin=u_data.get("is_platform", False),
                 client_id=u_data.get("client_id"),
@@ -102,13 +112,8 @@ def seed_data():
 
         db.commit()
         print("\\n--- TEST USERS READY ---")
-        print("Password for all: password123")
-        print("1. Super Admin:  super@demo.com")
-        print("2. Company Admin: admin@demo.com")
-        print("3. Client Admin:  client@demo.com")
-        print("4. Site Manager:  site@demo.com")
-        print("5. Technician:    tech@demo.com")
-        print("6. Manager:       manager@demo.com")
+        for u in users_data:
+            print(f"  {u['email']} / {u['password']} ({u['role'].value})")
         print("------------------------")
 
     except Exception as e:

@@ -100,6 +100,7 @@ def report_pdf(
         tenant_name=tenant.name if tenant else "",
         work_order_title=wo.title if wo else str(wo.id),
         answers=r.answers_json or {},
+        template_schema=dict(r.template_snapshot_json or {}),
     )
     return Response(
         content=pdf_bytes,
