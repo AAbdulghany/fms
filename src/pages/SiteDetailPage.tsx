@@ -3,9 +3,45 @@ import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 import { urgencyBadgeClass, workOrderStatusPillClass } from "../lib/workOrderDisplay";
-import type { Site, Asset, WorkOrder, PaginatedWorkOrders } from "../lib/types";
+import type { Site, Asset, AssetLifecycleStatus, WorkOrder, PaginatedWorkOrders } from "../lib/types";
 import { EmptyState } from "../components/EmptyState";
 import { AssetLifecycleBadge } from "../components/AssetLifecycleBadge";
+import { AssetRegisterModal } from "../components/AssetRegisterModal";
+
+type AssetOutApi = {
+  id: string;
+  site_id: string;
+  name: string;
+  category: string;
+  lifecycle_status: AssetLifecycleStatus;
+  current_repair_count: number;
+  max_age_years?: number | null;
+  installed_on?: string | null;
+};
+
+function mapToDisplayAsset(a: AssetOutApi): Asset {
+  let ageYears = 0;
+  if (a.installed_on) {
+    const d = new Date(a.installed_on);
+    ageYears = Math.max(0, (Date.now() - d.getTime()) / (365.25 * 24 * 3600 * 1000));
+  }
+  return {
+    id: a.id,
+    asset_id: a.name || `${a.id.slice(0, 8)}…`,
+    site_id: a.site_id,
+    company_id: "",
+    type: a.name || a.category,
+    category: a.category,
+    lifecycle_status: a.lifecycle_status,
+    age_years: ageYears,
+    repair_count: a.current_repair_count,
+    installation_date: a.installed_on ?? "",
+    expected_lifespan_years: a.max_age_years ?? 5,
+    lifespan_percentage: a.max_age_years && a.installed_on
+      ? Math.min(100, Math.round((ageYears / a.max_age_years) * 100))
+      : 50,
+  };
+}
 
 export default function SiteDetailPage() {
   const { t } = useTranslation();
@@ -16,16 +52,38 @@ export default function SiteDetailPage() {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"assets" | "work-orders" | "locations" | "schedule">("assets");
+  const [registerOpen, setRegisterOpen] = useState(false);
 
   useEffect(() => {
     void (async () => {
       try {
-        const siteData = await apiFetch<Site>(`/sites/${id}`);
-        setSite(siteData);
+        type SiteApi = {
+          id: string;
+          client_id: string;
+          name: string;
+          timezone: string;
+          status: "active" | "inactive";
+          address?: string;
+          city?: string;
+          country?: string;
+          company_name?: string;
+        };
+        const siteData = await apiFetch<SiteApi>(`/sites/${id}`);
+        setSite({
+          id: siteData.id,
+          company_id: siteData.client_id,
+          name: siteData.name,
+          timezone: siteData.timezone,
+          status: siteData.status,
+          address: siteData.address ?? "",
+          city: siteData.city ?? "",
+          country: siteData.country ?? "",
+          company_name: siteData.company_name,
+        });
 
         // Fetch assets for this site
-        const assetsData = await apiFetch<Asset[]>(`/sites/${id}/assets`);
-        setAssets(assetsData);
+        const assetsData = await apiFetch<AssetOutApi[]>(`/sites/${id}/assets`);
+        setAssets(assetsData.map(mapToDisplayAsset));
 
         // Fetch work orders for this site
         const woData = await apiFetch<PaginatedWorkOrders>(`/work-orders?site_id=${id}&page_size=50`);
@@ -98,13 +156,13 @@ export default function SiteDetailPage() {
           <div className="flex gap-2">
             <button
               className="rounded-lg border border-neutral-300 bg-neutral-0 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
-              onClick={() => alert("Edit site - to be implemented")}
+              onClick={() => { /* edit site – future implementation */ }}
             >
               {t("edit")}
             </button>
             <button
               className="rounded-lg border border-neutral-300 bg-neutral-0 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
-              onClick={() => alert("QR Code - to be implemented")}
+              onClick={() => { /* QR code – future implementation */ }}
             >
               {t("qr_code")}
             </button>
@@ -176,7 +234,7 @@ export default function SiteDetailPage() {
           <div className="flex items-center justify-end">
             <button
               className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
-              onClick={() => alert("Register asset - to be implemented")}
+              onClick={() => setRegisterOpen(true)}
             >
               + {t("register_asset")}
             </button>
@@ -199,7 +257,7 @@ export default function SiteDetailPage() {
               description="Register your first asset to start tracking maintenance."
               action={{
                 label: `+ ${t("register_asset")}`,
-                onClick: () => alert("Register asset - to be implemented"),
+                onClick: () => setRegisterOpen(true),
               }}
             />
           ) : (
@@ -261,7 +319,7 @@ export default function SiteDetailPage() {
           <div className="flex items-center justify-end">
             <button
               className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
-              onClick={() => navigate("/work-orders", { state: { prefillClientId: site.client_id, prefillSiteId: site.id } })}
+              onClick={() => navigate("/work-orders", { state: { prefillClientId: site.company_id, prefillSiteId: site.id } })}
             >
               + {t("create_work_order")}
             </button>
@@ -331,6 +389,20 @@ export default function SiteDetailPage() {
         <div className="rounded-lg border border-neutral-200 bg-neutral-0 p-8 text-center shadow-sm">
           <p className="text-neutral-600">Locations tab - to be implemented (hierarchical tree view)</p>
         </div>
+      )}
+
+      {site && (
+        <AssetRegisterModal
+          open={registerOpen}
+          onClose={() => setRegisterOpen(false)}
+          onCreated={() => {
+            void (async () => {
+              const assetsData = await apiFetch<AssetOutApi[]>(`/sites/${id}/assets`);
+              setAssets(assetsData.map(mapToDisplayAsset));
+            })();
+          }}
+          initialSiteId={site.id}
+        />
       )}
     </div>
   );

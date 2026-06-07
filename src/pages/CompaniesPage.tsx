@@ -79,7 +79,7 @@ export default function CompaniesPage() {
           className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
           onClick={() => setCreateOpen(true)}
         >
-          + {t("create_company")}
+          + {t("add_company")}
         </button>
       </div>
 
@@ -114,7 +114,7 @@ export default function CompaniesPage() {
           title={t("no_companies")}
           description="Add your first client company to start managing their sites and work orders."
           action={{
-            label: `+ ${t("create_company")}`,
+            label: `+ ${t("add_company")}`,
             onClick: () => setCreateOpen(true),
           }}
         />

@@ -16,6 +16,8 @@ export interface User {
 }
 
 export type WorkOrderStatus =
+  | "requested"
+  | "declined"
   | "created"
   | "assigned"
   | "in_progress"

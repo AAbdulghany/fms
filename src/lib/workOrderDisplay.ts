@@ -8,6 +8,10 @@ export const workOrderStatusPillBase =
 export function workOrderStatusPillClass(status: string): string {
   const s = status as WorkOrderStatus;
   switch (s) {
+    case "requested":
+      return `${workOrderStatusPillBase} bg-orange-100 text-orange-900`;
+    case "declined":
+      return `${workOrderStatusPillBase} bg-red-50 text-red-700 line-through`;
     case "created":
       return `${workOrderStatusPillBase} bg-slate-200 text-slate-800`;
     case "assigned":

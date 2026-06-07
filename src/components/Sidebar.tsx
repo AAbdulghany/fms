@@ -170,6 +170,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
           {user && (
             <div className="border-t border-neutral-200 px-4 py-3">
+              <Link
+                to="/profile"
+                onClick={onClose}
+                className="mb-2 block truncate text-sm font-medium text-primary-600 hover:underline"
+              >
+                {t("profile")}
+              </Link>
               <div className="text-xs text-neutral-500">{t("logged_in_as")}</div>
               <div className="mt-1 truncate text-sm font-medium text-neutral-900">
                 {user.full_name}

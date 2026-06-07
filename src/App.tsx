@@ -15,6 +15,7 @@ import AssetDetailPage from "./pages/AssetDetailPage";
 import UsersPage from "./pages/UsersPage";
 import LaborPage from "./pages/LaborPage";
 import LocationsPage from "./pages/LocationsPage";
+import { ProfilePage } from "./pages/ProfilePage";
 
 export default function App() {
   return (
@@ -163,6 +164,17 @@ export default function App() {
             <ProtectedRoute allowedRoles={["super_admin", "company_admin", "client_admin"]}>
               <Layout>
                 <LocationsPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <ProfilePage />
               </Layout>
             </ProtectedRoute>
           }

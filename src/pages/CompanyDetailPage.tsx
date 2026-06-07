@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { apiFetch } from "../lib/api";
-import type { Company, Site } from "../lib/types";
+import type { Company, Site, WorkOrder, PaginatedWorkOrders, Invoice } from "../lib/types";
+import { urgencyBadgeClass, workOrderStatusPillClass } from "../lib/workOrderDisplay";
+import { formatMoneyAmount } from "../lib/formatCurrency";
 import { EmptyState } from "../components/EmptyState";
 import { CompanyEditModal } from "../components/CompanyEditModal";
 import { SiteProvisionModal } from "../components/SiteProvisionModal";
@@ -28,6 +30,12 @@ export default function CompanyDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [addSiteOpen, setAddSiteOpen] = useState(false);
   const [siteCreds, setSiteCreds] = useState<{ username: string; email: string; initialPassword: string } | null>(null);
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+  const [woTotal, setWoTotal] = useState(0);
+  const [woPage, setWoPage] = useState(1);
+  const [woLoading, setWoLoading] = useState(false);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invLoading, setInvLoading] = useState(false);
 
   const load = useCallback(() => {
     if (!id) return;
@@ -76,6 +84,50 @@ export default function CompanyDetailPage() {
     setLoading(true);
     load();
   }, [load]);
+
+  const loadWorkOrders = useCallback((page: number) => {
+    if (!id) return;
+    setWoLoading(true);
+    void (async () => {
+      try {
+        const res = await apiFetch<PaginatedWorkOrders>(
+          `/work-orders?client_id=${id}&page=${page}&page_size=20`
+        );
+        setWorkOrders(res.data);
+        setWoTotal(res.meta.total);
+        setWoPage(page);
+      } catch (e) {
+        console.error("Failed to fetch work orders", e);
+      } finally {
+        setWoLoading(false);
+      }
+    })();
+  }, [id]);
+
+  const loadInvoices = useCallback(() => {
+    if (!id) return;
+    setInvLoading(true);
+    void (async () => {
+      try {
+        const res = await apiFetch<Invoice[]>(`/invoices?client_id=${id}`);
+        setInvoices(res);
+      } catch (e) {
+        console.error("Failed to fetch invoices", e);
+      } finally {
+        setInvLoading(false);
+      }
+    })();
+  }, [id]);
+
+  useEffect(() => {
+    if (activeTab === "work-orders" && workOrders.length === 0 && !woLoading) {
+      loadWorkOrders(1);
+    }
+    if (activeTab === "invoices" && invoices.length === 0 && !invLoading) {
+      loadInvoices();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   async function confirmArchive() {
     if (!id || !company) return;
@@ -342,14 +394,137 @@ export default function CompanyDetailPage() {
       )}
 
       {activeTab === "work-orders" && (
-        <div className="rounded-lg border border-neutral-200 bg-neutral-0 p-8 text-center shadow-sm">
-          <p className="text-neutral-600">Work Orders tab - to be implemented</p>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-neutral-600">
+              {woTotal} {t("work_orders")}
+            </p>
+            <button
+              type="button"
+              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
+              onClick={() => navigate("/work-orders", { state: { prefillClientId: id } })}
+            >
+              + {t("create_work_order")}
+            </button>
+          </div>
+          {woLoading ? (
+            <div className="flex min-h-[200px] items-center justify-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
+            </div>
+          ) : workOrders.length === 0 ? (
+            <EmptyState
+              icon={
+                <svg className="h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              }
+              title={t("no_results")}
+              description="No work orders for this company yet."
+            />
+          ) : (
+            <>
+              <div className="overflow-hidden rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm">
+                <table className="w-full">
+                  <thead className="border-b border-neutral-200 bg-neutral-50">
+                    <tr>
+                      <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">{t("title")}</th>
+                      <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">{t("site")}</th>
+                      <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">{t("status")}</th>
+                      <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">{t("urgency")}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-200">
+                    {workOrders.map((wo) => (
+                      <tr
+                        key={wo.id}
+                        onClick={() => navigate(`/work-orders/${wo.id}`)}
+                        className="cursor-pointer transition-colors hover:bg-neutral-50"
+                      >
+                        <td className="px-6 py-4 text-sm font-medium text-primary-600">{wo.title || wo.id.slice(0, 8)}</td>
+                        <td className="px-6 py-4 text-sm text-neutral-900">{wo.site_name || "—"}</td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm">
+                          <span className={workOrderStatusPillClass(wo.status)}>{wo.status}</span>
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm">
+                          <span className={urgencyBadgeClass(wo.urgency)}>{t(wo.urgency)}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {woTotal > 20 && (
+                <div className="flex justify-center gap-2">
+                  <button
+                    disabled={woPage <= 1}
+                    onClick={() => loadWorkOrders(woPage - 1)}
+                    className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm disabled:opacity-40"
+                  >
+                    ‹ Prev
+                  </button>
+                  <span className="px-3 py-1.5 text-sm text-neutral-600">
+                    Page {woPage} / {Math.ceil(woTotal / 20)}
+                  </span>
+                  <button
+                    disabled={woPage >= Math.ceil(woTotal / 20)}
+                    onClick={() => loadWorkOrders(woPage + 1)}
+                    className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm disabled:opacity-40"
+                  >
+                    Next ›
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 
       {activeTab === "invoices" && (
-        <div className="rounded-lg border border-neutral-200 bg-neutral-0 p-8 text-center shadow-sm">
-          <p className="text-neutral-600">Invoices tab - to be implemented</p>
+        <div className="space-y-4">
+          {invLoading ? (
+            <div className="flex min-h-[200px] items-center justify-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
+            </div>
+          ) : invoices.length === 0 ? (
+            <EmptyState
+              icon={
+                <svg className="h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              }
+              title={t("no_results")}
+              description="No invoices for this company yet."
+            />
+          ) : (
+            <div className="overflow-hidden rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm">
+              <table className="w-full">
+                <thead className="border-b border-neutral-200 bg-neutral-50">
+                  <tr>
+                    <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">#</th>
+                    <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">{t("status")}</th>
+                    <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-200">
+                  {invoices.map((inv) => (
+                    <tr key={inv.id} className="border-t border-neutral-200">
+                      <td className="px-6 py-4 font-mono text-sm text-primary-600">{inv.number}</td>
+                      <td className="px-6 py-4 text-sm">
+                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                          inv.status === "paid" ? "bg-success-light text-success-dark"
+                          : inv.status === "draft" ? "bg-neutral-200 text-neutral-600"
+                          : "bg-warning-light text-warning-dark"
+                        }`}>{inv.status}</span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-neutral-900">
+                        {formatMoneyAmount(inv.total_sar, inv.currency || "SAR")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -45,12 +45,13 @@ export default function AssetsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialSiteId = searchParams.get("site_id") || undefined;
+  const openOnLoad = searchParams.get("register") === "1";
 
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [lifecycleFilter, setLifecycleFilter] = useState<AssetLifecycleStatus | "all">("all");
-  const [registerOpen, setRegisterOpen] = useState(false);
+  const [registerOpen, setRegisterOpen] = useState(openOnLoad);
 
   const loadAssets = () => {
     void (async () => {

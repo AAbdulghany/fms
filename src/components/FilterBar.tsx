@@ -84,8 +84,28 @@ export function FilterBar({
   });
 
   useEffect(() => {
-    const params = filtersToSearchParams(filters);
-    setSearchParams(params, { replace: true });
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        const managedKeys = [
+          "search",
+          "status",
+          "urgency",
+          "date_from",
+          "date_to",
+          "client_id",
+          "site_id",
+          "assignee_user_id",
+          "category",
+        ];
+        for (const key of managedKeys) next.delete(key);
+        filtersToSearchParams(filters).forEach((value, key) => {
+          if (value) next.set(key, value);
+        });
+        return next;
+      },
+      { replace: true }
+    );
     onFilterChange?.(filters);
   }, [filters, onFilterChange, setSearchParams]);
 

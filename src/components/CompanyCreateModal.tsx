@@ -13,6 +13,7 @@ export function CompanyCreateModal({ open, onClose, onCreated }: Props) {
   const { t } = useTranslation();
   const [legalName, setLegalName] = useState("");
   const [managerFullName, setManagerFullName] = useState("");
+  const [activityType, setActivityType] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [creds, setCreds] = useState<{
@@ -67,10 +68,12 @@ export function CompanyCreateModal({ open, onClose, onCreated }: Props) {
         json: {
           legal_name: legalName.trim(),
           manager_full_name: managerFullName.trim(),
+          activity_type: activityType || undefined,
         },
       });
       setLegalName("");
       setManagerFullName("");
+      setActivityType("");
       setCreds({
         companyId: res.company_id,
         companyCode: res.company_code,
@@ -110,6 +113,25 @@ export function CompanyCreateModal({ open, onClose, onCreated }: Props) {
                 value={managerFullName}
                 onChange={(e) => setManagerFullName(e.target.value)}
               />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-neutral-700">
+                {t("activity_type")} ({t("optional")})
+              </label>
+              <select
+                className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+                value={activityType}
+                onChange={(e) => setActivityType(e.target.value)}
+              >
+                <option value="">{t("select_activity_type")}</option>
+                <option value="hospital">{t("activity_hospital")}</option>
+                <option value="hotel">{t("activity_hotel")}</option>
+                <option value="office">{t("activity_office")}</option>
+                <option value="retail">{t("activity_retail")}</option>
+                <option value="industrial">{t("activity_industrial")}</option>
+                <option value="education">{t("activity_education")}</option>
+                <option value="other">{t("activity_other")}</option>
+              </select>
             </div>
             {error && <p className="text-sm text-error-main">{error}</p>}
             <div className="flex justify-end gap-2 pt-2">

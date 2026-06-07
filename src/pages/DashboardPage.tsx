@@ -246,10 +246,10 @@ export function DashboardPage() {
                 onClick={() => navigate("/companies")}
                 className="rounded-lg border border-neutral-300 bg-neutral-0 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
               >
-                + {t("create_company")}
+                + {t("add_company")}
               </button>
               <button
-                onClick={() => navigate("/assets")}
+                onClick={() => navigate("/assets?register=1")}
                 className="rounded-lg border border-neutral-300 bg-neutral-0 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
               >
                 + {t("register_asset")}

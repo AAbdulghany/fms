@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { apiFetch, apiFetchBlob } from "../lib/api";
 import type { AuditLog, Comment, MaintenanceReport, ReportTemplate, WorkOrder, WorkOrderDocument, WorkOrderStatus, WorkOrderUserBrief } from "../lib/types";
 import { workOrderStatusPillClass } from "../lib/workOrderDisplay";
+import { WorkOrderRequestReviewModal } from "../components/WorkOrderRequestReviewModal";
 
 interface UserMe {
   id: string;
@@ -56,6 +57,7 @@ export function WorkOrderDetailPage() {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [assigneeSearch, setAssigneeSearch] = useState("");
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [requestReviewOpen, setRequestReviewOpen] = useState(false);
 
   const load = async () => {
     if (!id) return;
@@ -382,6 +384,9 @@ export function WorkOrderDetailPage() {
     me?.role === "super_admin" || 
     me?.role === "site_manager" ||
     me?.role === "technician"; // Technicians can change status too
+  const canReviewRequest =
+    wo.status === "requested" &&
+    (me?.role === "company_admin" || me?.role === "super_admin");
 
   const schemaForForm =
     report?.template_snapshot_json &&
@@ -414,6 +419,28 @@ export function WorkOrderDetailPage() {
           <span className="font-mono text-xs text-neutral-400">· {wo.id}</span>
         </p>
       </div>
+
+      {canReviewRequest && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3">
+          <p className="text-sm text-orange-900">{t("pending_request_banner")}</p>
+          <button
+            type="button"
+            className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+            onClick={() => setRequestReviewOpen(true)}
+          >
+            {t("review_request")}
+          </button>
+        </div>
+      )}
+
+      {requestReviewOpen && (
+        <WorkOrderRequestReviewModal
+          workOrder={wo}
+          open
+          onClose={() => setRequestReviewOpen(false)}
+          onResolved={() => void load()}
+        />
+      )}
 
       <div className="grid gap-6 rounded-lg border border-neutral-200 bg-neutral-0 p-4 md:grid-cols-2">
         <div className="min-w-0 space-y-4">
@@ -1033,11 +1060,19 @@ export function WorkOrderDetailPage() {
                     </span>
                   </div>
                   <p className="mt-1 text-sm text-neutral-700">
-                    {item.action === "create" ? "Created work order" : null}
-                    {item.action === "update" && item.after_json?.status 
-                      ? `Changed status to ${String(item.after_json.status)}` 
+                    {item.action === "create" ? t("history_created_wo") : null}
+                    {item.action === "request" ? t("history_submitted_request") : null}
+                    {item.action === "update" && item.before_json?.status && item.after_json?.status
+                      ? `${t("history_status_changed")}: ${String(item.before_json.status)} → ${String(item.after_json.status)}${
+                          item.after_json.decline_reason
+                            ? ` — ${t("decline_reason")}: ${String(item.after_json.decline_reason)}`
+                            : ""
+                        }`
                       : null}
-                    {item.action === "update" && !item.after_json?.status ? "Updated work order" : null}
+                    {item.action === "update" && item.after_json?.status && !item.before_json?.status
+                      ? `${t("history_status_changed")}: ${String(item.after_json.status)}`
+                      : null}
+                    {item.action === "update" && !item.after_json?.status ? t("history_updated_wo") : null}
                     {item.action === "assign" ? (
                       <span>
                         {(() => {

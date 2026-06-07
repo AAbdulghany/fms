@@ -14,6 +14,8 @@ export function SiteProvisionModal({ open, clientId, onClose, onProvisioned }: P
   const [name, setName] = useState("");
   const [managerName, setManagerName] = useState("");
   const [timezone, setTimezone] = useState("Asia/Riyadh");
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,10 +37,14 @@ export function SiteProvisionModal({ open, clientId, onClose, onProvisioned }: P
           name: name.trim(),
           manager_full_name: managerName.trim(),
           timezone: timezone.trim() || "Asia/Riyadh",
+          ...(city.trim() ? { city: city.trim() } : {}),
+          ...(country.trim() ? { country: country.trim() } : {}),
         },
       });
       setName("");
       setManagerName("");
+      setCity("");
+      setCountry("");
       onProvisioned({
         username: res.manager_username,
         email: res.manager_email,
@@ -83,6 +89,26 @@ export function SiteProvisionModal({ open, clientId, onClose, onProvisioned }: P
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
             />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-neutral-700">{t("city")}</label>
+              <input
+                className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="e.g. Riyadh"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-neutral-700">{t("country")}</label>
+              <input
+                className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                placeholder="e.g. Saudi Arabia"
+              />
+            </div>
           </div>
           {error && <p className="text-sm text-error-main">{error}</p>}
           <div className="flex justify-end gap-2 pt-2">
