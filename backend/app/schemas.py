@@ -30,6 +30,71 @@ class UserPublic(BaseModel):
     is_active: bool
 
 
+class UserListOut(BaseModel):
+    """Extended user representation used in list / admin views."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    tenant_id: UUID
+    client_id: Optional[UUID] = None
+    email: str
+    username: Optional[str] = None
+    full_name: str
+    role: UserRole
+    locale: str
+    status: str = "active"
+    last_login_at: Optional[datetime] = None
+
+    @classmethod
+    def from_user(cls, user: Any) -> "UserListOut":
+        return cls(
+            id=user.id,
+            tenant_id=user.tenant_id,
+            client_id=user.client_id,
+            email=user.email,
+            username=user.username,
+            full_name=user.full_name,
+            role=user.role,
+            locale=user.locale,
+            status="active" if user.is_active else "inactive",
+            last_login_at=user.last_login_at,
+        )
+
+
+class UserPatchMe(BaseModel):
+    """Payload for PATCH /users/me. Username is intentionally excluded."""
+
+    full_name: Optional[str] = Field(None, min_length=1, max_length=255)
+    password: Optional[str] = Field(None, min_length=6, max_length=128)
+
+
+class UserCreateBody(BaseModel):
+    """company_admin or super_admin creating a new user."""
+
+    email: str
+    full_name: str = Field(..., min_length=1, max_length=255)
+    role: UserRole
+    password: Optional[str] = Field(None, min_length=6, max_length=128)
+    locale: str = "ar"
+    phone: Optional[str] = None
+    client_id: Optional[UUID] = None
+
+
+class UserCreateResponse(BaseModel):
+    user: UserPublic
+    initial_password: Optional[str] = None
+
+
+class UserPatchBody(BaseModel):
+    """Payload for PATCH /users/{id}."""
+
+    full_name: Optional[str] = Field(None, min_length=1, max_length=255)
+    is_active: Optional[bool] = None
+    role: Optional[UserRole] = None
+    locale: Optional[str] = None
+
+
 class UserBrief(BaseModel):
     """Minimal user info for work order creator/assignee (Phase 3)."""
 
@@ -66,6 +131,7 @@ class TokenResponse(BaseModel):
     expires_in: int
     token_type: str = "bearer"
     user: UserPublic
+    must_change_password: bool = False
 
 
 class RefreshRequest(BaseModel):
@@ -76,6 +142,7 @@ class ClientCreate(BaseModel):
     legal_name: str
     code: str = ""
     billing_email: Optional[EmailStr] = None
+    activity_type: Optional[str] = Field(None, max_length=64)
 
 
 class ClientProvisionRequest(BaseModel):
@@ -83,6 +150,7 @@ class ClientProvisionRequest(BaseModel):
 
     legal_name: str = Field(..., min_length=1, max_length=255)
     manager_full_name: str = Field(..., min_length=1, max_length=255)
+    activity_type: Optional[str] = Field(None, max_length=64)
 
 
 class ClientProvisionResponse(BaseModel):
@@ -107,6 +175,7 @@ class ClientOut(BaseModel):
     code: str
     billing_email: Optional[str]
     status: str = "active"
+    activity_type: Optional[str] = None
 
 
 class SiteCreate(BaseModel):
@@ -135,6 +204,8 @@ class SiteProvisionRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     manager_full_name: str = Field(..., min_length=1, max_length=255)
     timezone: str = "Asia/Riyadh"
+    country: Optional[str] = Field(None, max_length=100)
+    city: Optional[str] = Field(None, max_length=100)
 
 
 class SiteProvisionResponse(BaseModel):
@@ -250,6 +321,10 @@ class WorkOrderOut(BaseModel):
 
 class AssignBody(BaseModel):
     assignee_user_id: UUID
+
+
+class DeclineRequestBody(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=2000)
 
 
 class ReportAnswersUpdate(BaseModel):

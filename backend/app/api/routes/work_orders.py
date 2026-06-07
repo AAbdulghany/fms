@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy import false, func, select
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import get_current_user, require_roles
+from app.api.deps import ensure_client_access, ensure_site_access, get_current_user, require_roles
 from app.database import get_db
 from app.models import (
     AuditLog,
@@ -29,6 +29,7 @@ from app.schemas import (
     AuditLogOut,
     CommentCreate,
     CommentOut,
+    DeclineRequestBody,
     DocumentCreate,
     DocumentOut,
     MaintenanceReportOut,
@@ -46,6 +47,7 @@ from app.services.report_validation import validate_required_fields
 from app.services.wo_notifications import (
     notify_work_order_assigned,
     notify_work_order_created,
+    notify_work_order_requested,
     notify_work_order_status_changed,
 )
 from app.services.work_order_fsm import can_transition
@@ -56,13 +58,42 @@ _create_roles = Depends(
     require_roles(
         UserRole.super_admin,
         UserRole.company_admin,
+    )
+)
+
+_request_roles = Depends(
+    require_roles(
+        UserRole.super_admin,
+        UserRole.company_admin,
         UserRole.client_admin,
         UserRole.site_manager,
     )
 )
 
+_approve_roles = Depends(
+    require_roles(
+        UserRole.super_admin,
+        UserRole.company_admin,
+    )
+)
+
 # P2-F3: Valid maintenance tags
 VALID_TAGS = {"preventive", "corrective", "protective"}
+
+_ASSIGN_ROLES = {
+    UserRole.super_admin,
+    UserRole.company_admin,
+    UserRole.site_manager,
+}
+
+_ASSIGNABLE_USER_ROLES = {
+    UserRole.site_manager,
+    UserRole.client_admin,
+    UserRole.technician,
+    UserRole.manager,
+}
+
+_WO_ADMIN_PATCH_ROLES = _ASSIGN_ROLES
 
 
 def validate_tags(tags: list[str]) -> None:
@@ -154,6 +185,29 @@ def _access_wo(db: Session, current: User, wo_id: UUID) -> WorkOrder:
         if scoped and wo.site_id not in scoped:
             raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
     return wo
+
+
+def _validate_assignee(db: Session, tenant_id: UUID, assignee_user_id: UUID) -> User:
+    """Ensure assignee exists, is active, in-tenant, and has an assignable role."""
+    assignee = db.get(User, assignee_user_id)
+    if (
+        not assignee
+        or assignee.tenant_id != tenant_id
+        or not assignee.is_active
+        or assignee.role not in _ASSIGNABLE_USER_ROLES
+    ):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_ASSIGNEE")
+    return assignee
+
+
+def _assert_patch_fields_allowed(current: User, body: WorkOrderUpdate) -> None:
+    """Technicians and client_admins may only transition status on accessible WOs."""
+    admin_fields_set = any(
+        getattr(body, field) is not None
+        for field in ("title", "description", "urgency", "template_id", "assignee_user_id", "tags")
+    )
+    if admin_fields_set and current.role not in _WO_ADMIN_PATCH_ROLES:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
 
 
 def _work_order_to_out(wo: WorkOrder) -> WorkOrderOut:
@@ -282,7 +336,23 @@ def create_work_order(
     # P2-F3: Validate tags
     if body.tags:
         validate_tags(body.tags)
-    
+
+    # SECURITY: enforce client scope before touching any data
+    ensure_client_access(current, body.client_id)
+
+    # SECURITY: enforce site scope; also verify site belongs to the stated client
+    site = ensure_site_access(db, current, body.site_id)
+    if site.client_id != body.client_id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_CLIENT_SITE")
+
+    # SECURITY: verify asset belongs to this tenant and site
+    if body.asset_id:
+        from app.models import Asset as _Asset
+
+        asset = db.get(_Asset, body.asset_id)
+        if not asset or asset.tenant_id != current.tenant_id or asset.site_id != body.site_id:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_ASSET")
+
     if body.location_id:
         from app.models import Location
 
@@ -326,6 +396,146 @@ def create_work_order(
     return _work_order_to_out(wo)
 
 
+@router.post("/request", response_model=WorkOrderOut)
+def request_work_order(
+    body: WorkOrderCreate,
+    db: Annotated[Session, Depends(get_db)],
+    current: Annotated[User, Depends(get_current_user)],
+    _: Annotated[User, _request_roles],
+    background_tasks: BackgroundTasks,
+) -> WorkOrderOut:
+    """client_admin and site_manager submit a work order request (status=requested)."""
+    if body.tags:
+        validate_tags(body.tags)
+
+    ensure_client_access(current, body.client_id)
+    site = ensure_site_access(db, current, body.site_id)
+    if site.client_id != body.client_id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_CLIENT_SITE")
+
+    if body.asset_id:
+        from app.models import Asset as _Asset
+
+        asset = db.get(_Asset, body.asset_id)
+        if not asset or asset.tenant_id != current.tenant_id or asset.site_id != body.site_id:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_ASSET")
+
+    if body.location_id:
+        from app.models import Location
+
+        loc = db.get(Location, body.location_id)
+        if not loc or loc.tenant_id != current.tenant_id or loc.site_id != body.site_id:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_LOCATION")
+
+    wo = WorkOrder(
+        tenant_id=current.tenant_id,
+        client_id=body.client_id,
+        site_id=body.site_id,
+        location_id=body.location_id,
+        asset_id=body.asset_id,
+        source=body.source,
+        category=body.category,
+        urgency=body.urgency,
+        title=body.title,
+        description=body.description,
+        template_id=body.template_id,
+        created_by_user_id=current.id,
+        status=WorkOrderStatus.requested,
+        tags=body.tags,
+    )
+    db.add(wo)
+    db.flush()
+    write_audit(
+        db,
+        tenant_id=current.tenant_id,
+        actor=current,
+        action="request",
+        entity_type="work_order",
+        entity_id=str(wo.id),
+    )
+    db.commit()
+    wo = _reload_wo_with_users(db, wo.id)
+    background_tasks.add_task(notify_work_order_requested, wo.id)
+    return _work_order_to_out(wo)
+
+
+@router.post("/{work_order_id}/approve-request", response_model=WorkOrderOut)
+def approve_work_order_request(
+    work_order_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current: Annotated[User, Depends(get_current_user)],
+    _: Annotated[User, _approve_roles],
+    background_tasks: BackgroundTasks,
+) -> WorkOrderOut:
+    """super_admin / company_admin approves a requested work order → status=created."""
+    wo = db.get(WorkOrder, work_order_id)
+    if not wo or wo.tenant_id != current.tenant_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="NOT_FOUND")
+    if wo.status != WorkOrderStatus.requested:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="NOT_IN_REQUESTED_STATUS")
+
+    wo.status = WorkOrderStatus.created
+    write_audit(
+        db,
+        tenant_id=current.tenant_id,
+        actor=current,
+        action="update",
+        entity_type="work_order",
+        entity_id=str(wo.id),
+        before={"status": "requested"},
+        after={"status": "created"},
+    )
+    db.commit()
+    wo = _reload_wo_with_users(db, wo.id)
+    if wo.created_by_user_id:
+        background_tasks.add_task(
+            notify_work_order_status_changed,
+            wo.id,
+            "requested",
+            "created",
+        )
+    return _work_order_to_out(wo)
+
+
+@router.post("/{work_order_id}/decline-request", response_model=WorkOrderOut)
+def decline_work_order_request(
+    work_order_id: UUID,
+    body: DeclineRequestBody,
+    db: Annotated[Session, Depends(get_db)],
+    current: Annotated[User, Depends(get_current_user)],
+    _: Annotated[User, _approve_roles],
+    background_tasks: BackgroundTasks,
+) -> WorkOrderOut:
+    """super_admin / company_admin declines a requested work order → status=declined."""
+    wo = db.get(WorkOrder, work_order_id)
+    if not wo or wo.tenant_id != current.tenant_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="NOT_FOUND")
+    if wo.status != WorkOrderStatus.requested:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="NOT_IN_REQUESTED_STATUS")
+
+    wo.status = WorkOrderStatus.declined
+    write_audit(
+        db,
+        tenant_id=current.tenant_id,
+        actor=current,
+        action="update",
+        entity_type="work_order",
+        entity_id=str(wo.id),
+        before={"status": "requested"},
+        after={"status": "declined", "decline_reason": body.reason.strip()},
+    )
+    db.commit()
+    wo = _reload_wo_with_users(db, wo.id)
+    if wo.created_by_user_id:
+        background_tasks.add_task(
+            notify_work_order_status_changed,
+            wo.id,
+            "requested",
+            "declined",
+        )
+    return _work_order_to_out(wo)
+
+
 @router.get("/{work_order_id}", response_model=WorkOrderOut)
 def get_work_order(
     work_order_id: UUID,
@@ -359,6 +569,7 @@ def patch_work_order(
     background_tasks: BackgroundTasks,
 ) -> WorkOrderOut:
     wo = _access_wo(db, current, work_order_id)
+    _assert_patch_fields_allowed(current, body)
     old_status_value: str | None = None
     if body.status is not None:
         if not can_transition(wo.status, body.status):
@@ -383,6 +594,9 @@ def patch_work_order(
     if body.template_id is not None:
         wo.template_id = body.template_id
     if body.assignee_user_id is not None:
+        if current.role not in _ASSIGN_ROLES:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
+        _validate_assignee(db, current.tenant_id, body.assignee_user_id)
         wo.assignee_user_id = body.assignee_user_id
     if body.tags is not None:
         # P2-F3: Validate and update tags
@@ -459,6 +673,7 @@ def assign_work_order(
     wo = _access_wo(db, current, work_order_id)
     old_assignee_id = wo.assignee_user_id
     old_status = wo.status
+    _validate_assignee(db, current.tenant_id, body.assignee_user_id)
     wo.assignee_user_id = body.assignee_user_id
     if wo.status == WorkOrderStatus.created:
         if not can_transition(wo.status, WorkOrderStatus.assigned):

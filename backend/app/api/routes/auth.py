@@ -32,6 +32,10 @@ def _authenticate_user_by_identifier(db: Session, ident: str, password: str) -> 
     return matching[0]
 
 
+def _must_change_password(user: User) -> bool:
+    return bool((user.metadata_json or {}).get("must_change_password"))
+
+
 @router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
     ident = _resolve_login_identifier(body)
@@ -54,6 +58,7 @@ def login(body: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
         refresh_token=create_refresh_token(user_id=user.id, tenant_id=user.tenant_id),
         expires_in=s.access_token_expire_minutes * 60,
         user=UserPublic.model_validate(user),
+        must_change_password=_must_change_password(user),
     )
 
 
@@ -78,6 +83,7 @@ def refresh_token(body: RefreshRequest, db: Session = Depends(get_db)) -> TokenR
         refresh_token=create_refresh_token(user_id=user.id, tenant_id=user.tenant_id),
         expires_in=s.access_token_expire_minutes * 60,
         user=UserPublic.model_validate(user),
+        must_change_password=_must_change_password(user),
     )
 
 

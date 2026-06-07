@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_roles
+from app.api.deps import ensure_site_access, get_current_user, require_roles
 from app.database import get_db
 from app.models import Asset, Site, User, UserRole, UserSiteScope
 from app.schemas import AssetCreate, AssetOut
@@ -15,6 +15,21 @@ from app.services.audit import write_audit
 router = APIRouter(prefix="/assets", tags=["assets"])
 
 _write = Depends(require_roles(UserRole.super_admin, UserRole.company_admin, UserRole.site_manager))
+
+
+def _access_asset(db: Session, current: User, asset_id: UUID) -> Asset:
+    asset = db.get(Asset, asset_id)
+    if not asset or asset.tenant_id != current.tenant_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="NOT_FOUND")
+    if current.role == UserRole.site_manager:
+        scoped = db.scalars(select(UserSiteScope.site_id).where(UserSiteScope.user_id == current.id)).all()
+        if scoped and asset.site_id not in scoped:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
+    if current.role == UserRole.client_admin and current.client_id:
+        site = db.get(Site, asset.site_id)
+        if not site or site.client_id != current.client_id:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
+    return asset
 
 
 @router.get("", response_model=list[AssetOut])
@@ -59,9 +74,9 @@ def create_asset(
     current: Annotated[User, Depends(get_current_user)],
     _: Annotated[User, _write],
 ) -> Asset:
-    site = db.get(Site, body.site_id)
-    if not site or site.tenant_id != current.tenant_id:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_SITE")
+    # SECURITY: enforce tenant + client/site scope (replaces bare tenant check).
+    # 404 → site missing or wrong tenant; 403 → role scope violation.
+    ensure_site_access(db, current, body.site_id)
     if body.location_id:
         from app.models import Location
 
@@ -98,6 +113,15 @@ def create_asset(
     return a
 
 
+@router.get("/{asset_id}", response_model=AssetOut)
+def get_asset(
+    asset_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current: Annotated[User, Depends(get_current_user)],
+) -> Asset:
+    return _access_asset(db, current, asset_id)
+
+
 @router.get("/{asset_id}/lifecycle")
 def get_asset_lifecycle(
     asset_id: UUID,
@@ -105,20 +129,7 @@ def get_asset_lifecycle(
     current: Annotated[User, Depends(get_current_user)],
 ) -> dict:
     """Get asset lifecycle timeline and status (P2-F2)."""
-    asset = db.get(Asset, asset_id)
-    if not asset or asset.tenant_id != current.tenant_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="NOT_FOUND")
-    
-    # Role-based access check
-    if current.role == UserRole.site_manager:
-        scoped = db.scalars(select(UserSiteScope.site_id).where(UserSiteScope.user_id == current.id)).all()
-        if scoped and asset.site_id not in scoped:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
-    
-    if current.role == UserRole.client_admin and current.client_id:
-        site = db.get(Site, asset.site_id)
-        if not site or site.client_id != current.client_id:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
+    asset = _access_asset(db, current, asset_id)
     
     try:
         timeline = get_lifecycle_timeline(db, asset_id)
@@ -138,6 +149,9 @@ def reset_lifecycle(
     asset = db.get(Asset, asset_id)
     if not asset or asset.tenant_id != current.tenant_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="NOT_FOUND")
+
+    # SECURITY: enforce site scope (mirrors get_asset_lifecycle pattern)
+    ensure_site_access(db, current, asset.site_id)
     
     try:
         reset_asset = reset_asset_lifecycle(db, asset_id)

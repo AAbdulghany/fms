@@ -40,6 +40,8 @@ class UserRole(str, enum.Enum):
 
 
 class WorkOrderStatus(str, enum.Enum):
+    requested = "requested"
+    declined = "declined"
     created = "created"
     assigned = "assigned"
     in_progress = "in_progress"
@@ -144,6 +146,7 @@ class Client(Base):
     code: Mapped[str] = mapped_column(String(64), default="")
     status: Mapped[str] = mapped_column(String(32), default="active")
     billing_email: Mapped[Optional[str]] = mapped_column(String(320))
+    activity_type: Mapped[Optional[str]] = mapped_column(String(64))
     metadata_json: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 

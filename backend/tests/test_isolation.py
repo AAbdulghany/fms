@@ -402,7 +402,8 @@ def test_users_cannot_create_in_other_tenant(
         role=UserRole.company_admin
     )
     
-    new_user = create_user(user_in, db_session, user_tenant_a, user_tenant_a)
+    result = create_user(user_in, db_session, user_tenant_a, user_tenant_a)
+    new_user = result.user
     
     # Should be created in Tenant A (current user's tenant)
     assert new_user.tenant_id == user_tenant_a.tenant_id

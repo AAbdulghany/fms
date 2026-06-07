@@ -342,7 +342,8 @@ def test_super_admin_can_create_users(db_session, super_admin_user):
         role=UserRole.company_admin
     )
     
-    new_user = create_user(user_in, db_session, super_admin_user, super_admin_user)
+    result = create_user(user_in, db_session, super_admin_user, super_admin_user)
+    new_user = result.user
     assert new_user.email == "newuser@test.com"
     assert new_user.role == UserRole.company_admin
     assert new_user.tenant_id == super_admin_user.tenant_id
@@ -562,15 +563,16 @@ def test_client_admin_cannot_access_other_client_work_order(
 
 
 def test_client_admin_cannot_create_work_orders(db_session, client_admin_user, client_a, site_a):
-    """client_admin cannot create work orders (not in allowed roles)."""
-    from app.api.routes.work_orders import create_work_order
+    """client_admin cannot use the direct create endpoint (super_admin/company_admin only)."""
     from app.api.deps import require_roles
     from app.models import UserRole
-    
-    dep = require_roles(UserRole.super_admin, UserRole.company_admin, UserRole.client_admin, UserRole.site_manager)
-    
-    # This should pass for client_admin since they're in the list
-    dep(client_admin_user)
+
+    dep = require_roles(UserRole.super_admin, UserRole.company_admin)
+
+    with pytest.raises(HTTPException) as exc_info:
+        dep(client_admin_user)
+
+    assert exc_info.value.status_code == 403
 
 
 def test_client_admin_sees_only_their_client_invoices(
@@ -666,24 +668,38 @@ def test_site_manager_cannot_access_other_site_work_order(
     assert exc_info.value.status_code == 403
 
 
-def test_site_manager_can_create_work_orders(db_session, site_manager_user, client_a, site_a):
-    """site_manager can create work orders for their sites."""
+def test_site_manager_can_request_work_orders(db_session, site_manager_user, client_a, site_a):
+    """site_manager can submit work order requests (request endpoint) for their sites."""
     from fastapi import BackgroundTasks
 
-    from app.api.routes.work_orders import create_work_order
+    from app.api.routes.work_orders import request_work_order
     from app.schemas import WorkOrderCreate
     from app.models import WorkOrderSource, Urgency
-    
+
     wo_in = WorkOrderCreate(
         client_id=client_a.id,
         site_id=site_a.id,
-        title="Site Manager WO",
+        title="Site Manager WO Request",
         source=WorkOrderSource.corrective,
-        urgency=Urgency.normal
+        urgency=Urgency.normal,
     )
-    
-    wo = create_work_order(wo_in, db_session, site_manager_user, site_manager_user, BackgroundTasks())
-    assert wo.title == "Site Manager WO"
+
+    wo = request_work_order(wo_in, db_session, site_manager_user, site_manager_user, BackgroundTasks())
+    assert wo.title == "Site Manager WO Request"
+    assert wo.status.value == "requested"
+
+
+def test_site_manager_cannot_direct_create_work_orders(db_session, site_manager_user):
+    """site_manager cannot use the direct create endpoint (super_admin/company_admin only)."""
+    from app.api.deps import require_roles
+    from app.models import UserRole
+
+    dep = require_roles(UserRole.super_admin, UserRole.company_admin)
+
+    with pytest.raises(HTTPException) as exc_info:
+        dep(site_manager_user)
+
+    assert exc_info.value.status_code == 403
 
 
 def test_site_manager_sees_only_their_sites(db_session, site_manager_user, site_a, site_b):
@@ -917,6 +933,76 @@ def test_manager_cannot_create_sites(db_session, manager_user):
     with pytest.raises(HTTPException) as exc_info:
         dep(manager_user)
     
+    assert exc_info.value.status_code == 403
+
+
+# ========== Test: IDOR / scoped-role create guards ==========
+
+
+def test_site_manager_cannot_create_work_order_on_unscoped_site(
+    db_session, site_manager_user, client_b, site_b
+):
+    """site_manager scoped to site_a is blocked from creating a WO on site_b."""
+    from fastapi import BackgroundTasks
+
+    from app.api.routes.work_orders import create_work_order
+    from app.models import Urgency, WorkOrderSource
+    from app.schemas import WorkOrderCreate
+
+    wo_in = WorkOrderCreate(
+        client_id=client_b.id,
+        site_id=site_b.id,
+        title="IDOR attempt WO",
+        source=WorkOrderSource.corrective,
+        urgency=Urgency.normal,
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        create_work_order(wo_in, db_session, site_manager_user, site_manager_user, BackgroundTasks())
+
+    assert exc_info.value.status_code == 403
+
+
+def test_client_admin_cannot_create_work_order_for_other_client(
+    db_session, client_admin_user, client_b, site_b
+):
+    """client_admin scoped to client_a is blocked from creating a WO for client_b."""
+    from fastapi import BackgroundTasks
+
+    from app.api.routes.work_orders import create_work_order
+    from app.models import Urgency, WorkOrderSource
+    from app.schemas import WorkOrderCreate
+
+    wo_in = WorkOrderCreate(
+        client_id=client_b.id,
+        site_id=site_b.id,
+        title="Cross-client IDOR attempt",
+        source=WorkOrderSource.corrective,
+        urgency=Urgency.normal,
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        create_work_order(wo_in, db_session, client_admin_user, client_admin_user, BackgroundTasks())
+
+    assert exc_info.value.status_code == 403
+
+
+def test_site_manager_cannot_create_asset_on_unscoped_site(
+    db_session, site_manager_user, site_b
+):
+    """site_manager scoped to site_a is blocked from creating an asset on site_b."""
+    from app.api.routes.assets import create_asset
+    from app.schemas import AssetCreate
+
+    asset_in = AssetCreate(
+        site_id=site_b.id,
+        name="IDOR asset attempt",
+        category="equipment",
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        create_asset(asset_in, db_session, site_manager_user, site_manager_user)
+
     assert exc_info.value.status_code == 403
 
 

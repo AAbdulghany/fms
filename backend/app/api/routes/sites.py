@@ -11,7 +11,13 @@ from app.database import get_db
 from app.models import Client, Site, User, UserRole, UserSiteScope
 from app.schemas import SiteCreate, SiteOut, SiteProvisionRequest, SiteProvisionResponse
 from app.services.audit import write_audit
-from app.services.provisioning import generate_initial_password, synthetic_email, unique_username
+from app.services.provisioning import (
+    build_manager_username,
+    company_slug,
+    ensure_unique_username,
+    generate_initial_password,
+    synthetic_email,
+)
 
 router = APIRouter(prefix="/sites", tags=["sites"])
 
@@ -104,18 +110,27 @@ def provision_site_with_manager(
     if not client or client.tenant_id != current.tenant_id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_CLIENT")
 
+    address_json: dict = {}
+    if body.country:
+        address_json["country"] = body.country
+    if body.city:
+        address_json["city"] = body.city
+
     s = Site(
         tenant_id=current.tenant_id,
         client_id=body.client_id,
         name=body.name.strip(),
         timezone=body.timezone,
-        address_json={},
+        address_json=address_json,
         status="active",
     )
     db.add(s)
     db.flush()
 
-    username = unique_username(db, current.tenant_id, "smgr")
+    slug = company_slug(client.legal_name)
+    first_name = body.manager_full_name.strip().split()[0]
+    base_username = build_manager_username(first_name, "smgr", slug)
+    username = ensure_unique_username(db, current.tenant_id, base_username)
     pwd = generate_initial_password()
     email = synthetic_email(username, current.tenant_id)
 

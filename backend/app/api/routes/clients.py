@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, require_roles
 from app.core.security import hash_password
 from app.database import get_db
-from app.models import Client, User, UserRole
+from app.models import Client, Site, User, UserRole, UserSiteScope
 from app.schemas import (
     ClientCreate,
     ClientOut,
@@ -18,10 +18,12 @@ from app.schemas import (
 )
 from app.services.audit import write_audit
 from app.services.provisioning import (
+    build_manager_username,
+    company_slug,
+    ensure_unique_username,
     generate_initial_password,
     next_client_code,
     synthetic_email,
-    unique_username,
 )
 
 router = APIRouter(prefix="/clients", tags=["clients"])
@@ -41,6 +43,18 @@ def list_clients(
         q = q.where(Client.status == "active")
     if current.role == UserRole.client_admin and current.client_id:
         q = q.where(Client.id == current.client_id)
+    if current.role == UserRole.site_manager:
+        scoped_site_ids = db.scalars(
+            select(UserSiteScope.site_id).where(UserSiteScope.user_id == current.id)
+        ).all()
+        if not scoped_site_ids:
+            return []
+        client_ids = db.scalars(
+            select(Site.client_id).where(Site.id.in_(scoped_site_ids)).distinct()
+        ).all()
+        if not client_ids:
+            return []
+        q = q.where(Client.id.in_(client_ids))
     return list(db.scalars(q).all())
 
 
@@ -57,6 +71,7 @@ def create_client(
         code=body.code,
         billing_email=body.billing_email,
         status="active",
+        activity_type=body.activity_type,
     )
     db.add(c)
     db.flush()
@@ -82,18 +97,22 @@ def provision_client_with_manager(
     _: Annotated[User, _super_admin_only],
 ) -> ClientProvisionResponse:
     """Create a company (client) and a client_admin user with generated username/password."""
-    code = next_client_code(db, current.tenant_id)
+    code = next_client_code(db, current.tenant_id, body.legal_name.strip())
+    slug = company_slug(body.legal_name.strip())
     c = Client(
         tenant_id=current.tenant_id,
         legal_name=body.legal_name.strip(),
         code=code,
         billing_email=None,
         status="active",
+        activity_type=body.activity_type,
     )
     db.add(c)
     db.flush()
 
-    username = unique_username(db, current.tenant_id, "cmgr")
+    first_name = body.manager_full_name.strip().split()[0]
+    base_username = build_manager_username(first_name, "cmgr", slug)
+    username = ensure_unique_username(db, current.tenant_id, base_username)
     pwd = generate_initial_password()
     email = synthetic_email(username, current.tenant_id)
 

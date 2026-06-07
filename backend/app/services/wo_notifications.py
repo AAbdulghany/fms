@@ -74,6 +74,35 @@ async def notify_work_order_assigned(wo_id: UUID) -> None:
         db.close()
 
 
+async def notify_work_order_requested(wo_id: UUID) -> None:
+    """Notify all active company_admin users in the tenant when a WO request is submitted."""
+    db = SessionLocal()
+    try:
+        wo = db.execute(
+            select(WorkOrder)
+            .where(WorkOrder.id == wo_id)
+            .options(joinedload(WorkOrder.creator_user))
+        ).scalar_one_or_none()
+        if not wo:
+            return
+        payload = {
+            "type": "work_order.requested",
+            "work_order_id": str(wo.id),
+            "title": wo.title or "Work order request",
+        }
+        admins = db.scalars(
+            select(User).where(
+                User.tenant_id == wo.tenant_id,
+                User.is_active.is_(True),
+                User.role.in_(["company_admin", "super_admin"]),
+            )
+        ).all()
+        for admin in admins:
+            await manager.send_to_user(admin.id, payload)
+    finally:
+        db.close()
+
+
 async def notify_work_order_status_changed(
     wo_id: UUID,
     old_status: str,
