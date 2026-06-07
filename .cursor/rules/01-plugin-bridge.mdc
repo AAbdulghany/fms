@@ -1,0 +1,13 @@
+---
+alwaysApply: true
+description: Integration bridge between .claude SDLC framework and custom local cursor rules
+globs: *
+---
+
+You are operating within a customized SDLC-as-code environment. 
+You have access to the base framework in the `.claude/` directory (including roles, skills, and hooks) and local plugins/overrides in `.cursor/rules/my-custom-skills/`.
+
+# Plugin Resolution Rules (STRICT):
+1. **Inheritance:** Whenever you are instructed to use a role or skill from the `.claude/` directory, you MUST actively check if there is a related or modifying skill in the `my-custom-skills` directory.
+2. **Override (Priority):** If a rule, standard, or workflow in `my-custom-skills` conflicts with or extends a rule in `.claude/skills/`, the rule in `my-custom-skills` acts as a plugin and ALWAYS takes precedence.
+3. **Integration:** Blend the generalized knowledge from the `.claude` directory with the specific, tailored constraints of my custom skills seamlessly. Do not mention this conflict resolution process; just execute the combined logic.
