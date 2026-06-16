@@ -1,43 +1,56 @@
-# Optional: deploy API + Postgres on Render (free tier).
-# Frontend: Vercel or Netlify — see DEMO_VERCEL_NETLIFY.md
+# Render Blueprint — FMS demo (API + Postgres + optional static frontend)
+# Docs: docs/phase3-restructure/DEMO_VERCEL_NETLIFY.md
 #
-# Usage: Render Dashboard → New → Blueprint → connect repo → select this file.
-# Or create Web Service manually from deploy/Dockerfile.api (root context).
+# Deploy: Render Dashboard → New → Blueprint → connect repo (branch demo/live)
+#
+# After first deploy, open fms-demo-api → Shell:
+#   python -m app.docker_migrate
+#
+# Frontend: use fms-demo-web below, OR deploy UI to Vercel/Netlify instead.
 
 databases:
   - name: fms-demo-db
     plan: free
     databaseName: fms_demo
     user: fms
+
 services:
-  # 1. FastAPI Backend API
+  # FastAPI backend (Docker)
   - type: web
     name: fms-demo-api
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    runtime: docker
+    plan: free
+    dockerfilePath: ./deploy/Dockerfile.api
+    dockerContext: .
+    healthCheckPath: /health
     envVars:
-      - key: APP_ENV
-        value: demo
-      - key: SEED_MODULE
-        value: pitch
       - key: DATABASE_URL
         fromDatabase:
           name: fms-demo-db
           property: connectionString
+      - key: APP_ENV
+        value: demo
+      - key: SEED_MODULE
+        value: pitch
+      - key: SECRET_KEY
+        generateValue: true
+      # Set after web service is live, e.g. https://fms-demo-web.onrender.com
+      - key: CORS_ORIGINS
+        sync: false
+      - key: PUBLIC_APP_URL
+        sync: false
 
-  # 2. React Frontend (Static Site)
-  - type: static
-    name: fms-demo-frontend
-    env: static
-    buildCommand: npm install && npm run build
-    publishPath: dist
+  # React frontend on Render CDN (optional — Vercel/Netlify also work)
+  # NOTE: type must be "web" with runtime "static" — there is NO type: static
+  - type: web
+    name: fms-demo-web
+    runtime: static
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
     routes:
-      # Rewrites frontend /api calls directly to your Render API service
       - type: rewrite
         source: /api/*
         destination: https://fms-demo-api.onrender.com/api/*
-      # Single Page Application (SPA) fallback routing
       - type: rewrite
         source: /*
         destination: /index.html

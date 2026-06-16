@@ -37,8 +37,10 @@ Sign up at [render.com](https://render.com) (GitHub login).
 1. Push repo (branch `demo/live`) to GitHub.
 2. Render Dashboard → **New** → **Blueprint**.
 3. Connect repo → Render reads root **`render.yaml`**.
-4. Review services: `fms-demo-db` + `fms-demo-api`.
+4. Review services: `fms-demo-db`, `fms-demo-api`, and optionally `fms-demo-web` (static frontend).
 5. Deploy. Wait until API status is **Live** (first start may take 5–10 min on free tier).
+
+> **Blueprint note:** Static sites use `type: web` + `runtime: static` — not `type: static`. If Blueprint validation fails, pull the latest `render.yaml` from the repo.
 
 Note your API URL: `https://fms-demo-api.onrender.com` (name may vary).
 
