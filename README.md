@@ -39,7 +39,9 @@ docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
 
 Open http://localhost:8080 — login `super@demo.com` / `super123`
 
-**Public demo on a free server:** **[docs/phase3-restructure/DEMO_LIVE_DEPLOY.md](docs/phase3-restructure/DEMO_LIVE_DEPLOY.md)** — branch `demo/live`, Oracle Cloud VM, step-by-step.
+**Public demo on a free server:** **[docs/phase3-restructure/DEMO_LIVE_DEPLOY.md](docs/phase3-restructure/DEMO_LIVE_DEPLOY.md)** — Oracle Cloud VM + Docker.
+
+**Vercel / Netlify (free `*.vercel.app` domain):** **[docs/phase3-restructure/DEMO_VERCEL_NETLIFY.md](docs/phase3-restructure/DEMO_VERCEL_NETLIFY.md)** — UI on Vercel or Netlify + API on Render.
 
 - Python 3.11+
 - Node.js 18+

@@ -1,0 +1,35 @@
+# Optional: deploy API + Postgres on Render (free tier).
+# Frontend: Vercel or Netlify — see DEMO_VERCEL_NETLIFY.md
+#
+# Usage: Render Dashboard → New → Blueprint → connect repo → select this file.
+# Or create Web Service manually from deploy/Dockerfile.api (root context).
+
+databases:
+  - name: fms-demo-db
+    plan: free
+    databaseName: fms_demo
+    user: fms
+
+services:
+  - type: web
+    name: fms-demo-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./deploy/Dockerfile.api
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fms-demo-db
+          property: connectionString
+      - key: APP_ENV
+        value: demo
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false
+      - key: PUBLIC_APP_URL
+        sync: false
+      - key: SEED_MODULE
+        value: pitch

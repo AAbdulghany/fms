@@ -7,12 +7,16 @@ The **`demo/live`** branch is the **deployable demo snapshot** — it contains t
 | Path | Purpose |
 |------|---------|
 | `docker-compose.demo.yml` | Demo DB `fms_demo`, `APP_ENV=demo`, pitch seed |
+| `render.yaml` | Render Blueprint (API + Postgres) |
+| `vercel.json` | Vercel SPA + API proxy |
+| `netlify.toml` | Netlify SPA + API proxy |
 | `deploy/demo/` | Live overlay, env template, Ubuntu setup script |
 | `backend/app/pitch_seed.py` | Pitch demo data + logins |
 | `backend/app/docker_migrate.py` | Migrate + seed entrypoint for containers |
 | `backend/.env.demo.example` | Local uvicorn → `fms_demo` |
 | `docs/phase3-restructure/DEMO_QUICKSTART.md` | Local Docker commands + logins |
-| `docs/phase3-restructure/DEMO_LIVE_DEPLOY.md` | **Public server deployment plan** |
+| `docs/phase3-restructure/DEMO_LIVE_DEPLOY.md` | VM + Docker deployment |
+| `docs/phase3-restructure/DEMO_VERCEL_NETLIFY.md` | **Vercel / Netlify + Render** |
 | `docs/phase3-restructure/DEMO_DEPLOY.md` | Demo profile reference |
 | `docs/phase3-restructure/RBAC_ROLES.md` | Role model for evaluators |
 | `.claude/skills/docker-debug/` | Compose troubleshooting |

@@ -1,0 +1,18 @@
+# FMS demo frontend — Netlify
+# Docs: docs/phase3-restructure/DEMO_VERCEL_NETLIFY.md
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Replace REPLACE_WITH_YOUR_RENDER_API after deploying the API on Render
+[[redirects]]
+  from = "/api/*"
+  to = "https://REPLACE_WITH_YOUR_RENDER_API.onrender.com/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

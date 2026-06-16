@@ -1,4 +1,7 @@
-const API_BASE = "/api/v1";
+/** API root — `/api/v1` when proxied (Docker/Vercel/Netlify rewrites); full URL when set at build time. */
+const API_BASE = (
+  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "/api/v1"
+);
 
 export function getAccessToken(): string | null {
   return localStorage.getItem("access_token");

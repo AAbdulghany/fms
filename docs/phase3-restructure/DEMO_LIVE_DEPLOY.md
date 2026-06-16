@@ -234,7 +234,7 @@ docker compose ... up -d --build
 | Empty database | `docker compose logs migrate`; re-run migrate service |
 | Platform nav missing | User must be `super_user` + `is_platform_admin`; re-seed pitch |
 
-See also: `.claude/skills/docker-debug/SKILL.md`, `.claude/skills/frontend-build/SKILL.md`
+See also: [DEMO_VERCEL_NETLIFY.md](./DEMO_VERCEL_NETLIFY.md) (Vercel/Netlify), `.claude/skills/docker-debug/SKILL.md`, `.claude/skills/frontend-build/SKILL.md`
 
 ---
 

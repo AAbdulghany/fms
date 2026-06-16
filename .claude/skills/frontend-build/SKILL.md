@@ -60,6 +60,8 @@ npm run build failed?
 | Language resets on logout | Login overwrote `app_lang` with `user.locale` | Use `applyLanguage(getStoredLanguage(), i18n)` from `src/lib/language.ts` |
 | Client dashboard "Create WO" wrong | Navigated to list instead of request modal | Dashboard → `/work-orders?open=request`; WorkOrdersPage opens modal |
 | Asset register missing client pick | Modal only had site dropdown | `AssetRegisterModal` — client select for tenant staff; locked for client/site mgr |
+| Vercel/Netlify login 404 on `/api` | Proxy URL not set in `vercel.json` / `netlify.toml` | [DEMO_VERCEL_NETLIFY.md](../../docs/phase3-restructure/DEMO_VERCEL_NETLIFY.md) |
+| Render API cold start | Free tier sleeps ~15 min | Wait 60 s on first request; or upgrade Render plan |
 
 ## UX / i18n debugging
 
