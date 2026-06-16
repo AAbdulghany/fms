@@ -39,9 +39,11 @@ docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
 
 Open http://localhost:8080 — login `super@demo.com` / `super123`
 
-**Public demo on a free server:** **[docs/phase3-restructure/DEMO_LIVE_DEPLOY.md](docs/phase3-restructure/DEMO_LIVE_DEPLOY.md)** — Oracle Cloud VM + Docker.
+**Show client the full demo:** **[docs/phase3-restructure/DEMO_CLIENT_PREVIEW.md](docs/phase3-restructure/DEMO_CLIENT_PREVIEW.md)** — tunnel (~2 min) or Render one URL.
 
-**Vercel / Netlify (free `*.vercel.app` domain):** **[docs/phase3-restructure/DEMO_VERCEL_NETLIFY.md](docs/phase3-restructure/DEMO_VERCEL_NETLIFY.md)** — UI on Vercel or Netlify + API on Render.
+**One free website:** **[docs/phase3-restructure/DEMO_RENDER_ONE_URL.md](docs/phase3-restructure/DEMO_RENDER_ONE_URL.md)**.
+
+### Prerequisites
 
 - Python 3.11+
 - Node.js 18+

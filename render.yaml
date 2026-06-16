@@ -1,12 +1,5 @@
-# Render Blueprint — FMS demo (API + Postgres + optional static frontend)
-# Docs: docs/phase3-restructure/DEMO_VERCEL_NETLIFY.md
-#
-# Deploy: Render Dashboard → New → Blueprint → connect repo (branch demo/live)
-#
-# After first deploy, open fms-demo-api → Shell:
-#   python -m app.docker_migrate
-#
-# Frontend: use fms-demo-web below, OR deploy UI to Vercel/Netlify instead.
+# FMS demo — ONE free website on Render
+# One URL: UI + API + Postgres. See DEMO_RENDER_ONE_URL.md
 
 databases:
   - name: fms-demo-db
@@ -15,12 +8,11 @@ databases:
     user: fms
 
 services:
-  # FastAPI backend (Docker)
   - type: web
-    name: fms-demo-api
+    name: fms-demo
     runtime: docker
     plan: free
-    dockerfilePath: ./deploy/Dockerfile.api
+    dockerfilePath: ./deploy/Dockerfile.demo
     dockerContext: .
     healthCheckPath: /health
     envVars:
@@ -34,23 +26,3 @@ services:
         value: pitch
       - key: SECRET_KEY
         generateValue: true
-      # Set after web service is live, e.g. https://fms-demo-web.onrender.com
-      - key: CORS_ORIGINS
-        sync: false
-      - key: PUBLIC_APP_URL
-        sync: false
-
-  # React frontend on Render CDN (optional — Vercel/Netlify also work)
-  # NOTE: type must be "web" with runtime "static" — there is NO type: static
-  - type: web
-    name: fms-demo-web
-    runtime: static
-    buildCommand: npm ci && npm run build
-    staticPublishPath: ./dist
-    routes:
-      - type: rewrite
-        source: /api/*
-        destination: https://fms-demo-api.onrender.com/api/*
-      - type: rewrite
-        source: /*
-        destination: /index.html
