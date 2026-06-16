@@ -71,10 +71,20 @@ export function DashboardPage() {
   }
 
   // Role-specific dashboard content
-  const isSuperAdmin = user.role === "super_admin" || user.role === "company_admin";
+  const isTenantStaff =
+    user.role === "super_admin" ||
+    user.role === "super_user" ||
+    user.role === "sw_dev" ||
+    user.role === "company_admin" ||
+    user.role === "company_engineer";
   const isTechnician = user.role === "technician";
   const isClientAdmin = user.role === "client_admin";
   const isSiteManager = user.role === "site_manager";
+  const canRequestWorkOrder = isClientAdmin || isSiteManager;
+
+  const openRequestWorkOrder = () => {
+    navigate("/work-orders?open=request&view=my_requests");
+  };
 
   return (
     <div className="space-y-6">
@@ -87,7 +97,7 @@ export function DashboardPage() {
       </div>
 
       {/* Stats Cards - Role-specific */}
-      {isSuperAdmin && (
+      {isTenantStaff && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatsCard
             label={t("companies")}
@@ -234,7 +244,7 @@ export function DashboardPage() {
       <div className="rounded-lg border border-neutral-200 bg-neutral-0 p-6 shadow-sm">
         <h2 className="mb-4 text-lg font-medium text-neutral-900">{t("quick_actions")}</h2>
         <div className="flex flex-wrap gap-3">
-          {isSuperAdmin && (
+          {isTenantStaff && (
             <>
               <button
                 onClick={() => navigate("/work-orders")}
@@ -268,13 +278,14 @@ export function DashboardPage() {
             </>
           )}
           
-          {isClientAdmin && (
+          {canRequestWorkOrder && (
             <>
               <button
-                onClick={() => navigate("/work-orders")}
+                type="button"
+                onClick={openRequestWorkOrder}
                 className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
               >
-                + {t("create_work_order")}
+                + {t("request_work_order")}
               </button>
               <button
                 onClick={() => navigate("/invoices")}

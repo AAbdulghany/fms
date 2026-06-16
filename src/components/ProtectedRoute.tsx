@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 import type { User, UserRole } from "../lib/types";
+import { hasAnyRole } from "../lib/roles";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -50,7 +51,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  if (allowedRoles && !hasAnyRole(user.role, allowedRoles)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-neutral-50">
         <div className="max-w-md rounded-lg bg-neutral-0 p-8 text-center shadow-lg">

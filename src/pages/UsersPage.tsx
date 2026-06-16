@@ -1,7 +1,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "../lib/api";
-import type { Employee, UserRole } from "../lib/types";
+import type { Employee, User, UserRole } from "../lib/types";
+import { creatableRolesFor } from "../lib/roles";
 import { EmptyState } from "../components/EmptyState";
 import { UserRoleBadge } from "../components/UserRoleBadge";
 
@@ -36,14 +37,17 @@ type AddUserModalProps = {
   open: boolean;
   onClose: () => void;
   onCreated: () => void;
+  actorRole: UserRole;
 };
 
-function AddUserModal({ open, onClose, onCreated }: AddUserModalProps) {
+function AddUserModal({ open, onClose, onCreated, actorRole }: AddUserModalProps) {
   const { t } = useTranslation();
+  const creatable = creatableRolesFor(actorRole);
+  const defaultRole = creatable[0] ?? "technician";
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"company_admin" | "technician">("technician");
+  const [role, setRole] = useState<UserRole>(defaultRole);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [creds, setCreds] = useState<{ email: string; username: string; initialPassword: string } | null>(null);
@@ -146,10 +150,13 @@ function AddUserModal({ open, onClose, onCreated }: AddUserModalProps) {
             <select
               className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
               value={role}
-              onChange={(e) => setRole(e.target.value as "company_admin" | "technician")}
+              onChange={(e) => setRole(e.target.value as UserRole)}
             >
-              <option value="technician">{t("role_technician")}</option>
-              <option value="company_admin">{t("role_company_admin")}</option>
+              {creatable.map((r) => (
+                <option key={r} value={r}>
+                  {t(`role_${r}`)}
+                </option>
+              ))}
             </select>
           </div>
           {error && <p className="text-sm text-error-main">{error}</p>}
@@ -173,6 +180,7 @@ function AddUserModal({ open, onClose, onCreated }: AddUserModalProps) {
 
 export default function UsersPage() {
   const { t } = useTranslation();
+  const [me, setMe] = useState<User | null>(null);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -195,6 +203,7 @@ export default function UsersPage() {
   };
 
   useEffect(() => {
+    void apiFetch<User>("/users/me").then(setMe).catch(() => setMe(null));
     loadEmployees();
   }, []);
 
@@ -258,6 +267,7 @@ export default function UsersPage() {
               <option value="all">{t("all")} {t("role")}</option>
               <option value="super_admin">{t("role_super_admin")}</option>
               <option value="company_admin">{t("role_company_admin")}</option>
+              <option value="company_engineer">{t("role_company_engineer")}</option>
               <option value="client_admin">{t("role_client_admin")}</option>
               <option value="site_manager">{t("role_site_manager")}</option>
               <option value="technician">{t("role_technician")}</option>
@@ -437,6 +447,7 @@ export default function UsersPage() {
         open={addUserOpen}
         onClose={() => setAddUserOpen(false)}
         onCreated={() => loadEmployees()}
+        actorRole={me?.role ?? "company_admin"}
       />
     </div>
   );

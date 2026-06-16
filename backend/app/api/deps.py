@@ -8,12 +8,12 @@ from sqlalchemy.orm import Session
 
 from app.core.security import decode_token
 from app.database import get_db
-from app.models import Site, User, UserRole, UserSiteScope
+from app.models import Site, Tenant, User, UserRole, UserSiteScope
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
-def get_current_user(
+def _load_user(
     db: Annotated[Session, Depends(get_db)],
     cred: Annotated[Optional[HTTPAuthorizationCredentials], Depends(bearer_scheme)],
 ) -> User:
@@ -29,11 +29,20 @@ def get_current_user(
     user = db.get(User, uid)
     if not user or not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="USER_INACTIVE")
-
-    # SECURITY FIX: Set the global tenant context for the request
     from app.database import tenant_context
     tenant_context.set(user.tenant_id)
+    return user
 
+
+def get_current_user(
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(_load_user)],
+) -> User:
+    tenant = db.get(Tenant, user.tenant_id)
+    if tenant:
+        from app.services.subscription import ensure_active_subscription
+
+        ensure_active_subscription(db, user, tenant)
     return user
 
 
@@ -41,11 +50,49 @@ def tenant_id(user: User) -> UUID:
     return user.tenant_id
 
 
+def require_platform_admin():
+    """SW company staff only (is_platform_admin)."""
+
+    def _dep(current: Annotated[User, Depends(_load_user)]) -> User:
+        if not current.is_platform_admin:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="PLATFORM_ADMIN_REQUIRED")
+        return current
+
+    return _dep
+
+
+def require_feature(feature: str):
+    """Gate route by tenant subscription feature flag."""
+
+    def _dep(
+        db: Annotated[Session, Depends(get_db)],
+        current: Annotated[User, Depends(get_current_user)],
+    ) -> User:
+        if current.is_platform_admin:
+            return current
+        tenant = db.get(Tenant, current.tenant_id)
+        if not tenant:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
+        from app.services.subscription import has_feature
+
+        if not has_feature(db, tenant, feature):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FEATURE_NOT_AVAILABLE")
+        return current
+
+    return _dep
+
+
 def require_roles(*roles: UserRole):
+    allowed = set(roles)
+    if UserRole.company_admin in allowed:
+        allowed.add(UserRole.company_engineer)
+    if UserRole.super_admin in allowed:
+        allowed.add(UserRole.super_user)
+
     def _dep(current: Annotated[User, Depends(get_current_user)]) -> User:
         if current.is_platform_admin:
             return current
-        if current.role not in roles:
+        if current.role not in allowed:
             raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
         return current
 

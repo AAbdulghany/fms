@@ -18,17 +18,23 @@ from app.api.routes import (
     reports,
     sites,
     templates,
+    tenants,
+    platform,
     users,
     work_orders,
 )
 from app.config import get_settings
-from app.database import Base, engine
+from app.database import SessionLocal, engine
 from app.schema_ensure import ensure_schema
+from app.services.platform_bootstrap import run_wave0_platform_bootstrap
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     ensure_schema(engine)
+    with SessionLocal() as db:
+        run_wave0_platform_bootstrap(db)
+        db.commit()
     yield
 
 settings = get_settings()
@@ -58,6 +64,8 @@ app.include_router(locations.router, prefix=api)
 app.include_router(labor.router, prefix=api)
 app.include_router(dashboard.router, prefix=api)
 app.include_router(notifications.router, prefix=api)
+app.include_router(tenants.router, prefix=api)
+app.include_router(platform.router, prefix=api)
 
 
 @app.get(f"{api}/server-time")

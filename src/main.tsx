@@ -4,17 +4,10 @@ import { I18nextProvider } from "react-i18next";
 
 import App from "./App";
 import i18n from "./i18n";
+import { applyLanguage, getStoredLanguage } from "./lib/language";
 import "./styles/globals.css";
 
-// Restore language preference from localStorage
-const storedLang = localStorage.getItem("app_lang");
-if (storedLang && (storedLang === "ar" || storedLang === "en")) {
-  void i18n.changeLanguage(storedLang);
-  document.documentElement.lang = storedLang;
-  document.documentElement.dir = storedLang === "ar" ? "rtl" : "ltr";
-  document.body.className =
-    storedLang === "ar" ? "fms-page font-body-ar" : "fms-page font-body-en";
-}
+applyLanguage(getStoredLanguage(), i18n);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

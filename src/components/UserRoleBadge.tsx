@@ -6,8 +6,11 @@ interface UserRoleBadgeProps {
 }
 
 const ROLE_COLORS: Record<UserRole, string> = {
+  super_user: "bg-purple-100 text-purple-700",
+  sw_dev: "bg-violet-100 text-violet-700",
   super_admin: "bg-purple-100 text-purple-700",
   company_admin: "bg-blue-100 text-blue-700",
+  company_engineer: "bg-indigo-100 text-indigo-700",
   client_admin: "bg-teal-100 text-teal-700",
   site_manager: "bg-green-100 text-green-700",
   technician: "bg-orange-100 text-orange-700",

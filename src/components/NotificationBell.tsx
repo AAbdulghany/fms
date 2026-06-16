@@ -1,12 +1,31 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useNotifications } from "../contexts/NotificationContext";
 
+function notificationHref(n: { type: string; work_order_id?: string; action?: string }): string | null {
+  if (!n.work_order_id) return null;
+  if (n.type === "work_order.requested" || n.action === "review_request") {
+    return `/work-orders?view=requests&review=${n.work_order_id}`;
+  }
+  if (n.type === "work_order.status_changed") {
+    return `/work-orders/${n.work_order_id}`;
+  }
+  return `/work-orders/${n.work_order_id}`;
+}
+
 export default function NotificationBell() {
   const { t } = useTranslation();
-  const { items, unreadCount, markRead, toast, clearToast } = useNotifications();
+  const navigate = useNavigate();
+  const { items, unreadCount, markRead, markAllRead, toast, clearToast } = useNotifications();
   const [open, setOpen] = useState(false);
+
+  function handleClick(n: (typeof items)[0]) {
+    markRead(n.id);
+    setOpen(false);
+    const href = notificationHref(n);
+    if (href) navigate(href);
+  }
 
   return (
     <>
@@ -46,38 +65,44 @@ export default function NotificationBell() {
 
         {open && (
           <div className="absolute end-0 z-50 mt-2 w-80 max-h-96 overflow-y-auto rounded-lg border border-neutral-200 bg-neutral-0 shadow-lg">
-            <div className="border-b border-neutral-200 px-4 py-2 font-semibold text-neutral-900">
-              {t("notifications")}
+            <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-2">
+              <span className="font-semibold text-neutral-900">{t("notifications")}</span>
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  className="text-xs text-primary-600 hover:underline"
+                  onClick={() => markAllRead()}
+                >
+                  {t("mark_all_read") || "Mark all read"}
+                </button>
+              )}
             </div>
             {items.length === 0 ? (
               <div className="px-4 py-8 text-center text-sm text-neutral-500">{t("no_notifications")}</div>
             ) : (
               <ul className="divide-y divide-neutral-100">
-                {items.map((n) => (
-                  <li key={n.id}>
-                    {n.work_order_id ? (
-                      <Link
-                        to={`/work-orders/${n.work_order_id}`}
-                        className={`block px-4 py-3 text-sm hover:bg-neutral-50 ${!n.read ? "bg-primary-50/50" : ""}`}
-                        onClick={() => {
-                          markRead(n.id);
-                          setOpen(false);
-                        }}
-                      >
+                {items.map((n) => {
+                  const href = notificationHref(n);
+                  const cls = `block w-full px-4 py-3 text-start text-sm hover:bg-neutral-50 ${!n.read ? "bg-primary-50/50" : ""}`;
+                  if (href) {
+                    return (
+                      <li key={n.id}>
+                        <Link to={href} className={cls} onClick={() => handleClick(n)}>
+                          {n.title}
+                          <div className="mt-1 text-xs text-neutral-500">{(n.created_at || "").slice(0, 16)}</div>
+                        </Link>
+                      </li>
+                    );
+                  }
+                  return (
+                    <li key={n.id}>
+                      <button type="button" className={cls} onClick={() => handleClick(n)}>
                         {n.title}
                         <div className="mt-1 text-xs text-neutral-500">{(n.created_at || "").slice(0, 16)}</div>
-                      </Link>
-                    ) : (
-                      <button
-                        type="button"
-                        className={`w-full px-4 py-3 text-start text-sm hover:bg-neutral-50 ${!n.read ? "bg-primary-50/50" : ""}`}
-                        onClick={() => markRead(n.id)}
-                      >
-                        {n.title}
                       </button>
-                    )}
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

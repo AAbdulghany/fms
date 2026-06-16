@@ -8,7 +8,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle, Image
 from sqlalchemy.orm import Session
 
-from app.models import Client, Invoice, Tenant, WorkOrder
+from app.models import Asset, Client, Invoice, Tenant, WorkOrder
 from app.services.arabic_utils import reshape_text
 
 
@@ -24,6 +24,7 @@ def render_invoice_pdf(
     tenant = db.get(Tenant, invoice.tenant_id)
     client = db.get(Client, invoice.client_id)
     wo = db.get(WorkOrder, invoice.work_order_id)
+    report = wo.report if wo else None
     db.refresh(invoice)
     line_items = list(invoice.line_items)
     cur = _invoice_currency_label(invoice)
@@ -40,16 +41,22 @@ def render_invoice_pdf(
     styles = getSampleStyleSheet()
     story: list[Any] = []
 
-    # Apply reshaping to all dynamic text
+    tenant_name = tenant.name if tenant else ""
     title = reshape_text(f"Invoice {invoice.number}")
     story.append(Paragraph(f"<b>{title}</b>", styles["Title"]))
+    story.append(Spacer(1, 0.3 * cm))
+    story.append(Paragraph(reshape_text(tenant_name), styles["Normal"]))
     story.append(Spacer(1, 0.5 * cm))
 
-    # Numeric amounts are always SAR from billing; invoice.currency is presentation-only until FX exists.
+    bill_to = client.legal_name if client else ""
     meta_data = [
-        [reshape_text("Tenant"), tenant.name if tenant else ""],
-        [reshape_text("Client"), client.legal_name if client else ""],
-        [reshape_text("Work order"), str(wo.id) if wo else ""],
+        [reshape_text("Bill to"), reshape_text(bill_to)],
+        [reshape_text("Billing email"), client.billing_email if client else ""],
+        [reshape_text("Invoice #"), invoice.number],
+        [reshape_text("Issue date"), str(invoice.issued_at.date() if invoice.issued_at else "")],
+        [reshape_text("Due date"), str(invoice.due_date or "")],
+        [reshape_text("Work order"), wo.title if wo else ""],
+        [reshape_text("WO ID"), str(wo.id) if wo else ""],
         [reshape_text("Status"), invoice.status.value],
         [reshape_text("Total (SAR)"), str(invoice.total_sar)],
         [reshape_text("Display currency"), cur],
@@ -105,6 +112,39 @@ def render_invoice_pdf(
         )
     )
     story.append(t)
+    if report:
+        answers = report.answers_json or {}
+        summary = str(answers.get("work_summary") or answers.get("summary") or wo.description or "")[:500]
+        if summary:
+            story.append(Spacer(1, 0.6 * cm))
+            story.append(Paragraph(f"<b>{reshape_text('Work performed')}</b>", styles["Heading3"]))
+            story.append(Paragraph(reshape_text(summary), styles["Normal"]))
+    story.append(Spacer(1, 0.8 * cm))
+    story.append(
+        Paragraph(
+            reshape_text("Payment terms: Net 30. Amounts in SAR unless noted."),
+            styles["Normal"],
+        )
+    )
+    doc.build(story)
+    return buf.getvalue()
+
+
+def render_asset_label_pdf(asset: Asset) -> bytes:
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, rightMargin=2 * cm, leftMargin=2 * cm, topMargin=2 * cm, bottomMargin=2 * cm)
+    styles = getSampleStyleSheet()
+    story: list[Any] = []
+    label = asset.label_code or str(asset.id)[:8]
+    story.append(Paragraph(f"<b>{reshape_text(label)}</b>", styles["Title"]))
+    story.append(Paragraph(reshape_text(asset.name), styles["Normal"]))
+    story.append(Spacer(1, 0.5 * cm))
+    if asset.qr_payload:
+        story.append(Paragraph(reshape_text(f"QR: {asset.qr_payload}"), styles["Normal"]))
+    active = [s for s in (asset.schedules or []) if s.is_active]
+    if active:
+        next_due = min(s.next_due_at for s in active)
+        story.append(Paragraph(reshape_text(f"Next maintenance: {next_due.date()}"), styles["Normal"]))
     doc.build(story)
     return buf.getvalue()
 

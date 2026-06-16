@@ -5,8 +5,9 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.core.security import create_access_token, create_refresh_token, decode_token, verify_password
 from app.database import get_db
-from app.models import User
+from app.models import Tenant, User
 from app.schemas import LoginRequest, RefreshRequest, TokenResponse, UserPublic
+from app.services.subscription import is_subscription_active
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -47,6 +48,9 @@ def login(body: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="INVALID_CREDENTIALS")
     if not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="USER_INACTIVE")
+    tenant = db.get(Tenant, user.tenant_id)
+    if tenant and not user.is_platform_admin and not is_subscription_active(db, tenant):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="SUBSCRIPTION_SUSPENDED")
     s = get_settings()
     return TokenResponse(
         access_token=create_access_token(
@@ -72,6 +76,9 @@ def refresh_token(body: RefreshRequest, db: Session = Depends(get_db)) -> TokenR
     user = db.get(User, UUID(payload["sub"]))
     if not user or not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="USER_INACTIVE")
+    tenant = db.get(Tenant, user.tenant_id)
+    if tenant and not user.is_platform_admin and not is_subscription_active(db, tenant):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="SUBSCRIPTION_SUSPENDED")
     s = get_settings()
     return TokenResponse(
         access_token=create_access_token(

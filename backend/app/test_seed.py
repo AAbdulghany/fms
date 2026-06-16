@@ -63,7 +63,8 @@ def seed_data():
 
         # 5. Create Test Users (passwords match LoginPage + app.seed docs)
         users_data = [
-            {"email": "super@demo.com", "password": "super123", "role": UserRole.super_admin, "is_platform": True},
+            {"email": "super@demo.com", "password": "super123", "role": UserRole.super_user, "is_platform": True},
+            {"email": "swdev@demo.com", "password": "swdev123", "role": UserRole.sw_dev, "is_platform": True},
             {"email": "admin@demo.com", "password": "admin123", "role": UserRole.company_admin, "is_platform": False},
             {"email": "client@demo.com", "password": "client123", "role": UserRole.client_admin, "is_platform": False, "client_id": client.id},
             {"email": "site@demo.com", "password": "site123", "role": UserRole.site_manager, "is_platform": False},

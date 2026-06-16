@@ -154,3 +154,19 @@ def sample_user(db_session, sample_tenant):
     db_session.commit()
     db_session.refresh(user)
     return user
+
+
+@pytest.fixture
+def api_client(db_session):
+    from fastapi.testclient import TestClient
+
+    from app.database import get_db
+    from app.main import app
+
+    def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    with TestClient(app) as client:
+        yield client
+    app.dependency_overrides.clear()

@@ -1,4 +1,4 @@
-"""Background async hooks for work order WebSocket + email (Phase 3)."""
+"""Background async hooks for work order WebSocket + email (Phase 3.1)."""
 
 from __future__ import annotations
 
@@ -10,8 +10,8 @@ from sqlalchemy.orm import joinedload, Session
 
 from app.database import SessionLocal
 from app.models import User, WorkOrder
-from app.realtime import manager
 from app.services.email import send_work_order_assigned_email, send_work_order_status_email
+from app.services.notification_service import persist_and_push
 
 
 async def notify_work_order_created(wo_id: UUID) -> None:
@@ -24,13 +24,18 @@ async def notify_work_order_created(wo_id: UUID) -> None:
         ).scalar_one_or_none()
         if not wo:
             return
-        payload = {
-            "type": "work_order.created",
-            "work_order_id": str(wo.id),
-            "title": wo.title or "Work order",
-        }
         if wo.assignee_user_id:
-            await manager.send_to_user(wo.assignee_user_id, payload)
+            await persist_and_push(
+                db,
+                tenant_id=wo.tenant_id,
+                user_id=wo.assignee_user_id,
+                type="work_order.created",
+                title=wo.title or "Work order",
+                payload={
+                    "work_order_id": str(wo.id),
+                    "action": "view_work_order",
+                },
+            )
         assignee = wo.assignee_user
         if assignee and assignee.email:
             await asyncio.to_thread(
@@ -54,12 +59,15 @@ async def notify_work_order_assigned(wo_id: UUID) -> None:
         ).scalar_one_or_none()
         if not wo or not wo.assignee_user_id:
             return
-        await manager.send_to_user(
-            wo.assignee_user_id,
-            {
-                "type": "work_order.assigned",
+        await persist_and_push(
+            db,
+            tenant_id=wo.tenant_id,
+            user_id=wo.assignee_user_id,
+            type="work_order.assigned",
+            title=wo.title or "Work order",
+            payload={
                 "work_order_id": str(wo.id),
-                "title": wo.title or "Work order",
+                "action": "view_work_order",
             },
         )
         assignee = wo.assignee_user
@@ -86,9 +94,8 @@ async def notify_work_order_requested(wo_id: UUID) -> None:
         if not wo:
             return
         payload = {
-            "type": "work_order.requested",
             "work_order_id": str(wo.id),
-            "title": wo.title or "Work order request",
+            "action": "review_request",
         }
         admins = db.scalars(
             select(User).where(
@@ -98,7 +105,16 @@ async def notify_work_order_requested(wo_id: UUID) -> None:
             )
         ).all()
         for admin in admins:
-            await manager.send_to_user(admin.id, payload)
+            await persist_and_push(
+                db,
+                tenant_id=wo.tenant_id,
+                user_id=admin.id,
+                type="work_order.requested",
+                title=wo.title or "Work order request",
+                payload=payload,
+                commit=False,
+            )
+        db.commit()
     finally:
         db.close()
 
@@ -118,9 +134,8 @@ async def notify_work_order_status_changed(
         if not wo:
             return
         payload = {
-            "type": "work_order.status_changed",
             "work_order_id": str(wo.id),
-            "title": wo.title or "Work order",
+            "action": "view_work_order",
             "old_status": old_status,
             "new_status": new_status,
         }
@@ -129,10 +144,20 @@ async def notify_work_order_status_changed(
             targets.add(wo.created_by_user_id)
         if wo.assignee_user_id:
             targets.add(wo.assignee_user_id)
+        title = wo.title or "Work order"
         for uid in targets:
-            await manager.send_to_user(uid, payload)
+            await persist_and_push(
+                db,
+                tenant_id=wo.tenant_id,
+                user_id=uid,
+                type="work_order.status_changed",
+                title=f"{title}: {old_status} → {new_status}",
+                payload=payload,
+                commit=False,
+            )
 
-        # Email both parties if different users with emails
+        db.commit()
+
         for uid in targets:
             user = db.get(User, uid)
             if user and user.email:

@@ -8,13 +8,14 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { getAccessToken } from "../lib/api";
+import { apiFetch, getAccessToken } from "../lib/api";
 
 export type NotificationItem = {
   id: string;
   type: string;
   title: string;
   work_order_id?: string;
+  action?: string;
   created_at: string;
   read: boolean;
 };
@@ -24,7 +25,9 @@ type Ctx = {
   unreadCount: number;
   toast: string | null;
   markRead: (id: string) => void;
+  markAllRead: () => void;
   clearToast: () => void;
+  refresh: () => void;
 };
 
 const NotificationContext = createContext<Ctx | null>(null);
@@ -34,13 +37,58 @@ function pushToast(setter: (s: string | null) => void, msg: string) {
   window.setTimeout(() => setter(null), 4000);
 }
 
+type ApiNotification = {
+  id: string;
+  type: string;
+  title: string;
+  work_order_id?: string | null;
+  action?: string | null;
+  created_at: string;
+  read: boolean;
+};
+
+function mapItem(n: ApiNotification): NotificationItem {
+  return {
+    id: n.id,
+    type: n.type,
+    title: n.title,
+    work_order_id: n.work_order_id ?? undefined,
+    action: n.action ?? undefined,
+    created_at: n.created_at,
+    read: n.read,
+  };
+}
+
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const seenIds = useRef<Set<string>>(new Set());
+
+  const hydrate = useCallback(async () => {
+    const token = getAccessToken();
+    if (!token) {
+      setItems([]);
+      return;
+    }
+    try {
+      const rows = await apiFetch<ApiNotification[]>("/notifications");
+      const mapped = rows.map(mapItem);
+      seenIds.current = new Set(mapped.map((x) => x.id));
+      setItems(mapped);
+    } catch {
+      /* backend may be down */
+    }
+  }, []);
 
   const markRead = useCallback((id: string) => {
     setItems((prev) => prev.map((x) => (x.id === id ? { ...x, read: true } : x)));
+    void apiFetch(`/notifications/${id}/read`, { method: "PATCH" }).catch(() => {});
+  }, []);
+
+  const markAllRead = useCallback(() => {
+    setItems((prev) => prev.map((x) => ({ ...x, read: true })));
+    void apiFetch("/notifications/read-all", { method: "POST" }).catch(() => {});
   }, []);
 
   const clearToast = useCallback(() => setToast(null), []);
@@ -54,6 +102,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       wsRef.current = null;
       if (!token || cancelled) return;
 
+      void hydrate();
+
       const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
       const url = `${proto}//${window.location.host}/api/v1/notifications/ws?token=${encodeURIComponent(token)}`;
       const ws = new WebSocket(url);
@@ -61,25 +111,21 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
       ws.onmessage = (ev) => {
         try {
-          const data = JSON.parse(ev.data as string) as {
-            type?: string;
-            title?: string;
-            work_order_id?: string;
-          };
-          const title =
-            data.title ||
-            (data.type === "work_order.status_changed" ? "Work order status updated" : "Notification");
-          const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-          const item: NotificationItem = {
+          const data = JSON.parse(ev.data as string) as ApiNotification & { title?: string };
+          const id = data.id ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          if (seenIds.current.has(id)) return;
+          seenIds.current.add(id);
+          const item = mapItem({
             id,
             type: data.type ?? "event",
-            title,
+            title: data.title ?? "Notification",
             work_order_id: data.work_order_id,
-            created_at: new Date().toISOString(),
+            action: data.action,
+            created_at: data.created_at ?? new Date().toISOString(),
             read: false,
-          };
+          });
           setItems((prev) => [item, ...prev].slice(0, 50));
-          pushToast(setToast, title);
+          pushToast(setToast, item.title);
         } catch {
           /* ignore */
         }
@@ -93,6 +139,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     connect();
 
     const onAuthChange = () => {
+      seenIds.current.clear();
       connect();
     };
 
@@ -109,13 +156,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       wsRef.current?.close();
       wsRef.current = null;
     };
-  }, []);
+  }, [hydrate]);
 
   const unreadCount = useMemo(() => items.filter((i) => !i.read).length, [items]);
 
   const value = useMemo(
-    () => ({ items, unreadCount, toast, markRead, clearToast }),
-    [items, unreadCount, toast, markRead, clearToast]
+    () => ({ items, unreadCount, toast, markRead, markAllRead, clearToast, refresh: hydrate }),
+    [items, unreadCount, toast, markRead, markAllRead, clearToast, hydrate]
   );
 
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;

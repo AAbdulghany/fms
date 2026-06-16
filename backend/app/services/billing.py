@@ -111,21 +111,12 @@ def ensure_can_invoice(wo: WorkOrder, report: Optional[MaintenanceReport]) -> No
 ALLOWED_INVOICE_CURRENCIES = frozenset({"EGP", "SAR", "USD", "EUR"})
 
 
-def build_invoice_for_work_order(
-    db: Session, wo: WorkOrder, currency_override: Optional[str] = None
-) -> Invoice:
-    """Create a draft invoice from an approved work order.
-
-    All line items and totals are computed in **SAR** (pricing profiles use ``*_sar`` fields).
-    ``Invoice.currency`` is the **presentation / contractual** currency code; there is **no FX
-    conversion** yet—non-SAR values label the same SAR amounts for display until rates exist.
-    """
-    report = wo.report
-    ensure_can_invoice(wo, report)
-    existing = db.scalar(select(Invoice).where(Invoice.work_order_id == wo.id))
-    if existing:
-        raise ValueError("INVOICE_EXISTS")
-
+def _compute_invoice_lines(
+    db: Session,
+    wo: WorkOrder,
+    report: MaintenanceReport,
+    currency_override: Optional[str] = None,
+) -> dict[str, Any]:
     contract = db.scalar(
         select(Contract).where(
             Contract.client_id == wo.client_id,
@@ -176,8 +167,10 @@ def build_invoice_for_work_order(
         )
 
     subtotal = sum(_d(p["amount_sar"]) for p in line_payloads)
+    emergency_surcharge = Decimal("0")
     if wo.urgency == Urgency.emergency and emergency_pct > 0:
         sur = (subtotal * emergency_pct / Decimal("100")).quantize(Decimal("0.01"))
+        emergency_surcharge = sur
         line_payloads.append(
             {
                 "line_type": "surcharge",
@@ -198,6 +191,65 @@ def build_invoice_for_work_order(
     if cur not in ALLOWED_INVOICE_CURRENCIES:
         raise ValueError("INVALID_CURRENCY")
 
+    parts_preview = [
+        {
+            "description": p["description"],
+            "quantity": str(p["quantity"]),
+            "amount_sar": str(p["amount_sar"]),
+        }
+        for p in line_payloads
+        if p["line_type"] == "parts"
+    ]
+
+    summary = str(answers.get("work_summary") or answers.get("summary") or wo.description or "")[:500]
+
+    return {
+        "contract": contract,
+        "currency": cur,
+        "labor_hours": labor_hours,
+        "labor_amount_sar": labor_amount,
+        "service_fee_sar": service_fee if service_fee > 0 else Decimal("0"),
+        "emergency_surcharge_sar": emergency_surcharge,
+        "subtotal_sar": subtotal,
+        "tax_sar": tax,
+        "total_sar": total,
+        "line_payloads": line_payloads,
+        "parts": parts_preview,
+        "work_summary": summary,
+    }
+
+
+def preview_invoice_for_work_order(
+    db: Session, wo: WorkOrder, currency_override: Optional[str] = None
+) -> dict[str, Any]:
+    report = wo.report
+    ensure_can_invoice(wo, report)
+    existing = db.scalar(select(Invoice).where(Invoice.work_order_id == wo.id))
+    if existing:
+        raise ValueError("INVOICE_EXISTS")
+    return _compute_invoice_lines(db, wo, report, currency_override)
+
+
+def build_invoice_for_work_order(
+    db: Session, wo: WorkOrder, currency_override: Optional[str] = None
+) -> Invoice:
+    """Create a draft invoice from an approved work order.
+
+    All line items and totals are computed in **SAR** (pricing profiles use ``*_sar`` fields).
+    ``Invoice.currency`` is the **presentation / contractual** currency code; there is **no FX
+    conversion** yet—non-SAR values label the same SAR amounts for display until rates exist.
+    """
+    report = wo.report
+    ensure_can_invoice(wo, report)
+    existing = db.scalar(select(Invoice).where(Invoice.work_order_id == wo.id))
+    if existing:
+        raise ValueError("INVOICE_EXISTS")
+
+    computed = _compute_invoice_lines(db, wo, report, currency_override)
+    contract = computed["contract"]
+    line_payloads = computed["line_payloads"]
+    cur = computed["currency"]
+
     inv = Invoice(
         tenant_id=wo.tenant_id,
         client_id=wo.client_id,
@@ -205,9 +257,9 @@ def build_invoice_for_work_order(
         contract_id=contract.id,
         number=next_invoice_number(db, wo.tenant_id),
         status=InvoiceStatus.draft,
-        subtotal_sar=subtotal,
-        tax_sar=tax,
-        total_sar=total,
+        subtotal_sar=computed["subtotal_sar"],
+        tax_sar=computed["tax_sar"],
+        total_sar=computed["total_sar"],
         currency=cur,
         due_date=date.today(),
         metadata_json={"work_order_id": str(wo.id)},

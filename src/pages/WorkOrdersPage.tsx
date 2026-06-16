@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 
 import { apiFetch } from "../lib/api";
 
-import type { PaginatedWorkOrders, ReportTemplate, WorkOrder } from "../lib/types";
+import type { PaginatedWorkOrders, WorkOrder } from "../lib/types";
 
 import { urgencyBadgeClass, workOrderStatusPillClass } from "../lib/workOrderDisplay";
 
@@ -122,8 +122,6 @@ export function WorkOrdersPage() {
 
   const [requestSites, setRequestSites] = useState<Site[]>([]);
 
-  const [templates, setTemplates] = useState<ReportTemplate[]>([]);
-
   const [reviewTarget, setReviewTarget] = useState<WorkOrder | null>(null);
 
   const [form, setForm] = useState({
@@ -143,8 +141,6 @@ export function WorkOrdersPage() {
     source: "request",
 
     category: "general",
-
-    template_id: "",
 
   });
 
@@ -308,31 +304,11 @@ export function WorkOrdersPage() {
 
 
 
-  const fetchTemplates = async () => {
-
-    try {
-
-      const res = await apiFetch<ReportTemplate[]>("/report-templates");
-
-      setTemplates(res);
-
-    } catch (e) {
-
-      console.error("Failed to fetch templates", e);
-
-    }
-
-  };
-
-
-
   useEffect(() => {
 
     void fetchMe();
 
     void fetchCompanies();
-
-    void fetchTemplates();
 
   }, []);
 
@@ -353,6 +329,59 @@ export function WorkOrdersPage() {
     if (me) void fetchOrders();
 
   }, [searchParams, woView, me?.id]);
+
+
+
+  useEffect(() => {
+
+    const reviewId = searchParams.get("review");
+
+    if (!reviewId || !canApproveRequests) return;
+
+    const found = rows.find((r) => r.id === reviewId);
+
+    if (found?.status === "requested") {
+
+      setReviewTarget(found);
+
+      return;
+
+    }
+
+    void apiFetch<WorkOrder>(`/work-orders/${reviewId}`)
+
+      .then((wo) => {
+
+        if (wo.status === "requested") setReviewTarget(wo);
+
+      })
+
+      .catch(() => {});
+
+  }, [searchParams, rows, canApproveRequests]);
+
+
+
+  useEffect(() => {
+    if (searchParams.get("open") !== "request" || !me || !canRequest) return;
+
+    setModalMode("request");
+    setForm((f) => ({
+      ...f,
+      source: "request",
+      client_id: me.role === "client_admin" && me.client_id ? me.client_id : "",
+      site_id: "",
+    }));
+    void fetchRequestSites();
+    if (me.role === "client_admin" && me.client_id) {
+      void fetchSites(me.client_id);
+    }
+    setIsModalOpen(true);
+
+    const next = new URLSearchParams(searchParams);
+    next.delete("open");
+    setSearchParams(next, { replace: true });
+  }, [me, canRequest, searchParams]);
 
 
 
@@ -387,6 +416,20 @@ export function WorkOrdersPage() {
     }
 
   }, [location.state, location.pathname, navigate, canDirectCreate, canRequest]);
+
+
+
+  const closeReviewModal = () => {
+
+    setReviewTarget(null);
+
+    const next = new URLSearchParams(searchParams);
+
+    next.delete("review");
+
+    setSearchParams(next, { replace: true });
+
+  };
 
 
 
@@ -476,7 +519,6 @@ export function WorkOrdersPage() {
           asset_id: form.asset_id || undefined,
           source: modalMode === "request" ? "request" : form.source,
           category: form.category,
-          template_id: form.template_id || undefined,
         },
       });
 
@@ -499,8 +541,6 @@ export function WorkOrdersPage() {
         source: "request",
 
         category: "general",
-
-        template_id: "",
 
       });
 
@@ -1104,46 +1144,6 @@ export function WorkOrdersPage() {
 
 
 
-              {modalMode === "create" && (
-
-                <div>
-
-                  <label className="block text-sm font-medium text-neutral-700">
-
-                    {t("report_template") || "Report Template"}{" "}
-
-                    <span className="text-xs text-neutral-500">(Optional)</span>
-
-                  </label>
-
-                  <select
-
-                    className="w-full rounded-md border border-neutral-300 p-2"
-
-                    value={form.template_id}
-
-                    onChange={(e) => setForm({ ...form, template_id: e.target.value })}
-
-                  >
-
-                    <option value="">{t("no_template") || "No template"}</option>
-
-                    {templates.map((tmpl) => (
-
-                      <option key={tmpl.id} value={tmpl.id}>
-
-                        {tmpl.name}
-
-                      </option>
-
-                    ))}
-
-                  </select>
-
-                </div>
-
-              )}
-
               <div className="flex justify-end space-x-3 pt-4">
 
                 <button
@@ -1192,7 +1192,7 @@ export function WorkOrdersPage() {
 
           open
 
-          onClose={() => setReviewTarget(null)}
+          onClose={closeReviewModal}
 
           onResolved={() => void fetchOrders()}
 

@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "../lib/api";
 import type { User, UserRole } from "../lib/types";
+import { hasAnyRole, isPlatformStaff } from "../lib/roles";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface NavItem {
   labelKey: string;
   icon: string;
   allowedRoles: UserRole[];
+  platformAdminOnly?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -60,6 +62,27 @@ const NAV_ITEMS: NavItem[] = [
     allowedRoles: ["super_admin", "company_admin", "manager", "technician"],
   },
   {
+    path: "/platform/maintenance-companies",
+    labelKey: "maintenance_companies",
+    icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4",
+    allowedRoles: ["super_user", "sw_dev", "super_admin"],
+    platformAdminOnly: true,
+  },
+  {
+    path: "/platform/packages",
+    labelKey: "platform_packages",
+    icon: "M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10",
+    allowedRoles: ["super_user", "sw_dev", "super_admin"],
+    platformAdminOnly: true,
+  },
+  {
+    path: "/subscription",
+    labelKey: "subscription",
+    icon: "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z",
+    allowedRoles: ["super_user", "sw_dev", "super_admin"],
+    platformAdminOnly: true,
+  },
+  {
     path: "/locations",
     labelKey: "locations",
     icon: "M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z",
@@ -88,9 +111,16 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     void fetchUser();
   }, []);
 
-  const visibleItems = NAV_ITEMS.filter((item) =>
-    user ? item.allowedRoles.includes(user.role) : false
-  );
+  const visibleItems = NAV_ITEMS.filter((item) => {
+    if (!user || !hasAnyRole(user.role, item.allowedRoles)) return false;
+    if (item.platformAdminOnly && !isPlatformStaff(user)) return false;
+    return true;
+  }).sort((a, b) => {
+    if (!user || !isPlatformStaff(user)) return 0;
+    if (a.platformAdminOnly && !b.platformAdminOnly) return -1;
+    if (!a.platformAdminOnly && b.platformAdminOnly) return 1;
+    return 0;
+  });
 
   const isActive = (path: string) => {
     if (path === "/dashboard") {

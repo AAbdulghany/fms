@@ -29,7 +29,17 @@ FMS is a comprehensive facility management system designed for multi-tenant envi
 
 See **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)** for detailed setup instructions.
 
-### Prerequisites
+### Docker demo (pitch stack)
+
+Full command reference and logins: **[docs/phase3-restructure/DEMO_QUICKSTART.md](docs/phase3-restructure/DEMO_QUICKSTART.md)**
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+```
+
+Open http://localhost:8080 — login `super@demo.com` / `super123`
+
+**Public demo on a free server:** **[docs/phase3-restructure/DEMO_LIVE_DEPLOY.md](docs/phase3-restructure/DEMO_LIVE_DEPLOY.md)** — branch `demo/live`, Oracle Cloud VM, step-by-step.
 
 - Python 3.11+
 - Node.js 18+

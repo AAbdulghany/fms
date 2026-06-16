@@ -6,12 +6,15 @@ import type { Asset, AssetLifecycleStatus } from "../lib/types";
 import { EmptyState } from "../components/EmptyState";
 import { AssetLifecycleBadge } from "../components/AssetLifecycleBadge";
 import { AssetRegisterModal } from "../components/AssetRegisterModal";
+import { AssetImportModal } from "../components/AssetImportModal";
 
 type AssetOutApi = {
   id: string;
   site_id: string;
   name: string;
   category: string;
+  label_code?: string | null;
+  next_due_at?: string | null;
   lifecycle_status: AssetLifecycleStatus;
   current_repair_count: number;
   max_age_years?: number | null;
@@ -26,7 +29,7 @@ function mapToDisplayAsset(a: AssetOutApi): Asset {
   }
   return {
     id: a.id,
-    asset_id: `${a.id.slice(0, 8)}…`,
+    asset_id: a.label_code || `${a.id.slice(0, 8)}…`,
     site_id: a.site_id,
     company_id: "",
     type: a.category,
@@ -51,12 +54,19 @@ export default function AssetsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [lifecycleFilter, setLifecycleFilter] = useState<AssetLifecycleStatus | "all">("all");
+  const [maintenanceFilter, setMaintenanceFilter] = useState<string>("");
   const [registerOpen, setRegisterOpen] = useState(openOnLoad);
+  const [importOpen, setImportOpen] = useState(false);
 
   const loadAssets = () => {
     void (async () => {
       try {
-        const q = initialSiteId ? `?site_id=${encodeURIComponent(initialSiteId)}` : "";
+        const params = new URLSearchParams();
+        if (initialSiteId) params.set("site_id", initialSiteId);
+        params.set("view", "maintenance");
+        params.set("sort", "next_due");
+        if (maintenanceFilter) params.set("filter", maintenanceFilter);
+        const q = params.toString() ? `?${params.toString()}` : "";
         const data = await apiFetch<AssetOutApi[]>(`/assets${q}`);
         setAssets(data.map(mapToDisplayAsset));
       } catch (error) {
@@ -70,7 +80,7 @@ export default function AssetsPage() {
 
   useEffect(() => {
     loadAssets();
-  }, [initialSiteId]);
+  }, [initialSiteId, maintenanceFilter]);
 
   const filteredAssets = assets.filter((asset) => {
     const query = searchQuery.toLowerCase();
@@ -99,13 +109,22 @@ export default function AssetsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-semibold text-neutral-900">{t("assets")}</h1>
-        <button
-          type="button"
-          className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
-          onClick={() => setRegisterOpen(true)}
-        >
-          + {t("register_asset")}
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className="rounded-lg border border-neutral-300 px-4 py-2 text-sm hover:bg-neutral-50"
+            onClick={() => setImportOpen(true)}
+          >
+            {t("import_csv") || "Import CSV"}
+          </button>
+          <button
+            type="button"
+            className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
+            onClick={() => setRegisterOpen(true)}
+          >
+            + {t("register_asset")}
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -124,6 +143,23 @@ export default function AssetsPage() {
           </div>
 
           {/* Lifecycle Filter */}
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setMaintenanceFilter("")}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                maintenanceFilter === "" ? "bg-primary-600 text-white" : "border border-neutral-300"
+              }`}
+            >
+              {t("all_maintenance") || "All maintenance"}
+            </button>
+            <button type="button" onClick={() => setMaintenanceFilter("overdue")} className={`rounded-lg px-3 py-1.5 text-sm ${maintenanceFilter === "overdue" ? "bg-primary-600 text-white" : "border"}`}>
+              {t("overdue") || "Overdue"}
+            </button>
+            <button type="button" onClick={() => setMaintenanceFilter("due_week")} className={`rounded-lg px-3 py-1.5 text-sm ${maintenanceFilter === "due_week" ? "bg-primary-600 text-white" : "border"}`}>
+              {t("due_this_week") || "Due week"}
+            </button>
+          </div>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setLifecycleFilter("all")}
@@ -297,6 +333,11 @@ export default function AssetsPage() {
         onClose={() => setRegisterOpen(false)}
         onCreated={() => loadAssets()}
         initialSiteId={initialSiteId}
+      />
+      <AssetImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onDone={() => loadAssets()}
       />
     </div>
   );

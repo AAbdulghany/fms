@@ -9,6 +9,7 @@ from app.api.deps import get_current_user, require_roles
 from app.core.security import hash_password
 from app.database import get_db
 from app.models import Client, Site, User, UserRole, UserSiteScope
+from app.rbac import tenant_admin_roles_for_require
 from app.schemas import (
     ClientCreate,
     ClientOut,
@@ -28,8 +29,7 @@ from app.services.provisioning import (
 
 router = APIRouter(prefix="/clients", tags=["clients"])
 
-_admin = Depends(require_roles(UserRole.super_admin, UserRole.company_admin))
-_super_admin_only = Depends(require_roles(UserRole.super_admin))
+_admin = Depends(require_roles(*tenant_admin_roles_for_require()))
 
 
 @router.get("", response_model=list[ClientOut])
@@ -94,7 +94,7 @@ def provision_client_with_manager(
     body: ClientProvisionRequest,
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
-    _: Annotated[User, _super_admin_only],
+    _: Annotated[User, _admin],
 ) -> ClientProvisionResponse:
     """Create a company (client) and a client_admin user with generated username/password."""
     code = next_client_code(db, current.tenant_id, body.legal_name.strip())

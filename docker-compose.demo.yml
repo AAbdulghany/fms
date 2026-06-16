@@ -1,0 +1,32 @@
+# Demo stack — isolated database for sales pitches (NT-112)
+# Usage: see docs/phase3-restructure/DEMO_QUICKSTART.md
+
+services:
+  db:
+    environment:
+      POSTGRES_DB: fms_demo
+    volumes:
+      - fms_demo_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fms -d fms_demo"]
+
+  migrate:
+    environment:
+      DATABASE_URL: postgresql+psycopg2://fms:fms@db:5432/fms_demo
+      APP_ENV: demo
+      SEED_MODULE: pitch
+    command: python -m app.docker_migrate
+
+  api:
+    environment:
+      DATABASE_URL: postgresql+psycopg2://fms:fms@db:5432/fms_demo
+      APP_ENV: demo
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: on-failure
+
+volumes:
+  fms_demo_pgdata:

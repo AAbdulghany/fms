@@ -15,6 +15,9 @@ import AssetDetailPage from "./pages/AssetDetailPage";
 import UsersPage from "./pages/UsersPage";
 import LaborPage from "./pages/LaborPage";
 import LocationsPage from "./pages/LocationsPage";
+import { SubscriptionPage } from "./pages/SubscriptionPage";
+import { PlatformPackagesPage } from "./pages/PlatformPackagesPage";
+import { MaintenanceCompaniesPage } from "./pages/MaintenanceCompaniesPage";
 import { ProfilePage } from "./pages/ProfilePage";
 
 export default function App() {
@@ -164,6 +167,39 @@ export default function App() {
             <ProtectedRoute allowedRoles={["super_admin", "company_admin", "client_admin"]}>
               <Layout>
                 <LocationsPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/platform/maintenance-companies"
+          element={
+            <ProtectedRoute allowedRoles={["super_user", "sw_dev", "super_admin"]}>
+              <Layout>
+                <MaintenanceCompaniesPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/platform/packages"
+          element={
+            <ProtectedRoute allowedRoles={["super_user", "sw_dev", "super_admin"]}>
+              <Layout>
+                <PlatformPackagesPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/subscription"
+          element={
+            <ProtectedRoute allowedRoles={["super_user", "sw_dev", "super_admin"]}>
+              <Layout>
+                <SubscriptionPage />
               </Layout>
             </ProtectedRoute>
           }

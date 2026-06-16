@@ -1,18 +1,25 @@
-export type UserRole = 
-  | "super_admin" 
-  | "company_admin" 
-  | "client_admin" 
-  | "site_manager" 
+export type UserRole =
+  | "super_user"
+  | "sw_dev"
+  | "super_admin"
+  | "company_admin"
+  | "company_engineer"
+  | "client_admin"
+  | "site_manager"
   | "technician"
   | "manager";
 
 export interface User {
   id: string;
+  tenant_id?: string;
   email: string;
   full_name: string;
   role: UserRole;
+  locale?: string;
+  client_id?: string | null;
   company_id?: string;
   is_active: boolean;
+  is_platform_admin?: boolean;
 }
 
 export type WorkOrderStatus =

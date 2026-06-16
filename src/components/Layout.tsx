@@ -2,6 +2,7 @@ import { ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { clearTokens } from "../lib/api";
+import { applyLanguage, getStoredLanguage } from "../lib/language";
 import { Sidebar } from "./Sidebar";
 import ClockWidget from "./ClockWidget";
 import NotificationBell from "./NotificationBell";
@@ -18,16 +19,13 @@ export function Layout({ children }: LayoutProps) {
 
   const toggleLang = () => {
     const next = i18n.language === "ar" ? "en" : "ar";
-    void i18n.changeLanguage(next);
-    localStorage.setItem("app_lang", next);
-    document.documentElement.lang = next;
-    document.documentElement.dir = next === "ar" ? "rtl" : "ltr";
-    document.body.className =
-      next === "ar" ? "fms-page font-body-ar" : "fms-page font-body-en";
+    applyLanguage(next, i18n);
   };
 
   const handleLogout = () => {
+    const lang = getStoredLanguage();
     clearTokens();
+    applyLanguage(lang, i18n);
     navigate("/login");
   };
 

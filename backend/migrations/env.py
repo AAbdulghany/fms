@@ -8,8 +8,9 @@ from alembic import context
 # Add parent directory to path so 'app' module can be imported
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.database import Base
+from app.database import Base, _normalize_sync_database_url
 from app.models import *
+from app.config import get_settings
 
 # this is necessary for alembic to see the models
 target_metadata = Base.metadata
@@ -21,11 +22,15 @@ if config.get_main_option("script_location") is None:
 
 fileConfig(config.config_file_name)
 
+
+def _database_url() -> str:
+    return _normalize_sync_database_url(get_settings().database_url)
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
-    url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=url,
+        url=_database_url(),
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -34,10 +39,13 @@ def run_migrations_offline() -> None:
     with context.begin_transaction():
         context.run_migrations()
 
+
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
+    configuration = config.get_section(config.config_ini_section, {})
+    configuration["sqlalchemy.url"] = _database_url()
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}) ,
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )

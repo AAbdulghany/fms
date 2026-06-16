@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiFetch, setTokens, getAccessToken } from "../lib/api";
+import { isPlatformStaff } from "../lib/roles";
+import { applyLanguage, getStoredLanguage } from "../lib/language";
+import type { User } from "../lib/types";
 
 function formatLoginError(err: unknown, t: (key: string) => string): string {
   if (!(err instanceof Error)) return t("login_error_generic");
@@ -35,17 +38,16 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    applyLanguage(getStoredLanguage(), i18n);
+  }, [i18n]);
+
+  useEffect(() => {
     if (getAccessToken()) navigate("/", { replace: true });
   }, [navigate]);
 
   const toggleLang = () => {
     const next = i18n.language === "ar" ? "en" : "ar";
-    void i18n.changeLanguage(next);
-    localStorage.setItem("app_lang", next);
-    document.documentElement.lang = next;
-    document.documentElement.dir = next === "ar" ? "rtl" : "ltr";
-    document.body.className =
-      next === "ar" ? "fms-page font-body-ar" : "fms-page font-body-en";
+    applyLanguage(next, i18n);
   };
 
   async function onSubmit(e: FormEvent) {
@@ -56,18 +58,15 @@ export function LoginPage() {
         access_token: string;
         refresh_token: string;
         must_change_password?: boolean;
-        user: { locale?: string };
+        user: User;
       }>("/auth/login", { method: "POST", json: { identifier, password } });
       setTokens(res.access_token, res.refresh_token);
-      if (res.user?.locale) {
-        void i18n.changeLanguage(res.user.locale);
-        document.documentElement.lang = res.user.locale;
-        document.documentElement.dir = res.user.locale === "ar" ? "rtl" : "ltr";
-        document.body.className =
-          res.user.locale === "ar" ? "fms-page font-body-ar" : "fms-page font-body-en";
-      }
+      // Prefer persisted UI language over user profile locale
+      applyLanguage(getStoredLanguage(), i18n);
       if (res.must_change_password) {
         navigate("/profile?must_change=1", { replace: true });
+      } else if (isPlatformStaff(res.user)) {
+        navigate("/platform/maintenance-companies", { replace: true });
       } else {
         navigate("/", { replace: true });
       }

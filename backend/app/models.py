@@ -31,8 +31,11 @@ def _utcnow() -> datetime:
 
 
 class UserRole(str, enum.Enum):
-    super_admin = "super_admin"
+    super_user = "super_user"
+    sw_dev = "sw_dev"
+    super_admin = "super_admin"  # legacy; platform staff migrate to super_user
     company_admin = "company_admin"
+    company_engineer = "company_engineer"
     client_admin = "client_admin"
     site_manager = "site_manager"
     technician = "technician"
@@ -99,6 +102,56 @@ class Tenant(Base):
     )
 
     users: Mapped[list["User"]] = relationship(back_populates="tenant")
+    subscription: Mapped[Optional["TenantSubscription"]] = relationship(
+        back_populates="tenant", uselist=False
+    )
+
+
+class SubscriptionPackage(Base):
+    __tablename__ = "subscription_packages"
+    __table_args__ = (UniqueConstraint("code", name="uq_subscription_package_code"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    code: Mapped[str] = mapped_column(String(64), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    features_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    limits_json: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+    tenant_subscriptions: Mapped[list["TenantSubscription"]] = relationship(back_populates="package")
+
+
+class TenantSubscription(Base):
+    __tablename__ = "tenant_subscriptions"
+    __table_args__ = (UniqueConstraint("tenant_id", name="uq_tenant_subscription_tenant"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    package_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("subscription_packages.id"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(String(32), default="active")
+    valid_until: Mapped[Optional[date]] = mapped_column(Date)
+    overrides_json: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
+
+    tenant: Mapped["Tenant"] = relationship(back_populates="subscription")
+    package: Mapped["SubscriptionPackage"] = relationship(back_populates="tenant_subscriptions")
+
+
+class PlatformSettings(Base):
+    __tablename__ = "platform_settings"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True, default="global")
+    branding_json: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    config_json: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
 
 
 class User(Base):
@@ -211,6 +264,7 @@ class Asset(Base):
     installed_on: Mapped[Optional[date]] = mapped_column(Date)
     warranty_until: Mapped[Optional[date]] = mapped_column(Date)
     qr_payload: Mapped[Optional[str]] = mapped_column(String(512))
+    label_code: Mapped[Optional[str]] = mapped_column(String(64))
     metadata_json: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     # P2-F2: Asset Lifecycle Management
     max_repair_count: Mapped[Optional[int]] = mapped_column(Integer)
@@ -494,6 +548,21 @@ class WorkOrderDocument(Base):
 
     uploaded_by: Mapped["User"] = relationship("User", foreign_keys=[uploaded_by_user_id])
     work_order: Mapped["WorkOrder"] = relationship("WorkOrder", back_populates="documents")
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    type: Mapped[str] = mapped_column(String(64), nullable=False)
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    payload_json: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    read_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
 
 
 class AuditLog(Base):

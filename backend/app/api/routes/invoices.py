@@ -6,15 +6,19 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.api.deps import get_current_user, require_roles
+from app.api.deps import get_current_user, require_feature, require_roles
 from app.database import get_db
-from app.models import Invoice, InvoiceStatus, User, UserRole, WorkOrder
-from app.schemas import InvoiceOut
+from app.models import Client, Invoice, InvoiceStatus, User, UserRole
+from app.schemas import InvoiceOut, SendInvoiceBody
 from app.services.audit import write_audit
-from app.services.billing import build_invoice_for_work_order
+from app.services.email import send_invoice_email
 from app.services.pdf import render_invoice_pdf
 
-router = APIRouter(prefix="/invoices", tags=["invoices"])
+router = APIRouter(
+    prefix="/invoices",
+    tags=["invoices"],
+    dependencies=[Depends(require_feature("invoices"))],
+)
 
 _finance = Depends(require_roles(UserRole.super_admin, UserRole.company_admin))
 
@@ -82,13 +86,15 @@ def invoice_pdf(
     invoice_id: UUID,
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
+    inline: bool = Query(False),
 ) -> Response:
     inv = _access_invoice(db, current, invoice_id)
     pdf_bytes = render_invoice_pdf(db, invoice=inv)
+    disposition = "inline" if inline else "attachment"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="invoice-{inv.number}.pdf"'},
+        headers={"Content-Disposition": f'{disposition}; filename="invoice-{inv.number}.pdf"'},
     )
 
 
@@ -115,12 +121,35 @@ def send_invoice(
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
     _: Annotated[User, _finance],
+    body: SendInvoiceBody | None = None,
 ) -> Invoice:
     inv = _access_invoice(db, current, invoice_id)
     if inv.status not in (InvoiceStatus.approved, InvoiceStatus.draft):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_STATUS")
+    client = db.get(Client, inv.client_id)
+    to_email = (body.recipient_email if body and body.recipient_email else None) or (
+        client.billing_email if client else None
+    )
+    if not to_email:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="NO_BILLING_EMAIL")
+    pdf_bytes = render_invoice_pdf(db, invoice=inv)
+    send_invoice_email(
+        to_email,
+        inv.number,
+        pdf_bytes,
+        client_name=client.legal_name if client else "",
+    )
     inv.status = InvoiceStatus.sent
     inv.issued_at = datetime.now(timezone.utc)
+    write_audit(
+        db,
+        tenant_id=current.tenant_id,
+        actor=current,
+        action="send",
+        entity_type="invoice",
+        entity_id=str(inv.id),
+        after={"recipient": to_email},
+    )
     db.commit()
     db.refresh(inv)
     return inv

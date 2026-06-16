@@ -9,6 +9,13 @@ from app.api.deps import get_current_user, require_roles
 from app.core.security import hash_password
 from app.database import get_db
 from app.models import User, UserRole
+from app.rbac import (
+    COMPANY_ADMIN_CREATABLE,
+    can_create_role,
+    can_manage_tenant_users,
+    can_remove_members,
+    tenant_admin_roles_for_require,
+)
 from app.schemas import UserCreateBody, UserCreateResponse, UserListOut, UserPatchBody, UserPatchMe, UserPublic
 
 # Backward-compatible alias used by existing tests.
@@ -18,15 +25,7 @@ from app.services.provisioning import generate_initial_password
 
 router = APIRouter(prefix="/users", tags=["users"])
 
-_super_admin_only = Depends(require_roles(UserRole.super_admin))
-_admin = Depends(require_roles(UserRole.super_admin, UserRole.company_admin))
-
-# Roles that company_admin is permitted to create within their own tenant.
-_COMPANY_ADMIN_CREATABLE = {
-    UserRole.technician,
-    UserRole.client_admin,
-    UserRole.site_manager,
-}
+_tenant_admin = Depends(require_roles(*tenant_admin_roles_for_require()))
 
 
 @router.get("/me", response_model=UserPublic)
@@ -68,12 +67,9 @@ def patch_me(
 def list_users(
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
-    _: Annotated[User, _admin],
+    _: Annotated[User, _tenant_admin],
 ) -> list[UserListOut]:
-    """List all users in the tenant.
-
-    super_admin sees all; company_admin sees all users within their tenant.
-    """
+    """List all users in the tenant."""
     users = db.scalars(
         select(User)
         .where(User.tenant_id == current.tenant_id)
@@ -87,25 +83,14 @@ def create_user(
     user_in: UserCreateBody,
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
-    _: Annotated[User, _admin],
+    _: Annotated[User, _tenant_admin],
 ) -> UserCreateResponse:
-    """Create a new user.
-
-    super_admin can create any non-super_admin role.
-    company_admin can create technician, client_admin, site_manager.
-    """
-    if current.role == UserRole.super_admin:
-        if user_in.role == UserRole.super_admin:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot create another super_admin via this endpoint",
-            )
-    elif current.role == UserRole.company_admin:
-        if user_in.role not in _COMPANY_ADMIN_CREATABLE:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"company_admin cannot create role '{user_in.role}'",
-            )
+    """Create a new user within the current tenant."""
+    if not can_create_role(current, user_in.role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Cannot create role '{user_in.role}'",
+        )
 
     existing = db.scalars(
         select(User).where(
@@ -172,22 +157,39 @@ def patch_user(
     body: UserPatchBody,
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
-    _: Annotated[User, _admin],
+    _: Annotated[User, _tenant_admin],
 ) -> User:
-    """super_admin and company_admin can edit users within the same tenant."""
+    """Tenant admins can edit users; sw_dev cannot deactivate (remove) members."""
+    if not can_manage_tenant_users(current):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
+
     user = db.get(User, user_id)
     if not user or user.tenant_id != current.tenant_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="NOT_FOUND")
 
-    # company_admin cannot escalate roles or edit super_admins
-    if current.role == UserRole.company_admin:
-        if user.role == UserRole.super_admin:
+    if body.is_active is False and not can_remove_members(current):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="CANNOT_REMOVE_MEMBERS")
+
+    if body.role is not None and not can_create_role(current, body.role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Cannot assign role '{body.role}'",
+        )
+
+    if current.role == UserRole.company_engineer and user.role in {
+        UserRole.company_admin,
+        UserRole.company_engineer,
+    }:
+        if body.role is not None or body.is_active is False:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
-        if body.role is not None and body.role not in _COMPANY_ADMIN_CREATABLE:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"company_admin cannot assign role '{body.role}'",
-            )
+
+    if current.role == UserRole.company_admin and user.role in {
+        UserRole.super_admin,
+        UserRole.company_admin,
+        UserRole.company_engineer,
+    }:
+        if body.role is not None or body.is_active is False or body.full_name is not None:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
 
     if body.full_name is not None:
         user.full_name = body.full_name.strip()

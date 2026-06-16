@@ -28,6 +28,7 @@ class UserPublic(BaseModel):
     role: UserRole
     locale: str
     is_active: bool
+    is_platform_admin: bool = False
 
 
 class UserListOut(BaseModel):
@@ -215,6 +216,23 @@ class SiteProvisionResponse(BaseModel):
     initial_password: str
 
 
+class MaintenanceScheduleCreate(BaseModel):
+    template_id: UUID
+    frequency: str = "monthly"
+    custom_days: Optional[int] = None
+
+
+class MaintenanceScheduleOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    asset_id: UUID
+    template_id: UUID
+    frequency: str
+    next_due_at: datetime
+    is_active: bool
+
+
 class AssetCreate(BaseModel):
     site_id: UUID
     name: str
@@ -227,6 +245,7 @@ class AssetCreate(BaseModel):
     warranty_until: Optional[date] = None
     max_repair_count: Optional[int] = None
     max_age_years: Optional[int] = None
+    schedule: Optional[MaintenanceScheduleCreate] = None
 
 
 class AssetOut(BaseModel):
@@ -245,6 +264,10 @@ class AssetOut(BaseModel):
     max_age_years: Optional[int] = None
     current_repair_count: int = 0
     lifecycle_status: AssetLifecycleStatus = AssetLifecycleStatus.active
+    label_code: Optional[str] = None
+    qr_payload: Optional[str] = None
+    next_due_at: Optional[datetime] = None
+    schedules: list["MaintenanceScheduleOut"] = Field(default_factory=list)
 
 
 class ReportTemplateCreate(BaseModel):
@@ -382,6 +405,191 @@ class GenerateInvoiceBody(BaseModel):
     """Optional currency when generating invoice from work order (Phase 3)."""
 
     currency: Optional[str] = None  # EGP, SAR, USD, EUR
+
+
+class NotificationOut(BaseModel):
+    id: UUID
+    type: str
+    title: str
+    work_order_id: Optional[UUID] = None
+    action: Optional[str] = None
+    old_status: Optional[str] = None
+    new_status: Optional[str] = None
+    created_at: datetime
+    read: bool
+
+    @classmethod
+    def from_model(cls, row) -> "NotificationOut":
+        payload = row.payload_json or {}
+        wo_id = payload.get("work_order_id")
+        return cls(
+            id=row.id,
+            type=row.type,
+            title=row.title,
+            work_order_id=UUID(wo_id) if wo_id else None,
+            action=payload.get("action"),
+            old_status=payload.get("old_status"),
+            new_status=payload.get("new_status"),
+            created_at=row.created_at,
+            read=row.read_at is not None,
+        )
+
+
+class InvoicePreviewOut(BaseModel):
+    work_order_id: UUID
+    work_order_title: str
+    client_name: str
+    site_name: str
+    technician_name: Optional[str] = None
+    completion_date: Optional[date] = None
+    currency: str
+    labor_hours: Decimal
+    labor_amount_sar: Decimal
+    parts: list[dict[str, Any]] = Field(default_factory=list)
+    service_fee_sar: Decimal = Decimal("0")
+    emergency_surcharge_sar: Decimal = Decimal("0")
+    subtotal_sar: Decimal
+    tax_sar: Decimal
+    total_sar: Decimal
+    work_summary: str = ""
+
+
+class SendInvoiceBody(BaseModel):
+    recipient_email: Optional[str] = None
+
+
+class AssetImportRow(BaseModel):
+    row: int
+    site_code: str
+    name: str
+    category: str = "general"
+    serial: Optional[str] = None
+    status: str = "ok"
+    errors: list[str] = Field(default_factory=list)
+
+
+class AssetImportPreview(BaseModel):
+    valid_count: int
+    error_count: int
+    rows: list[AssetImportRow]
+
+
+class SubscriptionOut(BaseModel):
+    plan: str = "trial"
+    package_id: Optional[UUID] = None
+    status: str = "active"
+    valid_until: Optional[date] = None
+    max_sites: int = 10
+    max_users: int = 25
+    features: list[str] = Field(default_factory=list)
+
+
+class SubscriptionUpdate(BaseModel):
+    plan: Optional[str] = None
+    package_id: Optional[UUID] = None
+    status: Optional[str] = None
+    valid_until: Optional[date] = None
+    max_sites: Optional[int] = None
+    max_users: Optional[int] = None
+    features: Optional[list[str]] = None
+
+
+class TenantBriefOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    name: str
+    status: str
+
+
+class SubscriptionPackageCreate(BaseModel):
+    code: str = Field(..., min_length=2, max_length=64)
+    name: str = Field(..., min_length=1, max_length=255)
+    features_json: list[str] = Field(default_factory=list)
+    limits_json: dict[str, Any] = Field(default_factory=dict)
+    is_active: bool = True
+
+
+class SubscriptionPackageUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    features_json: Optional[list[str]] = None
+    limits_json: Optional[dict[str, Any]] = None
+    is_active: Optional[bool] = None
+
+
+class SubscriptionPackageOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    code: str
+    name: str
+    features_json: list[str] = Field(default_factory=list)
+    limits_json: dict[str, Any] = Field(default_factory=dict)
+    is_active: bool
+
+
+class TenantLicenseAssign(BaseModel):
+    package_id: UUID
+    status: str = "active"
+    valid_until: Optional[date] = None
+    overrides_json: dict[str, Any] = Field(default_factory=dict)
+
+
+class PlatformClientBrief(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    legal_name: str
+    code: str
+    status: str = "active"
+
+
+class MaintenanceCompanyOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    name: str
+    status: str
+    client_count: int = 0
+    clients: list[PlatformClientBrief] = Field(default_factory=list)
+    subscription: Optional[SubscriptionOut] = None
+
+
+class TenantProvisionBody(BaseModel):
+    tenant_name: str = Field(..., min_length=1, max_length=255)
+    admin_email: EmailStr
+    admin_full_name: str = Field(..., min_length=1, max_length=255)
+    admin_password: Optional[str] = Field(None, min_length=6)
+    package_id: UUID
+    license_status: str = "active"
+    valid_until: Optional[date] = None
+
+
+class TenantProvisionOut(BaseModel):
+    tenant_id: UUID
+    admin_user_id: UUID
+    initial_password: Optional[str] = None
+    subscription: SubscriptionOut
+
+
+class PlatformClientCreate(BaseModel):
+    legal_name: str = Field(..., min_length=1, max_length=255)
+    code: Optional[str] = Field(None, max_length=64)
+    billing_email: Optional[EmailStr] = None
+    activity_type: Optional[str] = None
+
+
+class PlatformUserCreate(BaseModel):
+    email: EmailStr
+    full_name: str = Field(..., min_length=1, max_length=255)
+    role: UserRole
+    password: Optional[str] = Field(None, min_length=6)
+    client_id: Optional[UUID] = None
+
+
+class PlatformUserCreateOut(BaseModel):
+    user_id: UUID
+    initial_password: Optional[str] = None
 
 
 class PartCreate(BaseModel):
