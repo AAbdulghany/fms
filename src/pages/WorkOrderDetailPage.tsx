@@ -1,8 +1,9 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import { apiFetch, apiFetchBlob } from "../lib/api";
+import { apiFetch, apiFetchBlob, downloadAuthenticatedFile } from "../lib/api";
+import { resolveEffectiveReportSchema } from "../lib/reportSchema";
 import type { AuditLog, Comment, MaintenanceReport, ReportTemplate, WorkOrder, WorkOrderDocument, WorkOrderStatus, WorkOrderUserBrief } from "../lib/types";
 import { workOrderStatusPillClass } from "../lib/workOrderDisplay";
 import { WorkOrderRequestReviewModal } from "../components/WorkOrderRequestReviewModal";
@@ -20,23 +21,53 @@ interface TemplateField {
   placeholder?: string;
   options?: string[];
   required?: boolean;
+  auto_fill?: boolean;
+  visible?: boolean;
   max_photos?: number;
   rows?: number;
+  required_when?: { field: string; values: string[] };
 }
 
 interface TemplateSection {
   id?: string;
   title?: string;
   title_key?: string;
+  visible?: boolean;
   fields?: TemplateField[];
 }
 
 /** Must match backend `REPORT_PDF_DOC_DESCRIPTION` in work_orders.py */
 const REPORT_PDF_DOC = "report_pdf_export";
 
+const REPORT_UNLOCKED_STATUSES = new Set<WorkOrderStatus>([
+  "in_progress",
+  "on_hold",
+  "completed",
+  "verified",
+]);
+
+const ALLOWED_TRANSITIONS: Record<WorkOrderStatus, WorkOrderStatus[]> = {
+  requested: ["created", "declined"],
+  declined: [],
+  created: ["assigned", "cancelled"],
+  assigned: ["in_progress", "on_hold", "cancelled"],
+  in_progress: ["completed", "on_hold", "cancelled"],
+  on_hold: ["in_progress", "cancelled"],
+  completed: ["verified", "cancelled"],
+  verified: ["closed", "cancelled"],
+  closed: [],
+  cancelled: [],
+};
+
+function statusAllowsReport(status: WorkOrderStatus): boolean {
+  return REPORT_UNLOCKED_STATUSES.has(status);
+}
+
+type TemplateRow = ReportTemplate & { code?: string };
+
 export function WorkOrderDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [wo, setWo] = useState<WorkOrder | null>(null);
   const [report, setReport] = useState<MaintenanceReport | null>(null);
   const [template, setTemplate] = useState<ReportTemplate | null>(null);
@@ -58,41 +89,74 @@ export function WorkOrderDetailPage() {
   const [assigneeSearch, setAssigneeSearch] = useState("");
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [requestReviewOpen, setRequestReviewOpen] = useState(false);
+  const [holdModalOpen, setHoldModalOpen] = useState(false);
+  const [holdReason, setHoldReason] = useState("");
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [pdfLang, setPdfLang] = useState<"ar" | "en">(i18n.language === "ar" ? "ar" : "en");
+
+  const loadReportData = async (w: WorkOrder, woId: string) => {
+    let resolvedTemplate: ReportTemplate | null = null;
+    if (w.template_id) {
+      try {
+        const catQ = w.asset_category
+          ? `?asset_category=${encodeURIComponent(w.asset_category)}`
+          : "";
+        resolvedTemplate = await apiFetch<ReportTemplate>(`/report-templates/${w.template_id}${catQ}`);
+      } catch {
+        resolvedTemplate = null;
+      }
+    }
+    if (!resolvedTemplate) {
+      try {
+        const templates = await apiFetch<TemplateRow[]>("/report-templates");
+        resolvedTemplate =
+          templates.find((tmpl) => tmpl.code === "STD-INSP") ?? templates[0] ?? null;
+      } catch {
+        resolvedTemplate = null;
+      }
+    }
+    setTemplate(resolvedTemplate);
+
+    try {
+      const r = await apiFetch<MaintenanceReport>(`/work-orders/${woId}/report`);
+      setReport(r);
+      const aj = (r.answers_json as Record<string, unknown>) || {};
+      setAnswers(aj);
+      const partsData = aj.parts_used ?? [{ sku: "FLT-001", quantity: 2 }];
+      setParts(Array.isArray(partsData) ? partsData : []);
+    } catch {
+      setReport(null);
+      setAnswers({});
+      setParts([{ sku: "FLT-001", quantity: 2 }]);
+    }
+  };
 
   const load = async () => {
     if (!id) return;
     setErr(null);
+    setWo(null);
     try {
-      const [w, user, hist, comm, assignable, docs] = await Promise.all([
-        apiFetch<WorkOrder>(`/work-orders/${id}`),
+      const w = await apiFetch<WorkOrder>(`/work-orders/${id}`);
+      setWo(w);
+
+      void Promise.all([
         apiFetch<UserMe>("/users/me"),
         apiFetch<AuditLog[]>(`/work-orders/${id}/history`),
         apiFetch<Comment[]>(`/work-orders/${id}/comments`),
         apiFetch<WorkOrderUserBrief[]>(`/work-orders/${id}/assignable-users`),
         apiFetch<WorkOrderDocument[]>(`/work-orders/${id}/documents`),
-      ]);
-      setWo(w);
-      setMe(user);
-      setHistory(hist);
-      setComments(comm);
-      setAssignableUsers(assignable);
-      setDocuments(docs);
-      if (w.template_id) {
-        const tmpl = await apiFetch<ReportTemplate>(`/report-templates/${w.template_id}`);
-        setTemplate(tmpl);
-      }
-      try {
-        const r = await apiFetch<MaintenanceReport>(`/work-orders/${id}/report`);
-        setReport(r);
-        const aj = (r.answers_json as Record<string, unknown>) || {};
-        setAnswers(aj);
-        const partsData = aj.parts_used ?? [{ sku: "FLT-001", quantity: 2 }];
-        setParts(Array.isArray(partsData) ? partsData : []);
-      } catch {
-        setReport(null);
-        setAnswers({});
-        setParts([{ sku: "FLT-001", quantity: 2 }]);
-      }
+      ]).then(([user, hist, comm, assignable, docs]) => {
+        setMe(user);
+        setHistory(hist);
+        setComments(comm);
+        setAssignableUsers(assignable);
+        setDocuments(docs);
+      }).catch(() => {
+        /* secondary data — page remains usable */
+      });
+
+      void loadReportData(w, id);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Error");
     }
@@ -120,6 +184,48 @@ export function WorkOrderDetailPage() {
     () => documents.filter((d) => d.description === REPORT_PDF_DOC),
     [documents]
   );
+
+  const referenceDocuments = useMemo(
+    () => documents.filter((d) => d.description !== REPORT_PDF_DOC),
+    [documents]
+  );
+
+  const schemaForForm = useMemo(() => {
+    if (
+      report?.template_snapshot_json &&
+      typeof report.template_snapshot_json === "object" &&
+      Array.isArray((report.template_snapshot_json as { sections?: unknown }).sections)
+    ) {
+      return report.template_snapshot_json as { sections: TemplateSection[] };
+    }
+    if (template?.schema_json) {
+      return resolveEffectiveReportSchema(template.schema_json, wo?.asset_category) as {
+        sections: TemplateSection[];
+      };
+    }
+    return undefined;
+  }, [report?.template_snapshot_json, template?.schema_json, wo?.asset_category]);
+
+  const sections = (schemaForForm?.sections as TemplateSection[]) || [];
+  const technicianSections = sections.filter((sec) => sec.visible !== false);
+  const siteAddressLine = wo
+    ? [wo.site_address, wo.site_city, wo.site_country].filter(Boolean).join(", ")
+    : "";
+
+  if (!wo) {
+    return (
+      <div className="flex min-h-[240px] flex-col items-center justify-center gap-3">
+        {err ? (
+          <p className="rounded-md bg-error-light px-4 py-3 text-sm text-error-dark">{err}</p>
+        ) : (
+          <>
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
+            <p className="text-sm text-neutral-500">{t("loading")}</p>
+          </>
+        )}
+      </div>
+    );
+  }
 
   async function saveReport(e?: FormEvent) {
     e?.preventDefault();
@@ -150,7 +256,7 @@ export function WorkOrderDetailPage() {
     try {
       const r = await apiFetch<MaintenanceReport>(`/work-orders/${id}/report`, {
         method: "PUT",
-        json: { answers: payload },
+        json: { answers: payload, pdf_lang: pdfLang },
       });
       setReport(r);
       setMsg("Saved");
@@ -159,7 +265,7 @@ export function WorkOrderDetailPage() {
         setReportModalOpen(false);
       }
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Error");
+      setErr(mapTransitionError(e));
     }
   }
 
@@ -169,15 +275,29 @@ export function WorkOrderDetailPage() {
     setErr(null);
     try {
       await saveReport();
-      const r = await apiFetch<MaintenanceReport>(`/work-orders/${id}/report/submit`, {
-        method: "POST",
-      });
+      const r = await apiFetch<MaintenanceReport>(
+        `/work-orders/${id}/report/submit?pdf_lang=${encodeURIComponent(pdfLang)}`,
+        { method: "POST" }
+      );
       setReport(r);
       setMsg("Submitted");
       await load();
       setReportModalOpen(false);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Error");
+    }
+  }
+
+  async function exportReportPdf(lang: "ar" | "en") {
+    if (!report?.id) return;
+    setErr(null);
+    try {
+      await downloadAuthenticatedFile(
+        `/reports/${report.id}/pdf?lang=${lang}`,
+        `maintenance-report-${lang}.pdf`
+      );
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Export failed");
     }
   }
 
@@ -234,19 +354,58 @@ export function WorkOrderDetailPage() {
     }
   }
 
-  async function patchStatus() {
+  function mapTransitionError(e: unknown): string {
+    const raw = e instanceof Error ? e.message : String(e);
+    try {
+      const parsed = JSON.parse(raw) as { detail?: string | { code?: string } };
+      const code = typeof parsed.detail === "string" ? parsed.detail : (parsed.detail as { code?: string })?.code;
+      if (code === "HOLD_REASON_REQUIRED") return t("error_hold_reason_required") || "Hold reason is required.";
+      if (code === "REPORT_REQUIRED") return t("error_report_required") || "Report must be submitted before completing.";
+      if (code === "ASSIGNEE_REQUIRED") return t("error_assignee_required") || "Please assign a user first.";
+      if (code === "CANCELLATION_REASON_REQUIRED") return t("error_cancellation_reason_required") || "Cancellation reason is required.";
+      if (code === "REPORT_NOT_ALLOWED_AT_THIS_STATUS") return t("error_report_status_locked") || "Report can be filled while work is in progress or on hold.";
+    } catch { /* fall through */ }
+    return raw;
+  }
+
+  async function patchStatus(extraPayload?: Record<string, string>) {
     if (!id || !nextStatus || !wo) return;
     setMsg(null);
     setErr(null);
+    const targetStatus = nextStatus;
     try {
-      await apiFetch<WorkOrder>(`/work-orders/${id}`, {
+      const updated = await apiFetch<WorkOrder>(`/work-orders/${id}`, {
         method: "PATCH",
-        json: { status: nextStatus },
+        json: { status: nextStatus, ...extraPayload },
       });
-      window.location.reload();
+      setWo(updated);
+      setNextStatus("");
+      await load();
+      if (statusAllowsReport(targetStatus) || statusAllowsReport(updated.status)) {
+        setReportModalOpen(true);
+      }
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Error");
+      setErr(mapTransitionError(e));
     }
+  }
+
+  function handleApply() {
+    if (!nextStatus || nextStatus === wo?.status) return;
+    if (nextStatus === "on_hold") {
+      setHoldReason("");
+      setHoldModalOpen(true);
+      return;
+    }
+    if (nextStatus === "cancelled") {
+      setCancelReason("");
+      setCancelModalOpen(true);
+      return;
+    }
+    if (nextStatus === "completed" && (!report || (report.status !== "submitted" && report.status !== "approved"))) {
+      setErr(t("error_report_required") || "The maintenance report must be submitted before marking as completed.");
+      return;
+    }
+    void patchStatus();
   }
 
   async function generateInvoice() {
@@ -369,10 +528,6 @@ export function WorkOrderDetailPage() {
   }
 
 
-  if (!wo) {
-    return err ? <p className="text-error-main">{err}</p> : <p className="text-neutral-500">…</p>;
-  }
-
   const canEditReport = true; // All users can fill reports
   const canApprove =
     me?.role === "company_admin" ||
@@ -388,20 +543,17 @@ export function WorkOrderDetailPage() {
     wo.status === "requested" &&
     (me?.role === "company_admin" || me?.role === "super_admin");
 
-  const schemaForForm =
-    report?.template_snapshot_json &&
-    typeof report.template_snapshot_json === "object" &&
-    Array.isArray((report.template_snapshot_json as { sections?: unknown }).sections)
-      ? (report.template_snapshot_json as { sections: TemplateSection[] })
-      : template?.schema_json;
-  const sections = (schemaForForm?.sections as TemplateSection[]) || [];
-
   const fieldLabel = (field: TemplateField) =>
     field.label ?? (field.label_key ? t(field.label_key) : field.id);
 
-  const reportPhaseUnlocked = wo.status === "completed";
+  const isTechnicianField = (field: TemplateField) =>
+    !field.auto_fill && field.visible !== false && field.type !== "header";
+
+  const reportPhaseUnlocked = statusAllowsReport(wo.status);
 
   const statusSelectValue = (nextStatus || wo.status) as WorkOrderStatus;
+  const allowedNext = ALLOWED_TRANSITIONS[wo.status] ?? [];
+  const selectableStatuses = Array.from(new Set<WorkOrderStatus>([wo.status, ...allowedNext]));
 
   const reportPrimaryActionLabel = !report
     ? t("fill_report") || "Fill report"
@@ -418,6 +570,88 @@ export function WorkOrderDetailPage() {
           <span className={workOrderStatusPillClass(wo.status)}>{wo.status}</span>
           <span className="font-mono text-xs text-neutral-400">· {wo.id}</span>
         </p>
+      </div>
+
+      <div className="rounded-lg border border-neutral-200 bg-neutral-0 p-4 shadow-sm">
+        <h2 className="text-base font-semibold text-neutral-800">{t("wo_context") || "Work order context"}</h2>
+        <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+          <div>
+            <dt className="text-xs font-medium text-neutral-500">{t("company")}</dt>
+            <dd className="mt-0.5 text-neutral-900">{wo.company_name || "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-neutral-500">{t("site")}</dt>
+            <dd className="mt-0.5 text-neutral-900">
+              {wo.site_name ? (
+                <Link to={`/sites/${wo.site_id}`} className="text-primary-700 hover:underline">
+                  {wo.site_name}
+                </Link>
+              ) : (
+                "—"
+              )}
+            </dd>
+          </div>
+          {siteAddressLine && (
+            <div className="sm:col-span-2">
+              <dt className="text-xs font-medium text-neutral-500">{t("address")}</dt>
+              <dd className="mt-0.5 text-neutral-900">{siteAddressLine}</dd>
+            </div>
+          )}
+          {wo.location_name && (
+            <div>
+              <dt className="text-xs font-medium text-neutral-500">{t("location") || "Location"}</dt>
+              <dd className="mt-0.5 text-neutral-900">{wo.location_name}</dd>
+            </div>
+          )}
+          <div>
+            <dt className="text-xs font-medium text-neutral-500">{t("asset")}</dt>
+            <dd className="mt-0.5 text-neutral-900">
+              {wo.asset_id ? (
+                <Link to={`/assets/${wo.asset_id}`} className="text-primary-700 hover:underline">
+                  {wo.asset_name || wo.asset_label_code || wo.asset_id}
+                </Link>
+              ) : (
+                "—"
+              )}
+            </dd>
+          </div>
+          {wo.asset_category && (
+            <div>
+              <dt className="text-xs font-medium text-neutral-500">{t("asset_category")}</dt>
+              <dd className="mt-0.5 text-neutral-900">{wo.asset_category}</dd>
+            </div>
+          )}
+          {(wo.asset_serial || wo.asset_model) && (
+            <div className="sm:col-span-2 flex flex-wrap gap-x-6 gap-y-1">
+              {wo.asset_serial && (
+                <span>
+                  <span className="text-xs text-neutral-500">{t("asset_serial")}: </span>
+                  <span className="text-neutral-900">{wo.asset_serial}</span>
+                </span>
+              )}
+              {wo.asset_model && (
+                <span>
+                  <span className="text-xs text-neutral-500">{t("model") || "Model"}: </span>
+                  <span className="text-neutral-900">{wo.asset_model}</span>
+                </span>
+              )}
+            </div>
+          )}
+          <div>
+            <dt className="text-xs font-medium text-neutral-500">{t("category") || "Category"}</dt>
+            <dd className="mt-0.5 text-neutral-900">{wo.category}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-neutral-500">{t("source") || "Source"}</dt>
+            <dd className="mt-0.5 capitalize text-neutral-900">{wo.source}</dd>
+          </div>
+          {wo.description && (
+            <div className="sm:col-span-2">
+              <dt className="text-xs font-medium text-neutral-500">{t("description")}</dt>
+              <dd className="mt-0.5 whitespace-pre-wrap text-neutral-900">{wo.description}</dd>
+            </div>
+          )}
+        </dl>
       </div>
 
       {canReviewRequest && (
@@ -483,18 +717,7 @@ export function WorkOrderDetailPage() {
                       )
                     }
                   >
-                    {(
-                      [
-                        "created",
-                        "assigned",
-                        "in_progress",
-                        "on_hold",
-                        "completed",
-                        "verified",
-                        "closed",
-                        "cancelled",
-                      ] as WorkOrderStatus[]
-                    ).map((s) => (
+                    {selectableStatuses.map((s) => (
                       <option key={s} value={s}>
                         {s}
                       </option>
@@ -504,7 +727,7 @@ export function WorkOrderDetailPage() {
                     type="button"
                     className="shrink-0 rounded-md bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-0 shadow-sm transition hover:bg-neutral-900 disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={!nextStatus || nextStatus === wo.status}
-                    onClick={() => void patchStatus()}
+                    onClick={handleApply}
                   >
                     {t("apply") || "Apply"}
                   </button>
@@ -644,8 +867,8 @@ export function WorkOrderDetailPage() {
         <div className="rounded-lg border border-neutral-200 bg-neutral-0 p-4 shadow-sm">
           <h2 className="text-base font-semibold text-neutral-800">{t("report") || "Report"}</h2>
           <p className="mt-2 text-sm text-neutral-600">
-            {t("report_locked_until_completed") ||
-              "The maintenance report is available when this work order status is completed."}
+            {t("report_unlocked_at_in_progress") ||
+              "The maintenance report is available once this work order is in progress."}
           </p>
         </div>
       )}
@@ -683,6 +906,24 @@ export function WorkOrderDetailPage() {
                     </li>
                   ))}
                 </ul>
+              </div>
+            )}
+            {report && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
+                  onClick={() => void exportReportPdf("ar")}
+                >
+                  {t("export_report_ar") || "Export PDF (Arabic)"}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
+                  onClick={() => void exportReportPdf("en")}
+                >
+                  {t("export_report_en") || "Export PDF (English)"}
+                </button>
               </div>
             )}
             <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -747,14 +988,68 @@ export function WorkOrderDetailPage() {
 
             {report && (
               <form className="space-y-4" onSubmit={(e) => void saveReport(e)}>
-            {sections.map((sec, si) => (
+            {referenceDocuments.length > 0 && (
+              <div className="rounded-md border border-neutral-200 bg-neutral-50 p-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-neutral-600">
+                  {t("reference_documents") || "Reference documents"}
+                </p>
+                <ul className="mt-2 space-y-1">
+                  {referenceDocuments.map((doc) => (
+                    <li key={doc.id}>
+                      <button
+                        type="button"
+                        className="text-sm text-primary-700 hover:underline"
+                        onClick={() => void downloadWorkOrderDocument(doc)}
+                      >
+                        {doc.file_name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {technicianSections.map((sec, si) => (
               <div key={sec.id ?? si} className="space-y-3">
                 {(sec.title || sec.title_key) && (
                   <h3 className="border-b border-neutral-200 pb-2 text-base font-semibold text-neutral-900">
                     {sec.title ?? (sec.title_key ? t(sec.title_key) : "")}
                   </h3>
                 )}
-                {(sec.fields || []).map((field) => {
+                {(sec.fields || []).filter(isTechnicianField).map((field) => {
+                  if (field.type === "time") {
+                    return (
+                      <div key={field.id}>
+                        <label className="mb-1 block text-sm text-neutral-700">
+                          {fieldLabel(field)}
+                          {field.required ? " *" : ""}
+                        </label>
+                        <input
+                          type="time"
+                          className="w-full max-w-xs rounded-md border border-neutral-300 px-3 py-2"
+                          value={String(answers[field.id] ?? "")}
+                          disabled={!canEditReport || report?.status !== "draft"}
+                          onChange={(e) => {
+                            const endTime = e.target.value;
+                            setAnswers((a) => {
+                              const next = { ...a, [field.id]: endTime };
+                              if (endTime && wo.opened_at) {
+                                const start = new Date(wo.opened_at);
+                                const [eh, em] = endTime.split(":").map(Number);
+                                const end = new Date(start);
+                                end.setHours(eh, em, 0, 0);
+                                if (end < start) end.setDate(end.getDate() + 1);
+                                const hours = Math.round(((end.getTime() - start.getTime()) / 3600000) * 100) / 100;
+                                if (!a.labor_log) {
+                                  next.labor_log = [{ hours }];
+                                }
+                              }
+                              return next;
+                            });
+                          }}
+                        />
+                      </div>
+                    );
+                  }
                   if (field.type === "text") {
                     return (
                       <div key={field.id}>
@@ -927,6 +1222,21 @@ export function WorkOrderDetailPage() {
               </div>
             ))}
             {report?.status === "draft" && (
+              <div className="flex flex-wrap items-center gap-3 border-t border-neutral-100 pt-4">
+                <label className="text-sm text-neutral-700">
+                  {t("report_pdf_language") || "PDF language"}
+                  <select
+                    className="ml-2 rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
+                    value={pdfLang}
+                    onChange={(e) => setPdfLang(e.target.value as "ar" | "en")}
+                  >
+                    <option value="ar">{t("report_pdf_lang_ar") || "Arabic (AR)"}</option>
+                    <option value="en">{t("report_pdf_lang_en") || "English (EN)"}</option>
+                  </select>
+                </label>
+              </div>
+            )}
+            {report?.status === "draft" && (
               <div className="flex flex-wrap gap-2 pt-4">
                 <button
                   type="submit"
@@ -1024,6 +1334,84 @@ export function WorkOrderDetailPage() {
           </div>
         </form>
       </div>
+
+      {holdModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-neutral-0 p-6 shadow-xl">
+            <h3 className="mb-2 text-lg font-semibold text-neutral-900">
+              {t("hold_reason_title") || "Reason for Hold"}
+            </h3>
+            <p className="mb-4 text-sm text-neutral-600">
+              {t("hold_reason_hint") || "Provide a reason for placing this work order on hold."}
+            </p>
+            <textarea
+              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              rows={4}
+              value={holdReason}
+              onChange={(e) => setHoldReason(e.target.value)}
+              placeholder={t("hold_reason_placeholder") || "Enter hold reason…"}
+              autoFocus
+            />
+            <div className="mt-4 flex justify-end gap-3">
+              <button
+                className="rounded-md px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100"
+                onClick={() => setHoldModalOpen(false)}
+              >
+                {t("cancel")}
+              </button>
+              <button
+                className="rounded-md bg-neutral-800 px-4 py-2 text-sm font-medium text-neutral-0 hover:bg-neutral-900 disabled:opacity-50"
+                disabled={!holdReason.trim()}
+                onClick={() => {
+                  setHoldModalOpen(false);
+                  void patchStatus({ hold_reason: holdReason.trim() });
+                }}
+              >
+                {t("apply") || "Apply"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cancelModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-neutral-0 p-6 shadow-xl">
+            <h3 className="mb-2 text-lg font-semibold text-neutral-900">
+              {t("cancel_reason_title") || "Reason for Cancellation"}
+            </h3>
+            <p className="mb-4 text-sm text-neutral-600">
+              {t("cancel_reason_hint") || "Provide a reason for cancelling this work order."}
+            </p>
+            <textarea
+              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              rows={4}
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder={t("cancel_reason_placeholder") || "Enter cancellation reason…"}
+              autoFocus
+            />
+            <div className="mt-4 flex justify-end gap-3">
+              <button
+                className="rounded-md px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100"
+                onClick={() => setCancelModalOpen(false)}
+              >
+                {t("cancel")}
+              </button>
+              <button
+                className="rounded-md bg-error-dark px-4 py-2 text-sm font-medium text-neutral-0 hover:bg-error-main disabled:opacity-50"
+                disabled={!cancelReason.trim()}
+                onClick={() => {
+                  setCancelModalOpen(false);
+                  void patchStatus({ cancellation_reason: cancelReason.trim() });
+                }}
+              >
+                {t("confirm") || "Confirm"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {(history.length > 0 || comments.length > 0 || documents.length > 0) && (
         <div className="rounded-lg border border-neutral-200 bg-neutral-0 p-6 shadow-sm">

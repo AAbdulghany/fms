@@ -2,15 +2,19 @@ from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from sqlalchemy import select
+from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_user, require_roles
 from app.database import get_db
 from app.models import MaintenanceReport, ReportStatus, Tenant, User, UserRole, WorkOrder
 from app.schemas import MaintenanceReportOut, RejectReportBody
 from app.services.audit import write_audit
+from app.services.maintenance_report_pdf import resolve_report_locale
 from app.services.pdf import render_report_summary_pdf
+from app.services.platform_bootstrap import DEFAULT_BRANDING
+from app.services.report_context import merge_report_answers, resolve_report_inspector
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -92,18 +96,40 @@ def report_pdf(
     report_id: UUID,
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
+    lang: str | None = Query(None, description="Report language: ar or en"),
 ) -> Response:
     r = _get_report(db, current, report_id)
-    wo = db.get(WorkOrder, r.work_order_id)
+    wo = db.scalars(
+        select(WorkOrder)
+        .where(WorkOrder.id == r.work_order_id)
+        .options(
+            joinedload(WorkOrder.site),
+            joinedload(WorkOrder.asset),
+            joinedload(WorkOrder.assignee_user),
+        )
+    ).first()
     tenant = db.get(Tenant, r.tenant_id)
+    inspector = resolve_report_inspector(db, wo, current) if wo else current
+    merged = (
+        merge_report_answers(db, wo, inspector, r.answers_json or {})
+        if wo and inspector
+        else (r.answers_json or {})
+    )
+    lang_code, dir_ = resolve_report_locale(tenant.settings_json if tenant else {}, lang)
     pdf_bytes = render_report_summary_pdf(
         tenant_name=tenant.name if tenant else "",
-        work_order_title=wo.title if wo else str(wo.id),
-        answers=r.answers_json or {},
+        work_order_title=wo.title if wo else "",
+        work_order_id=str(wo.id) if wo else "",
+        answers=merged,
         template_schema=dict(r.template_snapshot_json or {}),
+        platform_company_name=DEFAULT_BRANDING["company_name"],
+        platform_copyright=DEFAULT_BRANDING.get("copyright_watermark", ""),
+        lang=lang_code,
+        dir_=dir_,
     )
+    suffix = lang_code if lang else "report"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="report-{report_id}.pdf"'},
+        headers={"Content-Disposition": f'attachment; filename="report-{suffix}-{report_id}.pdf"'},
     )

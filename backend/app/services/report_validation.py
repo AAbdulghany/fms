@@ -1,5 +1,21 @@
 from typing import Any
 
+from app.services.report_context import is_technician_visible_field
+
+
+def _field_is_required(f: dict[str, Any], answers: dict[str, Any]) -> bool:
+    if f.get("required"):
+        return True
+    req_when = f.get("required_when")
+    if not isinstance(req_when, dict):
+        return False
+    dep_field = req_when.get("field")
+    values = req_when.get("values") or []
+    if not dep_field:
+        return False
+    return answers.get(dep_field) in values
+
+
 def validate_report_answers(schema: dict[str, Any], answers: dict[str, Any]) -> list[str]:
     """
     Comprehensive validation of report answers against the template schema.
@@ -8,39 +24,35 @@ def validate_report_answers(schema: dict[str, Any], answers: dict[str, Any]) -> 
     errors: list[str] = []
 
     for sec in schema.get("sections", []):
+        if sec.get("visible") is False:
+            continue
         sec_title = sec.get("title", "Unknown Section")
         for f in sec.get("fields", []):
             fid = f.get("id")
-            if not fid:
+            if not fid or not is_technician_visible_field(f):
                 continue
 
             val = answers.get(fid)
             label = f.get("label", fid)
 
-            # 1. Required Check
-            if f.get("required") and (val in (None, "", [], {})):
+            if _field_is_required(f, answers) and (val in (None, "", [], {})):
                 errors.append(f"Field '{label}' in {sec_title} is required.")
-                continue # Skip further validation for empty required field
+                continue
 
             if val in (None, "", [], {}):
                 continue
 
-            # 2. Type and Range Validation for numeric fields
             if f.get("type") == "number":
                 try:
                     num_val = float(val)
-                    # Min check
                     if "min" in f and num_val < f["min"]:
                         errors.append(f"Field '{label}' must be at least {f['min']}.")
-                    # Max check
                     if "max" in f and num_val > f["max"]:
                         errors.append(f"Field '{label}' must be no more than {f['max']}.")
                 except (ValueError, TypeError):
                     errors.append(f"Field '{label}' must be a valid number.")
 
-            # 3. Photo count validation
             if f.get("type") == "photo":
-                # Expecting answers[fid] to be a list of photo objects/paths
                 if not isinstance(val, list):
                     errors.append(f"Field '{label}' must be a list of photos.")
                 else:
@@ -50,10 +62,8 @@ def validate_report_answers(schema: dict[str, Any], answers: dict[str, Any]) -> 
 
     return errors
 
+
 def validate_required_fields(schema: dict[str, Any], answers: dict[str, Any]) -> list[str]:
-    """
-    Legacy support: only checks for missing required fields.
-    """
+    """Legacy support: only checks for missing required fields."""
     errors = validate_report_answers(schema, answers)
-    # Filter to only include 'required' messages for backward compatibility if needed
     return [e for e in errors if "is required" in e]
