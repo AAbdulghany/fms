@@ -125,6 +125,17 @@ pytest backend/tests/test_rbac.py -v
 
 ---
 
+### Path 5: Product & UAT
+
+| Order | Topic | File | Purpose |
+|-------|-------|------|---------|
+| 1 | Wave 3 UAT observations | `product/01_wave3_uat_observations.md` | Tester feedback, gaps vs code, ticket IDs |
+| 1b | Wave 3 observation closure | `../phase3-restructure/WAVE3_OBSERVATIONS.md` | 18 OBS-* items — sign-off matrix |
+| 2 | Post-UAT Phase 1 & 2 implementation | `product/02_post_uat_implementation.md` | WO state machine, asset schema, API changes |
+| 3 | Wave 4 mega prompt & task registry | `product/03_wave4_mega_prompt.md` | Verification gaps, architect decisions, NT-P* tasks |
+
+---
+
 ## Phase 3 Topics to Learn
 
 Based on the [Phase 3 Progress](./phase3/PHASE3_PROGRESS.md), these topics help complete Phase 3:

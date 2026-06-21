@@ -4,8 +4,9 @@
 **PRD:** [PRD_PHASE3_MULTI_TENANT.md](PRD_PHASE3_MULTI_TENANT.md)  
 **AgDR:** [AgDR-PHASE3-TENANT-ARCHITECTURE.md](AgDR-PHASE3-TENANT-ARCHITECTURE.md)
 
-> **Idris (ticket-manager):** File each row as a GitHub Issue after Abdullah approves PRD.  
-> Branch format: `feature/NT-XXX-short-description`  
+> **Branch format (Wave 3+):** `feature/phase-3-restructure/wave{N}/NT-XXX-short-description`  
+> **Wave integration branch:** `feature/phase-3-restructure/wave{N}`  
+> **Governance:** [WAVE_GOVERNANCE.md](WAVE_GOVERNANCE.md) · **CI:** [PIPELINE_ARCHITECTURE.md](PIPELINE_ARCHITECTURE.md)  
 > PR title: `feat(NT-XXX): description`
 
 ---
@@ -56,22 +57,29 @@ See [WAVE1_WAVE2_SIGNOFF.md](WAVE1_WAVE2_SIGNOFF.md).
 
 ---
 
-## Wave 3 — Assets module (parallel after NT-108)
+## Wave 3 — Assets module ✅ CLOSED
+
+**Branch:** `feature/phase-3-restructure/wave3`  
+**Tracker:** [WAVE3_TICKETS.md](WAVE3_TICKETS.md) · **Sign-off:** [WAVE3_SIGNOFF.md](WAVE3_SIGNOFF.md) · **E2E:** [WAVE3_E2E.md](WAVE3_E2E.md) · **UAT:** [WAVE3_OBSERVATIONS.md](WAVE3_OBSERVATIONS.md)
 
 
-| ID         | Title                                                 | Owner agent                          | Depends       | Est |
-| ---------- | ----------------------------------------------------- | ------------------------------------ | ------------- | --- |
-| **NT-116** | AI maintenance schema placeholder + feature flag stub | backend-engineer                     | NT-102        | S   |
-| **NT-117** | Asset dashboard: quarterly maintenance calendar view  | frontend-engineer                    | —             | L   |
-| **NT-118** | Asset dashboard: yearly maintenance calendar view     | frontend-engineer                    | NT-117        | M   |
-| **NT-119** | Asset ↔ WO linkage panel on dashboard                 | frontend-engineer                    | NT-117        | M   |
-| **NT-120** | Enforce `assets` feature gate on asset routes + UI    | backend-engineer + frontend-engineer | NT-108        | S   |
-| **NT-121** | Asset module QA (AST-01–AST-06)                       | qa-engineer                          | NT-117–NT-120 | M   |
+| ID         | Title                                                 | Owner agent                          | Status | GitHub |
+| ---------- | ----------------------------------------------------- | ------------------------------------ | ------ | ------ |
+| **NT-116** | AI maintenance schema placeholder + feature flag stub | backend-engineer                     | ✅ Done | —      |
+| **NT-117** | Asset dashboard: quarterly maintenance calendar view  | frontend-engineer                    | ✅ Done | —      |
+| **NT-118** | Asset dashboard: yearly maintenance calendar view     | frontend-engineer                    | ✅ Done | —      |
+| **NT-119** | Asset ↔ WO linkage panel on dashboard                 | frontend-engineer                    | ✅ Done | —      |
+| **NT-120** | Enforce `assets` feature gate on asset routes + UI    | backend-engineer + frontend-engineer | ✅ Done | —      |
+| **NT-121** | Asset module QA (AST-01–AST-06)                       | qa-engineer                          | ✅ Done | —      |
+
+**UAT observations (18):** All P1/P2 items from maintenance-admin UAT absorbed into Wave 3 — see [WAVE3_OBSERVATIONS.md](WAVE3_OBSERVATIONS.md).
 
 
 ---
 
-## Wave 4 — Invoices & workflows (parallel after NT-108)
+## Wave 4 — Invoices & workflows (unblocked — pending Wave 3 merge to `dev`)
+
+**Branch:** `feature/phase-3-restructure/wave4` · [WAVE4_TICKETS.md](WAVE4_TICKETS.md)
 
 
 | ID         | Title                                                       | Owner agent                          | Depends       | Est |
@@ -86,7 +94,10 @@ See [WAVE1_WAVE2_SIGNOFF.md](WAVE1_WAVE2_SIGNOFF.md).
 
 ---
 
-## Wave 5 — Role hardening & sign-off
+## Wave 5 — Role hardening & sign-off (blocked on Wave 4)
+
+**Branch:** `feature/phase-3-restructure/wave5` · [WAVE5_TICKETS.md](WAVE5_TICKETS.md)  
+**Note:** RBAC core (super_user, sw_dev, company_engineer) landed early on `feature/phase3` — NT-128 scope reduced; reconcile in Wave 5.
 
 
 | ID         | Title                                                     | Owner agent             | Depends                | Est |
@@ -123,7 +134,9 @@ NT-101 → NT-102 → NT-103 ─┬→ NT-105..NT-111 (licensing)
 
 ## PR workflow (Tariq / pr-manager)
 
-- One PR per ticket (or tightly coupled pair with same NT id)
+- **Ticket PR** → target `feature/phase-3-restructure/wave{N}` (one PR per ticket or tight pair)
+- **Wave merge PR** → target `dev` after [WAVE{N}_SIGNOFF.md](WAVE3_SIGNOFF.md) complete
 - Required sections: Summary, Test plan, AgDR link if schema change
 - 2-review gate: code-reviewer (Rex) + human (Abdullah)
+- CI must pass: `.github/workflows/ci.yml` (+ `wave-e2e.yml` when E2E exists)
 
