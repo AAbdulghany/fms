@@ -19,7 +19,7 @@ def seed_data():
         db.execute(text("TRUNCATE TABLE audit_logs, invoice_line_items, invoices, maintenance_reports, work_orders, maintenance_schedules, assets, sites, clients, users, tenants CASCADE"))
 
         # 1. Create Tenant
-        tenant = Tenant(name="NexTask Demo Co", status="active")
+        tenant = Tenant(name="Orbit Demo Co", status="active")
         db.add(tenant)
         db.flush()
         t_id = tenant.id
@@ -29,6 +29,10 @@ def seed_data():
         client = Client(tenant_id=t_id, legal_name="Global Enterprises Ltd", code="GE-001")
         db.add(client)
         db.flush()
+
+        from app.services.billing_setup import ensure_client_active_contract
+
+        ensure_client_active_contract(db, t_id, client.id)
         
         site = Site(
             tenant_id=t_id,

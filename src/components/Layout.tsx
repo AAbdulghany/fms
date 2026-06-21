@@ -6,6 +6,7 @@ import { applyLanguage, getStoredLanguage } from "../lib/language";
 import { Sidebar } from "./Sidebar";
 import ClockWidget from "./ClockWidget";
 import NotificationBell from "./NotificationBell";
+import { OrbitLogo } from "./OrbitLogo";
 
 interface LayoutProps {
   children: ReactNode;
@@ -58,9 +59,7 @@ export function Layout({ children }: LayoutProps) {
               </svg>
             </button>
 
-            <h1 className="text-lg font-semibold text-primary-600 font-display-ar lg:text-xl">
-              {t("app_title")}
-            </h1>
+            <OrbitLogo iconSize={26} />
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">

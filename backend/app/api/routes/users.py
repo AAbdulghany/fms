@@ -8,38 +8,62 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, require_roles
 from app.core.security import hash_password
 from app.database import get_db
-from app.models import User, UserRole
+from app.models import Tenant, User, UserRole
 from app.rbac import (
     COMPANY_ADMIN_CREATABLE,
     can_create_role,
     can_manage_tenant_users,
     can_remove_members,
+    is_platform_staff,
     tenant_admin_roles_for_require,
 )
-from app.schemas import UserCreateBody, UserCreateResponse, UserListOut, UserPatchBody, UserPatchMe, UserPublic
+from app.schemas import UserCreateBody, UserCreateResponse, UserListOut, UserPatchBody, UserPatchMe, UserMeOut, UserPublic
 
 # Backward-compatible alias used by existing tests.
 UserCreateRequest = UserCreateBody
 from app.services.audit import write_audit
 from app.services.provisioning import generate_initial_password
+from app.services.subscription import get_subscription
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 _tenant_admin = Depends(require_roles(*tenant_admin_roles_for_require()))
 
 
-@router.get("/me", response_model=UserPublic)
-def me(current: Annotated[User, Depends(get_current_user)]) -> User:
-    return current
+def _user_me_out(db: Session, user: User) -> UserMeOut:
+    meta = user.metadata_json or {}
+    base = UserPublic.model_validate(user)
+    features: list[str] = []
+    if user.is_platform_admin:
+        features = ["assets", "invoices", "csv_import", "advanced_scheduling", "ai_maintenance"]
+    elif user.tenant_id:
+        tenant = db.get(Tenant, user.tenant_id)
+        if tenant:
+            features = list(get_subscription(db, tenant).get("features") or [])
+    data = base.model_dump()
+    data["phone"] = user.phone
+    data["job_title"] = meta.get("job_title")
+    data["accreditation"] = meta.get("accreditation")
+    data["features"] = features
+    return UserMeOut(**data)
 
 
-@router.patch("/me", response_model=UserPublic)
+@router.get("/me", response_model=UserMeOut)
+def me(
+    db: Annotated[Session, Depends(get_db)],
+    current: Annotated[User, Depends(get_current_user)],
+) -> UserMeOut:
+    return _user_me_out(db, current)
+
+
+@router.patch("/me", response_model=UserMeOut)
 def patch_me(
     body: UserPatchMe,
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
-) -> User:
+) -> UserMeOut:
     """Allow authenticated user to update their full_name and/or password.
+
     Username changes are explicitly NOT allowed.
     """
     if body.full_name is not None:
@@ -48,6 +72,15 @@ def patch_me(
         current.password_hash = hash_password(body.password)
         meta = dict(current.metadata_json or {})
         meta["must_change_password"] = False
+        current.metadata_json = meta
+    if body.phone is not None:
+        current.phone = body.phone.strip() if body.phone else None
+    meta = dict(current.metadata_json or {})
+    if body.job_title is not None:
+        meta["job_title"] = body.job_title.strip() if body.job_title else None
+    if body.accreditation is not None:
+        meta["accreditation"] = body.accreditation.strip() if body.accreditation else None
+    if body.job_title is not None or body.accreditation is not None:
         current.metadata_json = meta
     write_audit(
         db,
@@ -60,7 +93,7 @@ def patch_me(
     )
     db.commit()
     db.refresh(current)
-    return current
+    return _user_me_out(db, current)
 
 
 @router.get("", response_model=list[UserListOut])
@@ -69,12 +102,15 @@ def list_users(
     current: Annotated[User, Depends(get_current_user)],
     _: Annotated[User, _tenant_admin],
 ) -> list[UserListOut]:
-    """List all users in the tenant."""
-    users = db.scalars(
-        select(User)
-        .where(User.tenant_id == current.tenant_id)
-        .order_by(User.created_at.desc())
-    ).all()
+    """List users in the tenant; hide platform staff from non-platform viewers."""
+    q = select(User).where(User.tenant_id == current.tenant_id)
+    if not is_platform_staff(current):
+        q = q.where(
+            User.is_platform_admin.is_(False),
+            User.role.notin_([UserRole.super_user, UserRole.sw_dev]),
+        )
+    q = q.order_by(User.created_at.desc())
+    users = db.scalars(q).all()
     return [UserListOut.from_user(u) for u in users]
 
 
@@ -199,6 +235,28 @@ def patch_user(
         user.role = body.role
     if body.locale is not None:
         user.locale = body.locale
+
+    # NT-P5-C06-BE: tenant admins may patch phone/email for client_admin and site_manager
+    _contact_editable_roles = {UserRole.client_admin, UserRole.site_manager}
+    _can_edit_contact = current.role in {UserRole.super_admin, UserRole.company_admin}
+    if body.phone is not None:
+        if not _can_edit_contact or user.role not in _contact_editable_roles:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="CANNOT_EDIT_CONTACT")
+        user.phone = body.phone.strip() if body.phone else None
+    if body.email is not None:
+        if not _can_edit_contact or user.role not in _contact_editable_roles:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="CANNOT_EDIT_CONTACT")
+        new_email = body.email.strip()
+        existing = db.scalar(
+            select(User).where(
+                User.tenant_id == current.tenant_id,
+                User.email == new_email,
+                User.id != user.id,
+            )
+        )
+        if existing:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="EMAIL_ALREADY_IN_USE")
+        user.email = new_email
 
     write_audit(
         db,

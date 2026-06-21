@@ -20,6 +20,10 @@ export interface User {
   company_id?: string;
   is_active: boolean;
   is_platform_admin?: boolean;
+  features?: string[];
+  phone?: string | null;
+  job_title?: string | null;
+  accreditation?: string | null;
 }
 
 export type WorkOrderStatus =
@@ -60,6 +64,15 @@ export interface WorkOrder {
   assignee?: WorkOrderUserBrief | null;
   company_name?: string | null;
   site_name?: string | null;
+  asset_name?: string | null;
+  asset_category?: string | null;
+  asset_serial?: string | null;
+  asset_label_code?: string | null;
+  asset_model?: string | null;
+  site_address?: string | null;
+  site_city?: string | null;
+  site_country?: string | null;
+  location_name?: string | null;
   tags?: string[];
   opened_at: string;
   closed_at: string | null;
@@ -131,6 +144,16 @@ export interface Invoice {
   tax_sar: string;
   total_sar: string;
   currency: string;
+  due_date?: string | null;
+  issued_at?: string | null;
+  billing_email?: string | null;
+  notes?: string;
+  work_order_title?: string;
+  client_name?: string | null;
+  labor_hours?: string;
+  labor_rate_sar?: string;
+  labor_amount_sar?: string;
+  service_fee_sar?: string;
   line_items: Array<{
     line_type: string;
     description: string;
@@ -167,11 +190,14 @@ export interface Site {
   qr_code?: string;
 }
 
-export type AssetLifecycleStatus = "active" | "warning" | "end_of_life" | "replaced";
+export type AssetLifecycleStatus = "active" | "warning" | "end_of_life" | "replaced" | "retired";
+
+export type AssetCriticality = "low" | "medium" | "high" | "critical";
 
 export interface Asset {
   id: string;
   asset_id: string;
+  name?: string;
   site_id: string;
   site_name?: string;
   company_id: string;
@@ -181,6 +207,11 @@ export interface Asset {
   manufacturer?: string;
   model?: string;
   serial_number?: string;
+  floor?: string;
+  room?: string;
+  smart_labels?: string[];
+  criticality?: AssetCriticality;
+  warranty_until?: string;
   installation_date: string;
   expected_lifespan_years: number;
   lifecycle_status: AssetLifecycleStatus;
@@ -190,6 +221,12 @@ export interface Asset {
   last_maintenance_date?: string;
   location_path?: string;
   replacement_wo_id?: string;
+  /** EOL date computed from installed_on + max_age_years (may come from backend or computed client-side) */
+  expected_eol_date?: string;
+  /** Spare device flag — stored in metadata_json.is_spare */
+  is_spare?: boolean;
+  /** Photo URL from metadata_json.photo_url */
+  photo_url?: string;
 }
 
 export interface AssetLifecycleEvent {
@@ -221,7 +258,6 @@ export interface DashboardStats {
   pending_invoices_amount?: string;
   /** Draft invoices count (from /dashboard/summary) */
   pending_invoices_draft?: number;
-  technicians_count?: number;
   my_tasks_count?: number;
   in_progress_count?: number;
   completed_week_count?: number;
@@ -238,7 +274,6 @@ export interface DashboardSummary {
   sites_count?: number | null;
   assets_count?: number | null;
   open_work_orders: number;
-  technicians_count?: number | null;
   pending_invoices_draft?: number | null;
   my_assigned_open?: number | null;
   my_in_progress?: number | null;

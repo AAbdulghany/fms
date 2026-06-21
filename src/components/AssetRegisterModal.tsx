@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "../lib/api";
-import type { User, UserRole } from "../lib/types";
+import type { AssetCriticality, User, UserRole } from "../lib/types";
 
 type SiteRow = { id: string; name: string; client_id: string; company_name?: string | null };
 type TemplateRow = { id: string; name: string };
@@ -41,11 +41,24 @@ export function AssetRegisterModal({
   const [category, setCategory] = useState("general");
   const [model, setModel] = useState("");
   const [serial, setSerial] = useState("");
+  const [floor, setFloor] = useState("");
+  const [room, setRoom] = useState("");
+  const [smartLabels, setSmartLabels] = useState("");
+  const [criticality, setCriticality] = useState<AssetCriticality | "">("");
+  const [warrantyUntil, setWarrantyUntil] = useState("");
+  const [lastMaintenanceDate, setLastMaintenanceDate] = useState("");
+  const [installedOn, setInstalledOn] = useState("");
+  const [maxAgeYears, setMaxAgeYears] = useState(5);
+  const [isSpare, setIsSpare] = useState(false);
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [frequency, setFrequency] = useState("monthly");
   const [templateId, setTemplateId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const currentAgeYears = installedOn
+    ? Math.max(0, (Date.now() - new Date(installedOn).getTime()) / (365.25 * 24 * 3600 * 1000))
+    : null;
 
   const canPickClient = me ? PICK_CLIENT_ROLES.has(me.role) : false;
   const lockedClientId =
@@ -161,6 +174,10 @@ export function AssetRegisterModal({
     setLoading(true);
     setError(null);
     try {
+      const smartLabelsArr = smartLabels
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
       await apiFetch("/assets", {
         method: "POST",
         json: {
@@ -169,6 +186,15 @@ export function AssetRegisterModal({
           category: category.trim() || "general",
           model: model.trim() || undefined,
           serial: serial.trim() || undefined,
+          floor: floor.trim() || undefined,
+          room: room.trim() || undefined,
+          smart_labels: smartLabelsArr.length ? smartLabelsArr : undefined,
+          criticality: criticality || undefined,
+          warranty_until: warrantyUntil || undefined,
+          last_maintenance_date: lastMaintenanceDate || undefined,
+          installed_on: installedOn || undefined,
+          max_age_years: maxAgeYears,
+          is_spare: isSpare,
           schedule: scheduleEnabled
             ? { template_id: templateId, frequency }
             : undefined,
@@ -177,6 +203,15 @@ export function AssetRegisterModal({
       setName("");
       setModel("");
       setSerial("");
+      setFloor("");
+      setRoom("");
+      setSmartLabels("");
+      setCriticality("");
+      setWarrantyUntil("");
+      setLastMaintenanceDate("");
+      setInstalledOn("");
+      setMaxAgeYears(5);
+      setIsSpare(false);
       setScheduleEnabled(false);
       onCreated();
       onClose();
@@ -275,6 +310,122 @@ export function AssetRegisterModal({
               onChange={(e) => setCategory(e.target.value)}
             />
           </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium">{t("serial_number")}</label>
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              value={serial}
+              onChange={(e) => setSerial(e.target.value)}
+              placeholder={t("optional")}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium">{t("floor")}</label>
+              <input
+                className="w-full rounded-md border px-3 py-2 text-sm"
+                value={floor}
+                onChange={(e) => setFloor(e.target.value)}
+                placeholder={t("optional")}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">{t("room")}</label>
+              <input
+                className="w-full rounded-md border px-3 py-2 text-sm"
+                value={room}
+                onChange={(e) => setRoom(e.target.value)}
+                placeholder={t("optional")}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium">{t("criticality")}</label>
+            <select
+              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+              value={criticality}
+              onChange={(e) => setCriticality(e.target.value as AssetCriticality | "")}
+            >
+              <option value="">{t("optional")}</option>
+              <option value="low">{t("criticality_low")}</option>
+              <option value="medium">{t("criticality_medium")}</option>
+              <option value="high">{t("criticality_high")}</option>
+              <option value="critical">{t("criticality_critical")}</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium">{t("smart_labels")}</label>
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              value={smartLabels}
+              onChange={(e) => setSmartLabels(e.target.value)}
+              placeholder={t("smart_labels_placeholder")}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium">{t("warranty_date")}</label>
+              <input
+                type="date"
+                className="w-full rounded-md border px-3 py-2 text-sm"
+                value={warrantyUntil}
+                onChange={(e) => setWarrantyUntil(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">{t("last_maintenance_date")}</label>
+              <input
+                type="date"
+                className="w-full rounded-md border px-3 py-2 text-sm"
+                value={lastMaintenanceDate}
+                onChange={(e) => setLastMaintenanceDate(e.target.value)}
+                placeholder="N/A"
+              />
+              <p className="mt-0.5 text-xs text-neutral-500">{t("last_maintenance_date_hint")}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium">{t("installation_date")}</label>
+              <input
+                type="date"
+                className="w-full rounded-md border px-3 py-2 text-sm"
+                value={installedOn}
+                onChange={(e) => setInstalledOn(e.target.value)}
+                max={new Date().toISOString().slice(0, 10)}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">{t("max_age_years")}</label>
+              <input
+                type="number"
+                min={1}
+                max={50}
+                className="w-full rounded-md border px-3 py-2 text-sm"
+                value={maxAgeYears}
+                onChange={(e) => setMaxAgeYears(Math.max(1, Number(e.target.value)))}
+              />
+            </div>
+          </div>
+          {currentAgeYears !== null && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-neutral-500">{t("current_age")}</label>
+              <input
+                readOnly
+                className="w-full rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-700"
+                value={`${currentAgeYears.toFixed(1)} ${t("years")}`}
+              />
+            </div>
+          )}
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={isSpare}
+              onChange={(e) => setIsSpare(e.target.checked)}
+              className="h-4 w-4 rounded border-neutral-300 text-primary-600"
+            />
+            {t("spare_device") || "Spare device (swap-out maintenance)"}
+          </label>
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"

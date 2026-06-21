@@ -21,37 +21,48 @@ export function DashboardPage() {
   const [recentWOs, setRecentWOs] = useState<WorkOrder[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchDashboard = async () => {
+    setLoading(true);
+    try {
+      const userData = await apiFetch<User>("/users/me");
+      setUser(userData);
+
+      const summary = await apiFetch<DashboardSummary>("/dashboard/summary");
+
+      const wo = await apiFetch<PaginatedWorkOrders>("/work-orders?page_size=5");
+      setRecentWOs(wo.data.slice(0, 5));
+
+      const dashStats: DashboardStats = {
+        active_wo_count: summary.open_work_orders,
+        companies_count: summary.clients_count ?? undefined,
+        sites_count: summary.sites_count ?? undefined,
+        assets_count: summary.assets_count ?? undefined,
+        pending_invoices_draft: summary.pending_invoices_draft ?? undefined,
+        my_tasks_count: summary.my_assigned_open ?? undefined,
+        in_progress_count: summary.my_in_progress ?? undefined,
+        completed_week_count: summary.completed_this_week,
+        assets_at_eol_count: summary.assets_at_eol ?? undefined,
+      };
+
+      setStats(dashStats);
+    } catch (error) {
+      console.error("Failed to fetch dashboard data", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    void (async () => {
-      try {
-        const userData = await apiFetch<User>("/users/me");
-        setUser(userData);
+    void fetchDashboard();
 
-        const summary = await apiFetch<DashboardSummary>("/dashboard/summary");
-
-        const wo = await apiFetch<PaginatedWorkOrders>("/work-orders?page_size=5");
-        setRecentWOs(wo.data.slice(0, 5));
-
-        const dashStats: DashboardStats = {
-          active_wo_count: summary.open_work_orders,
-          companies_count: summary.clients_count ?? undefined,
-          sites_count: summary.sites_count ?? undefined,
-          assets_count: summary.assets_count ?? undefined,
-          technicians_count: summary.technicians_count ?? undefined,
-          pending_invoices_draft: summary.pending_invoices_draft ?? undefined,
-          my_tasks_count: summary.my_assigned_open ?? undefined,
-          in_progress_count: summary.my_in_progress ?? undefined,
-          completed_week_count: summary.completed_this_week,
-          assets_at_eol_count: summary.assets_at_eol ?? undefined,
-        };
-
-        setStats(dashStats);
-      } catch (error) {
-        console.error("Failed to fetch dashboard data", error);
-      } finally {
-        setLoading(false);
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void fetchDashboard();
       }
-    })();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (loading) {
@@ -110,14 +121,15 @@ export function DashboardPage() {
             onClick={() => navigate("/work-orders")}
           />
           <StatsCard
+            label={t("assets")}
+            value={stats.assets_count ?? "—"}
+            subtitle={stats.assets_at_eol_count ? `${stats.assets_at_eol_count} at EOL` : undefined}
+            onClick={() => navigate("/assets")}
+          />
+          <StatsCard
             label={t("invoice_drafts")}
             value={stats.pending_invoices_draft ?? 0}
             onClick={() => navigate("/invoices")}
-          />
-          <StatsCard
-            label={t("users")}
-            value={stats.technicians_count ?? "—"}
-            onClick={() => navigate("/users")}
           />
         </div>
       )}
@@ -247,13 +259,13 @@ export function DashboardPage() {
           {isTenantStaff && (
             <>
               <button
-                onClick={() => navigate("/work-orders")}
+                onClick={() => navigate("/work-orders?open=create")}
                 className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
               >
                 + {t("create_work_order")}
               </button>
               <button
-                onClick={() => navigate("/companies")}
+                onClick={() => navigate("/companies?create=1")}
                 className="rounded-lg border border-neutral-300 bg-neutral-0 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
               >
                 + {t("add_company")}

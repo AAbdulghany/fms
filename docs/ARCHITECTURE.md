@@ -1,4 +1,4 @@
-# NexTask FMS — System Architecture & Technical Design
+# Orbit — System Architecture & Technical Design
 
 This document captures the high-level architecture, data model, API shape, and cross-cutting concerns for the Facility Management System (FMS). It aligns with the Version 2.0 refined scope (multi-tenant SaaS, API-first, Arabic UI, English API/DB).
 
@@ -6,7 +6,7 @@ This document captures the high-level architecture, data model, API shape, and c
 
 ## 1. Executive Summary
 
-NexTask FMS is an API-first, multi-tenant SaaS for facility maintenance: preventive and corrective work, asset-centric operations, template-driven field reports, and billing tied to approved work. A single **FastAPI** backend serves **React (web)** and later **React Native (mobile)** over a unified **REST** surface, with **PostgreSQL** (JSONB for templates), **S3-compatible** object storage for files (target), **SMTP** and **FCM** for notifications (target), and **WeasyPrint** or **ReportLab** for branded PDFs (implementation may use ReportLab for portability). **Row-level tenancy** via `tenant_id` (and optional PostgreSQL RLS) enforces isolation. The **web UI** is **Arabic-primary with English toggle** and full **RTL** support; **API and database remain English-only**. MVP delivers maintenance, templates, report submission/approval, basic invoicing from report data, RBAC for six roles, audit trails, and PDFs for reports and invoices—without offline-first complexity.
+Orbit is an API-first, multi-tenant SaaS for facility maintenance: preventive and corrective work, asset-centric operations, template-driven field reports, and billing tied to approved work. A single **FastAPI** backend serves **React (web)** and later **React Native (mobile)** over a unified **REST** surface, with **PostgreSQL** (JSONB for templates), **S3-compatible** object storage for files (target), **SMTP** and **FCM** for notifications (target), and **WeasyPrint** or **ReportLab** for branded PDFs (implementation may use ReportLab for portability). **Row-level tenancy** via `tenant_id` (and optional PostgreSQL RLS) enforces isolation. The **web UI** is **Arabic-primary with English toggle** and full **RTL** support; **API and database remain English-only**. MVP delivers maintenance, templates, report submission/approval, basic invoicing from report data, RBAC for six roles, audit trails, and PDFs for reports and invoices—without offline-first complexity.
 
 ---
 

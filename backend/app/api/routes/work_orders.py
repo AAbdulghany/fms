@@ -43,6 +43,9 @@ from app.schemas import (
 )
 from app.services.asset_lifecycle import on_work_order_completed
 from app.services.audit import write_audit
+from app.services.report_context import merge_report_answers, resolve_report_inspector
+from app.services.report_schema_resolve import resolve_effective_schema
+from app.services.report_template_defaults import resolve_default_report_template
 from app.services.report_validation import validate_required_fields
 from app.services.wo_notifications import (
     notify_work_order_assigned,
@@ -50,7 +53,12 @@ from app.services.wo_notifications import (
     notify_work_order_requested,
     notify_work_order_status_changed,
 )
-from app.services.work_order_fsm import can_transition
+from app.services.work_order_fsm import (
+    TransitionError,
+    assert_mutable,
+    can_transition,
+    validate_status_transition,
+)
 
 router = APIRouter(prefix="/work-orders", tags=["work-orders"])
 
@@ -108,9 +116,18 @@ def validate_tags(tags: list[str]) -> None:
 
 REPORT_PDF_DOC_DESCRIPTION = "report_pdf_export"
 
+# Technicians fill reports during inspection (before marking WO completed).
+REPORT_EDITABLE_STATUSES = frozenset(
+    {
+        WorkOrderStatus.in_progress,
+        WorkOrderStatus.on_hold,
+        WorkOrderStatus.completed,
+    }
+)
+
 
 def _work_order_status_allows_report(wo: WorkOrder) -> bool:
-    return wo.status == WorkOrderStatus.completed
+    return wo.status in REPORT_EDITABLE_STATUSES
 
 
 def _report_pdf_storage_path(document_id: UUID) -> Path:
@@ -128,8 +145,11 @@ def _sync_maintenance_report_pdf_export(
     wo: WorkOrder,
     report: MaintenanceReport,
     current: User,
+    pdf_lang: str | None = None,
 ) -> None:
+    from app.services.maintenance_report_pdf import resolve_report_locale
     from app.services.pdf import render_report_summary_pdf
+    from app.services.platform_bootstrap import DEFAULT_BRANDING
 
     old_docs = list(
         db.scalars(
@@ -150,11 +170,24 @@ def _sync_maintenance_report_pdf_export(
     db.flush()
 
     tenant = db.get(Tenant, wo.tenant_id)
+    inspector = resolve_report_inspector(db, wo, current)
+    merged_answers = merge_report_answers(
+        db,
+        wo,
+        inspector,
+        report.answers_json or {},
+    )
+    lang, dir_ = resolve_report_locale(tenant.settings_json if tenant else {}, pdf_lang)
     pdf_bytes = render_report_summary_pdf(
         tenant_name=tenant.name if tenant else "",
         work_order_title=wo.title or str(wo.id),
-        answers=report.answers_json or {},
+        work_order_id=str(wo.id),
+        answers=merged_answers,
         template_schema=dict(report.template_snapshot_json or {}),
+        platform_company_name=DEFAULT_BRANDING["company_name"],
+        platform_copyright=DEFAULT_BRANDING.get("copyright_watermark", ""),
+        lang=lang,
+        dir_=dir_,
     )
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
     doc = WorkOrderDocument(
@@ -210,14 +243,44 @@ def _assert_patch_fields_allowed(current: User, body: WorkOrderUpdate) -> None:
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
 
 
+def _wo_load_options():
+    return (
+        joinedload(WorkOrder.creator_user),
+        joinedload(WorkOrder.assignee_user),
+        joinedload(WorkOrder.client),
+        joinedload(WorkOrder.site),
+        joinedload(WorkOrder.asset),
+        joinedload(WorkOrder.location),
+    )
+
+
+def _work_order_context_fields(wo: WorkOrder) -> dict:
+    site = wo.site if hasattr(wo, "site") else None
+    asset = wo.asset if hasattr(wo, "asset") else None
+    location = wo.location if hasattr(wo, "location") else None
+    addr = (site.address_json or {}) if site else {}
+    return {
+        "company_name": wo.client.legal_name if hasattr(wo, "client") and wo.client else None,
+        "site_name": site.name if site else None,
+        "asset_name": asset.name if asset else None,
+        "asset_category": asset.category if asset else None,
+        "asset_serial": asset.serial if asset else None,
+        "asset_label_code": asset.label_code if asset else None,
+        "asset_model": asset.model if asset else None,
+        "site_address": addr.get("address"),
+        "site_city": addr.get("city"),
+        "site_country": addr.get("country"),
+        "location_name": location.name if location else None,
+    }
+
+
 def _work_order_to_out(wo: WorkOrder) -> WorkOrderOut:
     base = WorkOrderOut.model_validate(wo)
     return base.model_copy(
         update={
             "creator": UserBrief.model_validate(wo.creator_user) if wo.creator_user else None,
             "assignee": UserBrief.model_validate(wo.assignee_user) if wo.assignee_user else None,
-            "company_name": wo.client.legal_name if hasattr(wo, 'client') and wo.client else None,
-            "site_name": wo.site.name if hasattr(wo, 'site') and wo.site else None,
+            **_work_order_context_fields(wo),
         }
     )
 
@@ -226,12 +289,7 @@ def _reload_wo_with_users(db: Session, wo_id: UUID) -> WorkOrder:
     return db.execute(
         select(WorkOrder)
         .where(WorkOrder.id == wo_id)
-        .options(
-            joinedload(WorkOrder.creator_user),
-            joinedload(WorkOrder.assignee_user),
-            joinedload(WorkOrder.client),
-            joinedload(WorkOrder.site),
-        )
+        .options(*_wo_load_options())
     ).scalar_one()
 
 
@@ -255,6 +313,7 @@ def list_work_orders(
     client_id: UUID | None = Query(None),
     site_id: UUID | None = Query(None),
     assignee_user_id: UUID | None = Query(None),
+    asset_id: Annotated[UUID | None, Query()] = None,
     date_from: datetime | None = Query(None),
     date_to: datetime | None = Query(None),
     search: str | None = Query(None),
@@ -294,6 +353,9 @@ def list_work_orders(
     if assignee_user_id:
         q = q.where(WorkOrder.assignee_user_id == assignee_user_id)
     
+    if asset_id:
+        q = q.where(WorkOrder.asset_id == asset_id)
+    
     if date_from:
         q = q.where(WorkOrder.opened_at >= date_from)
     
@@ -311,12 +373,7 @@ def list_work_orders(
             q = q.where(WorkOrder.tags.overlap(tag_list))
     
     total = db.scalar(select(func.count()).select_from(q.subquery()))
-    q = q.options(
-        joinedload(WorkOrder.creator_user),
-        joinedload(WorkOrder.assignee_user),
-        joinedload(WorkOrder.client),
-        joinedload(WorkOrder.site),
-    )
+    q = q.options(*_wo_load_options())
     q = q.order_by(WorkOrder.opened_at.desc()).offset((page - 1) * page_size).limit(page_size)
     rows = list(db.scalars(q).all())
     return PaginatedWorkOrders(
@@ -346,12 +403,11 @@ def create_work_order(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_CLIENT_SITE")
 
     # SECURITY: verify asset belongs to this tenant and site
-    if body.asset_id:
-        from app.models import Asset as _Asset
+    from app.models import Asset as _Asset
 
-        asset = db.get(_Asset, body.asset_id)
-        if not asset or asset.tenant_id != current.tenant_id or asset.site_id != body.site_id:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_ASSET")
+    asset = db.get(_Asset, body.asset_id)
+    if not asset or asset.tenant_id != current.tenant_id or asset.site_id != body.site_id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_ASSET")
 
     if body.location_id:
         from app.models import Location
@@ -364,6 +420,12 @@ def create_work_order(
         ):
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_LOCATION")
 
+    template_id = body.template_id
+    if not template_id:
+        default_tmpl = resolve_default_report_template(db, current.tenant_id)
+        if default_tmpl:
+            template_id = default_tmpl.id
+
     wo = WorkOrder(
         tenant_id=current.tenant_id,
         client_id=body.client_id,
@@ -375,7 +437,7 @@ def create_work_order(
         urgency=body.urgency,
         title=body.title,
         description=body.description,
-        template_id=body.template_id,
+        template_id=template_id,
         created_by_user_id=current.id,
         status=WorkOrderStatus.created,
         tags=body.tags,
@@ -427,6 +489,12 @@ def request_work_order(
         if not loc or loc.tenant_id != current.tenant_id or loc.site_id != body.site_id:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_LOCATION")
 
+    template_id = body.template_id
+    if not template_id:
+        default_tmpl = resolve_default_report_template(db, current.tenant_id)
+        if default_tmpl:
+            template_id = default_tmpl.id
+
     wo = WorkOrder(
         tenant_id=current.tenant_id,
         client_id=body.client_id,
@@ -438,7 +506,7 @@ def request_work_order(
         urgency=body.urgency,
         title=body.title,
         description=body.description,
-        template_id=body.template_id,
+        template_id=template_id,
         created_by_user_id=current.id,
         status=WorkOrderStatus.requested,
         tags=body.tags,
@@ -545,7 +613,7 @@ def get_work_order(
     wo = db.execute(
         select(WorkOrder)
         .where(WorkOrder.id == work_order_id)
-        .options(joinedload(WorkOrder.creator_user), joinedload(WorkOrder.assignee_user))
+        .options(*_wo_load_options())
     ).scalar_one_or_none()
     if not wo or wo.tenant_id != current.tenant_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="NOT_FOUND")
@@ -569,10 +637,20 @@ def patch_work_order(
     background_tasks: BackgroundTasks,
 ) -> WorkOrderOut:
     wo = _access_wo(db, current, work_order_id)
+    assert_mutable(wo, body)
     _assert_patch_fields_allowed(current, body)
+    if body.assignee_user_id is not None:
+        if current.role not in _ASSIGN_ROLES:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
+        _validate_assignee(db, current.tenant_id, body.assignee_user_id)
+        wo.assignee_user_id = body.assignee_user_id
     old_status_value: str | None = None
     if body.status is not None:
-        if not can_transition(wo.status, body.status):
+        try:
+            validate_status_transition(wo, wo.status, body.status, body, current)
+        except TransitionError as exc:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=exc.code) from exc
+        if not can_transition(wo.status, body.status) and wo.status != body.status:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_TRANSITION")
 
         old_status = wo.status
@@ -581,6 +659,12 @@ def patch_work_order(
 
         if body.status == WorkOrderStatus.closed:
             wo.closed_at = datetime.now(timezone.utc)
+
+        if body.status == WorkOrderStatus.on_hold and body.hold_reason:
+            wo.description = f"{wo.description}\n[ON HOLD] {body.hold_reason.strip()}".strip()
+
+        if body.status == WorkOrderStatus.cancelled and body.cancellation_reason:
+            wo.description = f"{wo.description}\n[CANCELLED] {body.cancellation_reason.strip()}".strip()
 
         # P2-F2: Hook asset lifecycle check when WO completes
         if body.status == WorkOrderStatus.completed and old_status != WorkOrderStatus.completed:
@@ -593,11 +677,6 @@ def patch_work_order(
         wo.urgency = body.urgency
     if body.template_id is not None:
         wo.template_id = body.template_id
-    if body.assignee_user_id is not None:
-        if current.role not in _ASSIGN_ROLES:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
-        _validate_assignee(db, current.tenant_id, body.assignee_user_id)
-        wo.assignee_user_id = body.assignee_user_id
     if body.tags is not None:
         # P2-F3: Validate and update tags
         validate_tags(body.tags)
@@ -731,6 +810,11 @@ def upsert_report_draft(
     ):
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
     if not wo.template_id:
+        default_tmpl = resolve_default_report_template(db, wo.tenant_id)
+        if default_tmpl:
+            wo.template_id = default_tmpl.id
+            db.flush()
+    if not wo.template_id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="TEMPLATE_REQUIRED")
     tmpl = db.get(ReportTemplate, wo.template_id)
     if not tmpl or tmpl.tenant_id != wo.tenant_id:
@@ -738,8 +822,12 @@ def upsert_report_draft(
     if not _work_order_status_allows_report(wo):
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            detail="REPORT_REQUIRES_COMPLETED_WORK_ORDER",
+            detail="REPORT_NOT_ALLOWED_AT_THIS_STATUS",
         )
+
+    wo_detail = _reload_wo_with_users(db, wo.id)
+    asset_category = wo_detail.asset.category if wo_detail.asset else None
+    effective_schema = resolve_effective_schema(dict(tmpl.schema_json or {}), asset_category)
 
     if wo.report:
         r = wo.report
@@ -752,15 +840,22 @@ def upsert_report_draft(
             work_order_id=wo.id,
             template_id=tmpl.id,
             template_version=tmpl.version,
-            template_snapshot_json=dict(tmpl.schema_json),
+            template_snapshot_json=effective_schema,
             answers_json=body.answers,
             status=ReportStatus.draft,
         )
         db.add(r)
     db.commit()
     db.refresh(r)
+    wo = _reload_wo_with_users(db, wo.id)
     try:
-        _sync_maintenance_report_pdf_export(db, wo=wo, report=r, current=current)
+        _sync_maintenance_report_pdf_export(
+            db,
+            wo=wo_detail if wo_detail else wo,
+            report=r,
+            current=current,
+            pdf_lang=body.pdf_lang,
+        )
         db.commit()
     except Exception:
         db.rollback()
@@ -772,14 +867,23 @@ def submit_report(
     work_order_id: UUID,
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
+    pdf_lang: str | None = Query(None),
 ) -> MaintenanceReport:
     wo = _access_wo(db, current, work_order_id)
     if not wo.report:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="REPORT_NOT_STARTED")
+    if wo.status not in REPORT_EDITABLE_STATUSES:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="REPORT_NOT_EDITABLE_AT_THIS_STATUS",
+        )
     r = wo.report
     if r.status != ReportStatus.draft:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="REPORT_NOT_DRAFT")
-    missing = validate_required_fields(r.template_snapshot_json, r.answers_json or {})
+    wo = _reload_wo_with_users(db, wo.id)
+    inspector = resolve_report_inspector(db, wo, current)
+    merged = merge_report_answers(db, wo, inspector, r.answers_json or {})
+    missing = validate_required_fields(r.template_snapshot_json, merged)
     if missing:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
@@ -790,7 +894,9 @@ def submit_report(
     db.commit()
     db.refresh(r)
     try:
-        _sync_maintenance_report_pdf_export(db, wo=wo, report=r, current=current)
+        _sync_maintenance_report_pdf_export(
+            db, wo=wo, report=r, current=current, pdf_lang=pdf_lang
+        )
         db.commit()
     except Exception:
         db.rollback()

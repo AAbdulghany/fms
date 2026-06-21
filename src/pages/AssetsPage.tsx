@@ -2,15 +2,19 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "../lib/api";
-import type { Asset, AssetLifecycleStatus } from "../lib/types";
+import type { Asset, AssetLifecycleStatus, User } from "../lib/types";
+import { hasAnyRole } from "../lib/roles";
 import { EmptyState } from "../components/EmptyState";
 import { AssetLifecycleBadge } from "../components/AssetLifecycleBadge";
 import { AssetRegisterModal } from "../components/AssetRegisterModal";
 import { AssetImportModal } from "../components/AssetImportModal";
+import { MaintenanceCalendar } from "../components/MaintenanceCalendar";
+import { AssetWorkOrderPanel } from "../components/AssetWorkOrderPanel";
 
 type AssetOutApi = {
   id: string;
   site_id: string;
+  site_name?: string | null;
   name: string;
   category: string;
   label_code?: string | null;
@@ -19,7 +23,16 @@ type AssetOutApi = {
   current_repair_count: number;
   max_age_years?: number | null;
   installed_on?: string | null;
+  warranty_until?: string | null;
+  expected_eol_date?: string | null;
 };
+
+function computeEolDate(installedOn: string | null | undefined, maxAgeYears: number | null | undefined): string | undefined {
+  if (!installedOn || !maxAgeYears) return undefined;
+  const d = new Date(installedOn);
+  d.setFullYear(d.getFullYear() + maxAgeYears);
+  return d.toISOString().slice(0, 10);
+}
 
 function mapToDisplayAsset(a: AssetOutApi): Asset {
   let ageYears = 0;
@@ -27,10 +40,13 @@ function mapToDisplayAsset(a: AssetOutApi): Asset {
     const d = new Date(a.installed_on);
     ageYears = Math.max(0, (Date.now() - d.getTime()) / (365.25 * 24 * 3600 * 1000));
   }
+  const eolDate = a.expected_eol_date ?? computeEolDate(a.installed_on, a.max_age_years);
   return {
     id: a.id,
     asset_id: a.label_code || `${a.id.slice(0, 8)}…`,
+    name: a.name,
     site_id: a.site_id,
+    site_name: a.site_name ?? undefined,
     company_id: "",
     type: a.category,
     category: a.category,
@@ -40,7 +56,17 @@ function mapToDisplayAsset(a: AssetOutApi): Asset {
     installation_date: a.installed_on ?? "",
     expected_lifespan_years: a.max_age_years ?? 5,
     lifespan_percentage: 50,
+    warranty_until: a.warranty_until ?? undefined,
+    expected_eol_date: eolDate,
   };
+}
+
+function warrantyBadge(warrantyUntil: string | undefined) {
+  if (!warrantyUntil) return null;
+  const isActive = new Date(warrantyUntil) >= new Date();
+  return isActive
+    ? { label: "Active", className: "bg-success-light text-success-dark" }
+    : { label: "Expired", className: "bg-neutral-100 text-neutral-500 line-through" };
 }
 
 export default function AssetsPage() {
@@ -57,15 +83,36 @@ export default function AssetsPage() {
   const [maintenanceFilter, setMaintenanceFilter] = useState<string>("");
   const [registerOpen, setRegisterOpen] = useState(openOnLoad);
   const [importOpen, setImportOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [clients, setClients] = useState<{ id: string; legal_name: string }[]>([]);
+  const [clientFilter, setClientFilter] = useState("");
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const me = await apiFetch<User>("/users/me");
+        setUser(me);
+        if (hasAnyRole(me.role, ["super_admin", "company_admin"])) {
+          const clientRows = await apiFetch<{ id: string; legal_name: string }[]>("/clients");
+          setClients(clientRows);
+        }
+      } catch (err) {
+        console.error("Failed to load user context", err);
+      }
+    })();
+  }, []);
 
   const loadAssets = () => {
     void (async () => {
       try {
         const params = new URLSearchParams();
         if (initialSiteId) params.set("site_id", initialSiteId);
-        params.set("view", "maintenance");
-        params.set("sort", "next_due");
-        if (maintenanceFilter) params.set("filter", maintenanceFilter);
+        if (maintenanceFilter) {
+          params.set("view", "maintenance");
+          params.set("sort", "next_due");
+          params.set("filter", maintenanceFilter);
+        }
         const q = params.toString() ? `?${params.toString()}` : "";
         const data = await apiFetch<AssetOutApi[]>(`/assets${q}`);
         setAssets(data.map(mapToDisplayAsset));
@@ -86,6 +133,7 @@ export default function AssetsPage() {
     const query = searchQuery.toLowerCase();
     const matchesSearch =
       asset.asset_id.toLowerCase().includes(query) ||
+      (asset.name && asset.name.toLowerCase().includes(query)) ||
       asset.type.toLowerCase().includes(query) ||
       asset.category.toLowerCase().includes(query) ||
       (asset.site_name && asset.site_name.toLowerCase().includes(query));
@@ -104,9 +152,10 @@ export default function AssetsPage() {
     );
   }
 
+  const showClientFilter = user && hasAnyRole(user.role, ["super_admin", "company_admin"]);
+
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-semibold text-neutral-900">{t("assets")}</h1>
         <div className="flex gap-2">
@@ -127,7 +176,41 @@ export default function AssetsPage() {
         </div>
       </div>
 
-      {/* Filters */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-3">
+          {showClientFilter && clients.length > 0 && (
+            <div className="flex items-center gap-2">
+              <label htmlFor="client-filter" className="text-sm text-neutral-600">
+                {t("select_client") || "Client"}
+              </label>
+              <select
+                id="client-filter"
+                data-testid="assets-client-filter"
+                className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm"
+                value={clientFilter}
+                onChange={(e) => {
+                  setClientFilter(e.target.value);
+                  setSelectedAssetId(null);
+                }}
+              >
+                <option value="">{t("all_clients") || "All clients"}</option>
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.legal_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <MaintenanceCalendar
+            clientId={clientFilter || undefined}
+            selectedAssetId={selectedAssetId}
+            onSelectAsset={setSelectedAssetId}
+          />
+        </div>
+        <AssetWorkOrderPanel assetId={selectedAssetId} />
+      </div>
+
       {assets.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center gap-4">
@@ -142,7 +225,6 @@ export default function AssetsPage() {
             </div>
           </div>
 
-          {/* Lifecycle Filter */}
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -153,69 +235,40 @@ export default function AssetsPage() {
             >
               {t("all_maintenance") || "All maintenance"}
             </button>
-            <button type="button" onClick={() => setMaintenanceFilter("overdue")} className={`rounded-lg px-3 py-1.5 text-sm ${maintenanceFilter === "overdue" ? "bg-primary-600 text-white" : "border"}`}>
+            <button
+              type="button"
+              onClick={() => setMaintenanceFilter("overdue")}
+              className={`rounded-lg px-3 py-1.5 text-sm ${maintenanceFilter === "overdue" ? "bg-primary-600 text-white" : "border"}`}
+            >
               {t("overdue") || "Overdue"}
             </button>
-            <button type="button" onClick={() => setMaintenanceFilter("due_week")} className={`rounded-lg px-3 py-1.5 text-sm ${maintenanceFilter === "due_week" ? "bg-primary-600 text-white" : "border"}`}>
+            <button
+              type="button"
+              onClick={() => setMaintenanceFilter("due_week")}
+              className={`rounded-lg px-3 py-1.5 text-sm ${maintenanceFilter === "due_week" ? "bg-primary-600 text-white" : "border"}`}
+            >
               {t("due_this_week") || "Due week"}
             </button>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setLifecycleFilter("all")}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                lifecycleFilter === "all"
-                  ? "bg-primary-600 text-white"
-                  : "border border-neutral-300 bg-neutral-0 text-neutral-700 hover:bg-neutral-50"
-              }`}
-            >
-              {t("all")}
-            </button>
-            <button
-              onClick={() => setLifecycleFilter("active")}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                lifecycleFilter === "active"
-                  ? "bg-primary-600 text-white"
-                  : "border border-neutral-300 bg-neutral-0 text-neutral-700 hover:bg-neutral-50"
-              }`}
-            >
-              {t("lifecycle_active")}
-            </button>
-            <button
-              onClick={() => setLifecycleFilter("warning")}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                lifecycleFilter === "warning"
-                  ? "bg-primary-600 text-white"
-                  : "border border-neutral-300 bg-neutral-0 text-neutral-700 hover:bg-neutral-50"
-              }`}
-            >
-              {t("lifecycle_warning")}
-            </button>
-            <button
-              onClick={() => setLifecycleFilter("end_of_life")}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                lifecycleFilter === "end_of_life"
-                  ? "bg-primary-600 text-white"
-                  : "border border-neutral-300 bg-neutral-0 text-neutral-700 hover:bg-neutral-50"
-              }`}
-            >
-              {t("lifecycle_end_of_life")}
-            </button>
-            <button
-              onClick={() => setLifecycleFilter("replaced")}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                lifecycleFilter === "replaced"
-                  ? "bg-primary-600 text-white"
-                  : "border border-neutral-300 bg-neutral-0 text-neutral-700 hover:bg-neutral-50"
-              }`}
-            >
-              {t("lifecycle_replaced")}
-            </button>
+            {(["all", "active", "warning", "end_of_life", "replaced"] as const).map((status) => (
+              <button
+                key={status}
+                type="button"
+                onClick={() => setLifecycleFilter(status === "all" ? "all" : status)}
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                  lifecycleFilter === status
+                    ? "bg-primary-600 text-white"
+                    : "border border-neutral-300 bg-neutral-0 text-neutral-700 hover:bg-neutral-50"
+                }`}
+              >
+                {status === "all" ? t("all") : t(`lifecycle_${status}`)}
+              </button>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Empty State */}
       {assets.length === 0 ? (
         <EmptyState
           icon={
@@ -258,17 +311,16 @@ export default function AssetsPage() {
           }}
         />
       ) : (
-        /* Assets Table */
         <div className="overflow-hidden rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="border-b border-neutral-200 bg-neutral-50">
                 <tr>
                   <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
-                    {t("asset_id")}
+                    {t("asset_name")}
                   </th>
                   <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
-                    {t("asset_category")}
+                    {t("asset_type")}
                   </th>
                   <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
                     {t("site_name")}
@@ -277,26 +329,32 @@ export default function AssetsPage() {
                     {t("lifecycle_status")}
                   </th>
                   <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
+                    {t("warranty")}
+                  </th>
+                  <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
                     {t("asset_age")}
                   </th>
                   <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
-                    {t("repair_count")}
+                    {t("eol_date")}
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200">
-                {filteredAssets.map((asset) => (
+                {filteredAssets.map((asset) => {
+                  const wb = warrantyBadge(asset.warranty_until);
+                  return (
                   <tr
                     key={asset.id}
                     onClick={() => navigate(`/assets/${asset.id}`)}
                     className="cursor-pointer transition-colors hover:bg-neutral-50"
                   >
-                    <td className="px-6 py-4 font-mono text-sm font-medium text-primary-600">
-                      {asset.asset_id}
-                    </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-neutral-900">{asset.type}</div>
-                      <div className="text-xs text-neutral-500">{asset.category}</div>
+                      <div className="text-sm font-semibold text-neutral-900">
+                        {asset.name || "—"}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-neutral-700">
+                      {asset.category}
                     </td>
                     <td className="px-6 py-4 text-sm text-neutral-900">
                       {asset.site_name || "—"}
@@ -305,23 +363,35 @@ export default function AssetsPage() {
                       <AssetLifecycleBadge status={asset.lifecycle_status} />
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm">
+                      {wb ? (
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${wb.className}`}>
+                          {t(wb.label === "Active" ? "warranty_active" : "warranty_expired") || wb.label}
+                        </span>
+                      ) : (
+                        <span className="text-neutral-400">—</span>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm">
                       <span
                         className={`font-medium ${
                           asset.age_years >= 10
                             ? "text-error-main"
                             : asset.age_years >= 5
-                            ? "text-warning-main"
-                            : "text-neutral-900"
+                              ? "text-warning-main"
+                              : "text-neutral-900"
                         }`}
                       >
                         {asset.age_years.toFixed(1)} yrs
                       </span>
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-900">
-                      {asset.repair_count}
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-700">
+                      {asset.expected_eol_date
+                        ? new Date(asset.expected_eol_date).toLocaleDateString()
+                        : "—"}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

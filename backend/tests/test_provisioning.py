@@ -186,6 +186,10 @@ def test_pr04_provision_client_endpoint_uses_new_format(db_session, tenant):
     body = ClientProvisionRequest(
         legal_name="Giza Systems",
         manager_full_name="Abdullah Hassan",
+        site_name="Head Office",
+        city="Cairo",
+        country="Egypt",
+        timezone="Africa/Cairo",
     )
 
     response = provision_client_with_manager(body, db_session, actor, actor)
@@ -194,3 +198,10 @@ def test_pr04_provision_client_endpoint_uses_new_format(db_session, tenant):
     assert "gizasystems" in response.manager_username
     # Client code must reference the slug
     assert "GIZASYST" in response.company_code
+    # NT-P5-C01: exactly one site created
+    from sqlalchemy import func, select
+    from app.models import Site
+    site_count = db_session.scalar(
+        select(func.count()).select_from(Site).where(Site.client_id == response.company_id)
+    )
+    assert site_count == 1, f"Expected 1 site, got {site_count}"

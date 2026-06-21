@@ -1,41 +1,35 @@
-"""Pitch-ready demo seed — 1 maintenance tenant, 2 end clients (Wave 2 / NT-113)."""
+"""
+Pitch / demo seed: tenant + role hierarchy users only (no demo company/WO).
 
+Mirrors app.seed exactly so the demo environment starts clean.
+Run from backend folder: python -m app.pitch_seed
+"""
 from __future__ import annotations
-
-from decimal import Decimal
 
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
-from app.models import (
-    Asset,
-    Client,
-    Invoice,
-    InvoiceLineItem,
-    InvoiceStatus,
-    ReportTemplate,
-    Site,
-    Tenant,
-    TenantSubscription,
-    User,
-    UserRole,
-    UserSiteScope,
-    WorkOrder,
-    WorkOrderSource,
-    WorkOrderStatus,
-    Urgency,
-)
-from app.services.asset_labels import generate_label_code, qr_payload_for_asset
+from app.models import Tenant, TenantSubscription, User, UserRole
 from app.services.platform_bootstrap import ensure_default_packages, ensure_platform_settings
-from app.standard_inspection_report_schema import STANDARD_INSPECTION_SCHEMA
+
+TENANT_NAME = "Demo Facility Co"
+
+SEED_USERS = [
+    ("admin@demo.com", "Company Admin", UserRole.company_admin, "admin123"),
+    ("engineer@demo.com", "Company Engineer", UserRole.company_engineer, "engineer123"),
+    ("tech@demo.com", "Technician", UserRole.technician, "tech123"),
+    ("clientmgr@demo.com", "Client Manager", UserRole.client_admin, "client123"),
+    ("sitemgr@demo.com", "Site Manager", UserRole.site_manager, "site123"),
+]
 
 
 def _clear_demo_data(db: Session) -> None:
+    """Wipe all tenant data so re-seeding is idempotent."""
     bind = db.get_bind()
-    from sqlalchemy import inspect
+    from sqlalchemy import inspect as sa_inspect
 
-    insp = inspect(bind)
+    insp = sa_inspect(bind)
     if not insp.has_table("tenants"):
         return
 
@@ -58,9 +52,6 @@ def _clear_demo_data(db: Session) -> None:
             MaintenanceSchedule,
             Notification,
             Site,
-            Tenant,
-            TenantSubscription,
-            User,
             UserSiteScope,
             WorkOrder,
         )
@@ -86,141 +77,47 @@ def _clear_demo_data(db: Session) -> None:
 
 
 def seed_pitch_demo(db: Session) -> dict[str, str]:
-    """Reset and seed pitch demo data. Caller must commit."""
+    """Reset and seed pitch demo data (users only). Caller must commit."""
     _clear_demo_data(db)
     packages = ensure_default_packages(db)
     ensure_platform_settings(db)
 
-    tenant = Tenant(name="NexTask Demo Maintenance Co", status="active")
+    tenant = Tenant(name=TENANT_NAME, status="active", settings_json={})
     db.add(tenant)
     db.flush()
 
-    pro = packages["pro"]
     db.add(
         TenantSubscription(
             tenant_id=tenant.id,
-            package_id=pro.id,
+            package_id=packages["pro"].id,
             status="active",
         )
     )
-
-    clients_data = [
-        ("Global Enterprises Ltd", "GE-001", "Main Corporate HQ"),
-        ("Riyadh Retail Group", "RRG-002", "Mall Central Branch"),
-    ]
-    clients: list[Client] = []
-    sites: list[Site] = []
-    for legal_name, code, site_name in clients_data:
-        c = Client(tenant_id=tenant.id, legal_name=legal_name, code=code)
-        db.add(c)
-        db.flush()
-        clients.append(c)
-        s = Site(
-            tenant_id=tenant.id,
-            client_id=c.id,
-            name=site_name,
-            timezone="Asia/Riyadh",
-            address_json={"city": "Riyadh", "country": "Saudi Arabia"},
-        )
-        db.add(s)
-        db.flush()
-        sites.append(s)
-
-    tmpl = ReportTemplate(
-        tenant_id=tenant.id,
-        name="Standard Inspection",
-        code="STD-INSP",
-        schema_json=STANDARD_INSPECTION_SCHEMA,
-    )
-    db.add(tmpl)
     db.flush()
 
-    assets: list[Asset] = []
-    for i, site in enumerate(sites):
-        for j, (name, cat) in enumerate([("HVAC Unit", "HVAC"), ("Elevator", "LIFT")]):
-            label = generate_label_code(db, tenant_id=tenant.id, site_id=site.id, category=cat)
-            a = Asset(
+    created = 0
+    for email, full_name, role, password in SEED_USERS:
+        exists = db.scalars(select(User).where(User.email == email)).first()
+        if exists:
+            continue
+        db.add(
+            User(
                 tenant_id=tenant.id,
-                site_id=site.id,
-                name=f"{name} {j + 1} — {clients[i].code}",
-                category=cat,
-                serial=f"{cat}-{i}{j}",
-                label_code=label,
+                email=email,
+                password_hash=hash_password(password),
+                full_name=full_name,
+                role=role,
+                locale="ar",
+                is_active=True,
+                is_platform_admin=False,
             )
-            db.add(a)
-            db.flush()
-            a.qr_payload = qr_payload_for_asset(a.id)
-            assets.append(a)
-
-    users_data = [
-        ("super@demo.com", "super123", UserRole.super_user, True, None, None),
-        ("swdev@demo.com", "swdev123", UserRole.sw_dev, True, None, None),
-        ("admin@demo.com", "admin123", UserRole.company_admin, False, None, None),
-        ("client@demo.com", "client123", UserRole.client_admin, False, clients[0].id, None),
-        ("client2@demo.com", "client223", UserRole.client_admin, False, clients[1].id, None),
-        ("site@demo.com", "site123", UserRole.site_manager, False, None, sites[0].id),
-        ("tech@demo.com", "tech123", UserRole.technician, False, None, None),
-    ]
-    for email, pwd, role, is_platform, client_id, site_id in users_data:
-        u = User(
-            tenant_id=tenant.id,
-            email=email,
-            password_hash=hash_password(pwd),
-            role=role,
-            is_platform_admin=is_platform,
-            client_id=client_id,
-            is_active=True,
         )
-        db.add(u)
-        db.flush()
-        if role == UserRole.site_manager and site_id:
-            db.add(UserSiteScope(user_id=u.id, site_id=site_id))
-
-    for i, asset in enumerate(assets[:3]):
-        wo = WorkOrder(
-            tenant_id=tenant.id,
-            client_id=clients[i % 2].id,
-            site_id=asset.site_id,
-            asset_id=asset.id,
-            title=f"Scheduled maintenance — {asset.name}",
-            urgency=Urgency.normal,
-            status=WorkOrderStatus.created,
-            source=WorkOrderSource.preventive,
-            template_id=tmpl.id,
-        )
-        db.add(wo)
-        db.flush()
-        if i < 2:
-            inv = Invoice(
-                tenant_id=tenant.id,
-                client_id=wo.client_id,
-                work_order_id=wo.id,
-                number=f"INV-DEMO-{i + 1:03d}",
-                status=InvoiceStatus.draft,
-                subtotal_sar=Decimal("500.00"),
-                tax_sar=Decimal("75.00"),
-                total_sar=Decimal("575.00"),
-            )
-            db.add(inv)
-            db.flush()
-            db.add(
-                InvoiceLineItem(
-                    invoice_id=inv.id,
-                    line_type="labor",
-                    description="Preventive maintenance labor",
-                    quantity=Decimal("2"),
-                    unit_price_sar=Decimal("250.00"),
-                    amount_sar=Decimal("500.00"),
-                )
-            )
+        created += 1
 
     db.flush()
-    inv_count = len(db.scalars(select(Invoice).where(Invoice.tenant_id == tenant.id)).all())
     return {
         "tenant_id": str(tenant.id),
-        "clients": str(len(clients)),
-        "assets": str(len(assets)),
-        "invoices": str(inv_count),
+        "users_created": str(created),
     }
 
 
@@ -236,4 +133,7 @@ if __name__ == "__main__":
     with SessionLocal() as db:
         info = seed_pitch_demo(db)
         db.commit()
-        print("Pitch demo seeded:", info)
+        print("Pitch demo seeded (users only):", info)
+        print("Accounts:")
+        for email, _, _, password in SEED_USERS:
+            print(f"  {email} / {password}")

@@ -6,6 +6,7 @@ import { apiFetch, setTokens, getAccessToken } from "../lib/api";
 import { isPlatformStaff } from "../lib/roles";
 import { applyLanguage, getStoredLanguage } from "../lib/language";
 import type { User } from "../lib/types";
+import { OrbitLogo } from "../components/OrbitLogo";
 
 function formatLoginError(err: unknown, t: (key: string) => string): string {
   if (!(err instanceof Error)) return t("login_error_generic");
@@ -90,7 +91,10 @@ export function LoginPage() {
         onSubmit={onSubmit}
         className="w-full max-w-md space-y-4 rounded-xl border border-neutral-200 bg-neutral-0 p-8 shadow-md"
       >
-        <h1 className="text-center text-2xl font-semibold text-neutral-900">{t("login")}</h1>
+        <div className="flex flex-col items-center pb-2">
+          <OrbitLogo iconSize={40} />
+        </div>
+        <h1 className="text-center text-xl font-semibold text-neutral-900">{t("login")}</h1>
         {error && (
           <p className="rounded-md bg-error-light px-3 py-2 text-sm text-error-dark">{error}</p>
         )}

@@ -6,22 +6,42 @@ import { urgencyBadgeClass, workOrderStatusPillClass } from "../lib/workOrderDis
 import type { Asset, AssetLifecycleStatus, WorkOrder, PaginatedWorkOrders } from "../lib/types";
 import { AssetLifecycleBadge } from "../components/AssetLifecycleBadge";
 import { AssetLifecycleTimeline } from "../components/AssetLifecycleTimeline";
+import { AssetEditModal } from "../components/AssetEditModal";
 
 type AssetOutApi = {
   id: string;
   site_id: string;
+  site_name?: string | null;
+  company_name?: string | null;
   name: string;
   category: string;
+  label_code?: string | null;
   model?: string | null;
   serial?: string | null;
+  manufacturer?: string | null;
+  floor?: string | null;
+  room?: string | null;
+  smart_labels?: string[] | null;
+  criticality?: string | null;
   installed_on?: string | null;
   warranty_until?: string | null;
+  last_maintenance_date?: string | null;
   max_repair_count?: number | null;
   max_age_years?: number | null;
   current_repair_count: number;
   lifecycle_status: AssetLifecycleStatus;
   location_id?: string | null;
+  expected_eol_date?: string | null;
+  is_spare?: boolean | null;
+  metadata_json?: Record<string, unknown> | null;
 };
+
+function computeEolDate(installedOn: string | null | undefined, maxAgeYears: number | null | undefined): string | undefined {
+  if (!installedOn || !maxAgeYears) return undefined;
+  const d = new Date(installedOn);
+  d.setFullYear(d.getFullYear() + maxAgeYears);
+  return d.toISOString().slice(0, 10);
+}
 
 function mapToAsset(a: AssetOutApi): Asset {
   let ageYears = 0;
@@ -30,15 +50,31 @@ function mapToAsset(a: AssetOutApi): Asset {
     ageYears = Math.max(0, (Date.now() - d.getTime()) / (365.25 * 24 * 3600 * 1000));
   }
   const maxAge = a.max_age_years ?? 5;
+  const photoUrl =
+    typeof a.metadata_json?.photo_url === "string"
+      ? a.metadata_json.photo_url
+      : typeof a.metadata_json?.image_url === "string"
+        ? a.metadata_json.image_url
+        : undefined;
   return {
     id: a.id,
-    asset_id: a.name || `${a.id.slice(0, 8)}…`,
+    asset_id: a.label_code || a.name || `${a.id.slice(0, 8)}…`,
+    name: a.name,
     site_id: a.site_id,
+    site_name: a.site_name ?? undefined,
     company_id: "",
-    type: a.name || a.category,
+    company_name: a.company_name ?? undefined,
+    type: a.category,
     category: a.category,
+    manufacturer: a.manufacturer ?? undefined,
     model: a.model ?? undefined,
     serial_number: a.serial ?? undefined,
+    floor: a.floor ?? undefined,
+    room: a.room ?? undefined,
+    smart_labels: a.smart_labels ?? undefined,
+    criticality: (a.criticality ?? undefined) as Asset["criticality"],
+    warranty_until: a.warranty_until ?? undefined,
+    last_maintenance_date: a.last_maintenance_date ?? undefined,
     lifecycle_status: a.lifecycle_status,
     age_years: ageYears,
     repair_count: a.current_repair_count,
@@ -47,6 +83,9 @@ function mapToAsset(a: AssetOutApi): Asset {
     lifespan_percentage: a.installed_on
       ? Math.min(100, Math.round((ageYears / maxAge) * 100))
       : 0,
+    expected_eol_date: a.expected_eol_date ?? computeEolDate(a.installed_on, a.max_age_years),
+    is_spare: a.is_spare ?? false,
+    photo_url: photoUrl,
   };
 }
 
@@ -58,14 +97,15 @@ export default function AssetDetailPage() {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"details" | "maintenance" | "work-orders">("details");
+  const [editOpen, setEditOpen] = useState(false);
+  const [retireConfirm, setRetireConfirm] = useState(false);
+  const [retiring, setRetiring] = useState(false);
 
-  useEffect(() => {
+  const loadAsset = () => {
     void (async () => {
       try {
         const assetData = await apiFetch<AssetOutApi>(`/assets/${id}`);
         setAsset(mapToAsset(assetData));
-
-        // Fetch work orders for this asset
         const woData = await apiFetch<PaginatedWorkOrders>(`/work-orders?asset_id=${id}&page_size=50`);
         setWorkOrders(woData.data);
       } catch (error) {
@@ -74,7 +114,26 @@ export default function AssetDetailPage() {
         setLoading(false);
       }
     })();
+  };
+
+  useEffect(() => {
+    loadAsset();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  async function handleRetire() {
+    if (!id) return;
+    setRetiring(true);
+    try {
+      await apiFetch(`/assets/${id}/retire`, { method: "POST" });
+      setRetireConfirm(false);
+      loadAsset();
+    } catch (err) {
+      console.error("Retire failed", err);
+    } finally {
+      setRetiring(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -92,9 +151,8 @@ export default function AssetDetailPage() {
     );
   }
 
-  const maintenanceWOs = workOrders.filter((wo) => 
-    wo.category === "preventive" || wo.category === "corrective"
-  );
+  const COMPLETED_STATUSES = new Set(["completed", "verified", "closed"]);
+  const maintenanceWOs = workOrders.filter((wo) => COMPLETED_STATUSES.has(wo.status));
 
   return (
     <div className="space-y-6">
@@ -108,31 +166,45 @@ export default function AssetDetailPage() {
           {t("assets")}
         </Link>
         <span>›</span>
-        <span className="font-medium text-neutral-900">{asset.asset_id}</span>
+        <span className="font-medium text-neutral-900">{asset.name || asset.asset_id}</span>
       </nav>
 
       {/* Header */}
       <div className="rounded-lg border border-neutral-200 bg-neutral-0 p-6 shadow-sm">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <h1 className="font-mono text-3xl font-semibold text-neutral-900">
-              {asset.type} — {asset.asset_id}
+            <h1 className="text-3xl font-semibold text-neutral-900">
+              {asset.name || asset.asset_id}
             </h1>
-            <p className="mt-1 text-sm text-neutral-600">
-              {asset.site_name && `${asset.site_name} • `}
-              {asset.company_name}
+            <p className="mt-1 text-sm text-neutral-500">
+              {[asset.company_name, asset.site_name, asset.category]
+                .filter(Boolean)
+                .join(" • ")}
             </p>
           </div>
           <div className="flex gap-2">
             <button
               className="rounded-lg border border-neutral-300 bg-neutral-0 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
-              onClick={() => { /* edit asset – future implementation */ }}
+              onClick={() => setEditOpen(true)}
             >
-              {t("edit")}
+              {t("edit_asset")}
             </button>
+            {asset.lifecycle_status !== "retired" && asset.lifecycle_status !== "replaced" && (
+              <button
+                className="rounded-lg border border-error-main bg-neutral-0 px-4 py-2 text-sm font-medium text-error-dark transition-colors hover:bg-error-light"
+                onClick={() => setRetireConfirm(true)}
+              >
+                {t("retire_out_of_service") || "Mark out of service"}
+              </button>
+            )}
+            {(asset.lifecycle_status === "retired" || asset.lifecycle_status === "replaced") && (
+              <span className="inline-flex items-center rounded-lg border border-neutral-300 bg-neutral-100 px-3 py-2 text-sm font-medium text-neutral-500">
+                {t("lifecycle_out_of_service") || "Out of service"}
+              </span>
+            )}
             <button
               className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
-              onClick={() => navigate("/work-orders")}
+              onClick={() => navigate(`/work-orders?open=create&asset_id=${id}`)}
             >
               + {t("create_work_order")}
             </button>
@@ -188,7 +260,7 @@ export default function AssetDetailPage() {
               <p className="mt-1 text-sm text-warning-dark">Replacement work order recommended.</p>
               <button
                 className="mt-2 rounded-lg bg-warning-dark px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-warning-main"
-                onClick={() => navigate("/work-orders")}
+                onClick={() => navigate(`/work-orders?open=create&asset_id=${id}`)}
               >
                 {t("create_work_order")}
               </button>
@@ -230,7 +302,7 @@ export default function AssetDetailPage() {
               ) : (
                 <button
                   className="mt-2 rounded-lg bg-error-dark px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-error-main"
-                  onClick={() => navigate("/work-orders")}
+                  onClick={() => navigate(`/work-orders?open=create&asset_id=${id}`)}
                 >
                   {t("create_work_order")}
                 </button>
@@ -280,6 +352,15 @@ export default function AssetDetailPage() {
       {activeTab === "details" && (
         <div className="rounded-lg border border-neutral-200 bg-neutral-0 p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-medium text-neutral-900">Asset Information</h2>
+          {asset.photo_url && (
+            <div className="mb-6">
+              <img
+                src={asset.photo_url}
+                alt={asset.name || t("asset")}
+                className="max-h-64 w-full rounded-lg object-contain border border-neutral-100 bg-neutral-50"
+              />
+            </div>
+          )}
           <dl className="grid gap-4 sm:grid-cols-2">
             <div>
               <dt className="text-sm font-medium text-neutral-500">{t("asset_id")}</dt>
@@ -311,10 +392,59 @@ export default function AssetDetailPage() {
                 <dd className="mt-1 font-mono text-sm text-neutral-900">{asset.serial_number}</dd>
               </div>
             )}
+            {asset.floor && (
+              <div>
+                <dt className="text-sm font-medium text-neutral-500">{t("floor")}</dt>
+                <dd className="mt-1 text-sm text-neutral-900">{asset.floor}</dd>
+              </div>
+            )}
+            {asset.room && (
+              <div>
+                <dt className="text-sm font-medium text-neutral-500">{t("room")}</dt>
+                <dd className="mt-1 text-sm text-neutral-900">{asset.room}</dd>
+              </div>
+            )}
+            {asset.criticality && (
+              <div>
+                <dt className="text-sm font-medium text-neutral-500">{t("criticality")}</dt>
+                <dd className="mt-1 text-sm text-neutral-900">{t(`criticality_${asset.criticality}`) || asset.criticality}</dd>
+              </div>
+            )}
+            {asset.warranty_until && (
+              <div>
+                <dt className="text-sm font-medium text-neutral-500">{t("warranty_until")}</dt>
+                <dd className="mt-1 text-sm text-neutral-900">
+                  {new Date(asset.warranty_until).toLocaleDateString()}
+                </dd>
+              </div>
+            )}
+            {asset.last_maintenance_date && (
+              <div>
+                <dt className="text-sm font-medium text-neutral-500">{t("last_maintenance_date")}</dt>
+                <dd className="mt-1 text-sm text-neutral-900">
+                  {new Date(asset.last_maintenance_date).toLocaleDateString()}
+                </dd>
+              </div>
+            )}
+            {asset.smart_labels && asset.smart_labels.length > 0 && (
+              <div className="sm:col-span-2">
+                <dt className="text-sm font-medium text-neutral-500">{t("smart_labels")}</dt>
+                <dd className="mt-1 flex flex-wrap gap-1">
+                  {asset.smart_labels.map((label) => (
+                    <span
+                      key={label}
+                      className="rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-800"
+                    >
+                      {label}
+                    </span>
+                  ))}
+                </dd>
+              </div>
+            )}
             <div>
               <dt className="text-sm font-medium text-neutral-500">{t("installation_date")}</dt>
               <dd className="mt-1 text-sm text-neutral-900">
-                {new Date(asset.installation_date).toLocaleDateString()}
+                {asset.installation_date ? new Date(asset.installation_date).toLocaleDateString() : "—"}
               </dd>
             </div>
             <div>
@@ -341,10 +471,11 @@ export default function AssetDetailPage() {
 
       {activeTab === "maintenance" && (
         <div className="rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm">
+          {/* Shows completed/verified/closed WOs for this asset only — filtered client-side until NT-P5-A01 backend is live */}
           {maintenanceWOs.length === 0 ? (
             <div className="p-8 text-center text-neutral-600">
-              <p>No maintenance history yet</p>
-              <p className="mt-2 text-sm">Maintenance records will appear here as work orders are completed.</p>
+              <p>{t("no_maintenance_history")}</p>
+              <p className="mt-2 text-sm">{t("no_maintenance_history_hint")}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -352,16 +483,16 @@ export default function AssetDetailPage() {
                 <thead className="border-b border-neutral-200 bg-neutral-50">
                   <tr>
                     <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
-                      Date
+                      {t("title")}
                     </th>
                     <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
-                      Type
-                    </th>
-                    <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
-                      {t("description")}
+                      {t("date")}
                     </th>
                     <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
                       {t("status")}
+                    </th>
+                    <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
+                      {t("assigned_to")}
                     </th>
                   </tr>
                 </thead>
@@ -372,15 +503,17 @@ export default function AssetDetailPage() {
                       onClick={() => navigate(`/work-orders/${wo.id}`)}
                       className="cursor-pointer transition-colors hover:bg-neutral-50"
                     >
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-900">
+                      <td className="px-6 py-4 text-sm font-medium text-neutral-900">{wo.title}</td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-600">
                         {new Date(wo.opened_at).toLocaleDateString()}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-900">
-                        {wo.category}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-neutral-900">{wo.description}</td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm">
-                        <span className={workOrderStatusPillClass(wo.status)}>{wo.status}</span>
+                        <span className={workOrderStatusPillClass(wo.status)}>
+                          {t(wo.status) || wo.status.replace(/_/g, " ")}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-neutral-700">
+                        {wo.assignee?.full_name || t("not_assigned")}
                       </td>
                     </tr>
                   ))}
@@ -391,20 +524,68 @@ export default function AssetDetailPage() {
         </div>
       )}
 
+      {/* Edit Modal */}
+      {id && (
+        <AssetEditModal
+          open={editOpen}
+          assetId={id}
+          onClose={() => setEditOpen(false)}
+          onSaved={() => { setEditOpen(false); loadAsset(); }}
+        />
+      )}
+
+      {/* Retire Confirm Dialog */}
+      {retireConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-neutral-0 p-6 shadow-xl">
+            <h3 className="mb-2 text-lg font-semibold text-neutral-900">
+              {t("retire_out_of_service") || "Mark out of service"}
+            </h3>
+            <p className="mb-6 text-sm text-neutral-600">
+              {t("retire_out_of_service_confirm") ||
+                "This asset will be marked as retired / out of service. No further work orders can be assigned to it. This action cannot be undone."}
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                className="rounded-md px-4 py-2 text-sm hover:bg-neutral-100"
+                onClick={() => setRetireConfirm(false)}
+                disabled={retiring}
+              >
+                {t("cancel")}
+              </button>
+              <button
+                className="rounded-md bg-error-dark px-4 py-2 text-sm font-medium text-white hover:bg-error-main disabled:opacity-50"
+                onClick={() => void handleRetire()}
+                disabled={retiring}
+              >
+                {retiring ? t("loading") : t("retire_out_of_service") || "Mark out of service"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeTab === "work-orders" && (
         <div className="rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm">
+          <div className="flex items-center justify-between border-b border-neutral-100 px-6 py-3">
+            <span className="text-sm font-medium text-neutral-700">{t("work_orders")}</span>
+            <button
+              type="button"
+              className="rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-700"
+              onClick={() => navigate(`/work-orders?open=create&asset_id=${id}`)}
+            >
+              + {t("create_work_order")}
+            </button>
+          </div>
           {workOrders.length === 0 ? (
             <div className="p-8 text-center text-neutral-600">
-              <p>No work orders yet</p>
+              <p>{t("no_work_orders")}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="border-b border-neutral-200 bg-neutral-50">
                   <tr>
-                    <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
-                      ID
-                    </th>
                     <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
                       {t("title")}
                     </th>
@@ -413,6 +594,9 @@ export default function AssetDetailPage() {
                     </th>
                     <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
                       {t("urgency")}
+                    </th>
+                    <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
+                      {t("assigned_to")}
                     </th>
                   </tr>
                 </thead>
@@ -423,15 +607,17 @@ export default function AssetDetailPage() {
                       onClick={() => navigate(`/work-orders/${wo.id}`)}
                       className="cursor-pointer transition-colors hover:bg-neutral-50"
                     >
-                      <td className="px-6 py-4 font-mono text-sm font-medium text-primary-600">
-                        {wo.id.slice(0, 8)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-neutral-900">{wo.title}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-neutral-900">{wo.title}</td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm">
-                        <span className={workOrderStatusPillClass(wo.status)}>{wo.status}</span>
+                        <span className={workOrderStatusPillClass(wo.status)}>
+                          {t(wo.status) || wo.status.replace(/_/g, " ")}
+                        </span>
                       </td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm">
                         <span className={urgencyBadgeClass(wo.urgency)}>{t(wo.urgency)}</span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-neutral-700">
+                        {wo.assignee?.full_name || t("not_assigned")}
                       </td>
                     </tr>
                   ))}

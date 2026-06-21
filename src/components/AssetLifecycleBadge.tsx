@@ -1,8 +1,8 @@
 interface AssetLifecycleBadgeProps {
-  status: "active" | "warning" | "end_of_life" | "replaced";
+  status: "active" | "warning" | "end_of_life" | "replaced" | "retired";
 }
 
-const statusConfig = {
+const statusConfig: Record<string, { label: string; className: string }> = {
   active: {
     label: "Active",
     className: "bg-success-light text-success-dark",
@@ -16,8 +16,12 @@ const statusConfig = {
     className: "bg-error-light text-error-dark",
   },
   replaced: {
-    label: "Replaced",
-    className: "bg-neutral-200 text-neutral-600",
+    label: "Retired",
+    className: "bg-neutral-300 text-neutral-700",
+  },
+  retired: {
+    label: "Retired",
+    className: "bg-neutral-300 text-neutral-700",
   },
 };
 

@@ -37,6 +37,8 @@
 
 ## Shortlist recommendation
 
+**Selected (June 2026): Orbit** — facility operations hub metaphor; globally pronounceable, no NexTask collision.
+
 1. **AssetPulse** — aligns with Phase 3.1 flagship asset experience
 2. **Mizan Maintain** — strong Arabic market fit, professional tone
 3. **UpkeepHQ** — globally clear, easy SEO

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "../lib/api";
 import type { Company } from "../lib/types";
@@ -12,6 +12,10 @@ type ClientApi = {
   code: string;
   billing_email: string | null;
   status?: string;
+  sites_count?: number | null;
+  active_wo_count?: number | null;
+  primary_contact_email?: string | null;
+  primary_contact_phone?: string | null;
 };
 
 function mapClientToCompany(c: ClientApi): Company {
@@ -20,8 +24,11 @@ function mapClientToCompany(c: ClientApi): Company {
     id: c.id,
     name: c.legal_name,
     code: c.code,
-    contact_email: c.billing_email ?? "",
+    contact_email: c.primary_contact_email ?? c.billing_email ?? "",
+    contact_phone: c.primary_contact_phone ?? undefined,
     status: st,
+    sites_count: c.sites_count ?? undefined,
+    active_wo_count: c.active_wo_count ?? undefined,
     created_at: new Date().toISOString(),
   };
 }
@@ -29,15 +36,28 @@ function mapClientToCompany(c: ClientApi): Company {
 export default function CompaniesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
+  const [includeArchived, setIncludeArchived] = useState(false);
 
-  const loadCompanies = () => {
+  useEffect(() => {
+    if (searchParams.get("create") === "1") {
+      setCreateOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete("create");
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  const loadCompanies = (archived: boolean) => {
+    setLoading(true);
     void (async () => {
       try {
-        const data = await apiFetch<ClientApi[]>("/clients");
+        const url = archived ? "/clients?include_archived=true" : "/clients";
+        const data = await apiFetch<ClientApi[]>(url);
         setCompanies(data.map(mapClientToCompany));
       } catch (error) {
         console.error("Failed to fetch companies", error);
@@ -49,8 +69,9 @@ export default function CompaniesPage() {
   };
 
   useEffect(() => {
-    loadCompanies();
-  }, []);
+    loadCompanies(includeArchived);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [includeArchived]);
 
   const filteredCompanies = companies.filter((company) => {
     const query = searchQuery.toLowerCase();
@@ -83,20 +104,27 @@ export default function CompaniesPage() {
         </button>
       </div>
 
-      {/* Search Bar */}
-      {companies.length > 0 && (
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <input
-              type="text"
-              placeholder={`${t("search")} ${t("companies").toLowerCase()}...`}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-neutral-300 px-4 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
-            />
-          </div>
+      {/* Search + Include Archived */}
+      <div className="flex items-center gap-4">
+        <div className="flex-1">
+          <input
+            type="text"
+            placeholder={`${t("search")} ${t("companies").toLowerCase()}...`}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full rounded-lg border border-neutral-300 px-4 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+          />
         </div>
-      )}
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-600 select-none">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-neutral-300 text-primary-600"
+            checked={includeArchived}
+            onChange={(e) => setIncludeArchived(e.target.checked)}
+          />
+          {t("include_archived")}
+        </label>
+      </div>
 
       {/* Empty State */}
       {companies.length === 0 ? (
@@ -249,7 +277,10 @@ export default function CompaniesPage() {
       <CompanyCreateModal
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        onCreated={() => loadCompanies()}
+        onCreated={(companyId) => {
+          loadCompanies(includeArchived);
+          if (companyId) navigate(`/companies/${companyId}`);
+        }}
       />
     </div>
   );

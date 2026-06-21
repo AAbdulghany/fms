@@ -3,6 +3,15 @@ import { useTranslation } from "react-i18next";
 import { apiFetch } from "../lib/api";
 import type { Employee, User, UserRole } from "../lib/types";
 import { creatableRolesFor } from "../lib/roles";
+
+function visibleRolesForFilter(actorRole: UserRole): UserRole[] {
+  if (actorRole === "super_admin" || actorRole === "super_user" || actorRole === "sw_dev") {
+    return ["super_admin", "company_admin", "company_engineer", "client_admin", "site_manager", "technician", "manager"];
+  }
+  const creatable = creatableRolesFor(actorRole);
+  const roles = new Set<UserRole>([...creatable, actorRole]);
+  return Array.from(roles);
+}
 import { EmptyState } from "../components/EmptyState";
 import { UserRoleBadge } from "../components/UserRoleBadge";
 
@@ -24,7 +33,7 @@ function mapToEmployee(u: UserListApi): Employee {
     id: u.id,
     email: u.email,
     full_name: u.full_name,
-    role: u.role,
+    role: String(u.role) as UserRole,
     status: u.status === "active" ? "active" : "inactive",
     company_id: u.client_id ?? undefined,
     phone: u.phone ?? undefined,
@@ -265,12 +274,9 @@ export default function UsersPage() {
               className="rounded-lg border border-neutral-300 bg-neutral-0 px-3 py-1.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
             >
               <option value="all">{t("all")} {t("role")}</option>
-              <option value="super_admin">{t("role_super_admin")}</option>
-              <option value="company_admin">{t("role_company_admin")}</option>
-              <option value="company_engineer">{t("role_company_engineer")}</option>
-              <option value="client_admin">{t("role_client_admin")}</option>
-              <option value="site_manager">{t("role_site_manager")}</option>
-              <option value="technician">{t("role_technician")}</option>
+              {visibleRolesForFilter(me?.role ?? "company_admin").map((r) => (
+                <option key={r} value={r}>{t(`role_${r}`)}</option>
+              ))}
             </select>
 
             <select

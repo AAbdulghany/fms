@@ -54,6 +54,18 @@ interface Site {
 
 
 
+interface AssetOption {
+
+  id: string;
+
+  name: string;
+
+  category: string;
+
+}
+
+
+
 type WoView = "all" | "requests" | "my_requests";
 
 
@@ -119,6 +131,8 @@ export function WorkOrdersPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
 
   const [sites, setSites] = useState<Site[]>([]);
+
+  const [assets, setAssets] = useState<AssetOption[]>([]);
 
   const [requestSites, setRequestSites] = useState<Site[]>([]);
 
@@ -266,6 +280,34 @@ export function WorkOrdersPage() {
 
 
 
+  const fetchAssets = async (siteId: string) => {
+
+    if (!siteId) {
+
+      setAssets([]);
+
+      return;
+
+    }
+
+    try {
+
+      const res = await apiFetch<AssetOption[]>(`/assets?site_id=${siteId}`);
+
+      setAssets(res);
+
+    } catch (e) {
+
+      console.error("Failed to fetch assets", e);
+
+      setAssets([]);
+
+    }
+
+  };
+
+
+
   const fetchRequestSites = async () => {
 
     try {
@@ -383,6 +425,44 @@ export function WorkOrdersPage() {
     setSearchParams(next, { replace: true });
   }, [me, canRequest, searchParams]);
 
+  useEffect(() => {
+    if (searchParams.get("open") !== "create" || !me || !canDirectCreate) return;
+
+    setModalMode("create");
+    const assetIdParam = searchParams.get("asset_id");
+
+    if (assetIdParam) {
+      void (async () => {
+        try {
+          const asset = await apiFetch<{ id: string; site_id: string }>(`/assets/${assetIdParam}`);
+          const siteList = await apiFetch<Site[]>("/sites");
+          const site = siteList.find((s) => s.id === asset.site_id);
+          if (site) {
+            setForm((f) => ({
+              ...f,
+              client_id: site.client_id,
+              site_id: site.id,
+              asset_id: assetIdParam,
+            }));
+            void fetchSites(site.client_id);
+            void fetchAssets(site.id);
+          } else {
+            setForm((f) => ({ ...f, asset_id: assetIdParam }));
+          }
+        } catch (e) {
+          console.error("Failed to prefill asset for work order", e);
+        }
+      })();
+    }
+
+    setIsModalOpen(true);
+
+    const next = new URLSearchParams(searchParams);
+    next.delete("open");
+    next.delete("asset_id");
+    setSearchParams(next, { replace: true });
+  }, [me, canDirectCreate, searchParams]);
+
 
 
   useEffect(() => {
@@ -393,29 +473,27 @@ export function WorkOrdersPage() {
 
     const prefillSiteId = state?.prefillSiteId;
 
-    if (prefillClientId && prefillSiteId) {
+    if (!prefillClientId) return;
 
-      setForm((f) => ({
+    setForm((f) => ({
 
-        ...f,
+      ...f,
 
-        client_id: prefillClientId,
+      client_id: prefillClientId,
 
-        site_id: prefillSiteId,
+      site_id: prefillSiteId ?? "",
 
-      }));
+    }));
 
-      void fetchSites(prefillClientId);
+    void fetchSites(prefillClientId);
 
-      setModalMode(canRequest && !canDirectCreate ? "request" : "create");
+    setModalMode(canRequest && !canDirectCreate ? "request" : "create");
 
-      setIsModalOpen(true);
+    setIsModalOpen(true);
 
-      navigate(location.pathname, { replace: true, state: null });
+    navigate(location.pathname + location.search, { replace: true, state: null });
 
-    }
-
-  }, [location.state, location.pathname, navigate, canDirectCreate, canRequest]);
+  }, [location.state, location.pathname, location.search, navigate, canDirectCreate, canRequest]);
 
 
 
@@ -507,6 +585,11 @@ export function WorkOrdersPage() {
       if (!siteId && requestSiteOptions.length === 1) siteId = requestSiteOptions[0].id;
     }
 
+    if (!form.asset_id) {
+      setErr(t("asset_required"));
+      return;
+    }
+
     try {
       await apiFetch(endpoint, {
         method: "POST",
@@ -516,7 +599,7 @@ export function WorkOrdersPage() {
           urgency: form.urgency,
           client_id: clientId,
           site_id: siteId,
-          asset_id: form.asset_id || undefined,
+          asset_id: form.asset_id,
           source: modalMode === "request" ? "request" : form.source,
           category: form.category,
         },
@@ -566,9 +649,21 @@ export function WorkOrdersPage() {
 
   const handleClientChange = (clientId: string) => {
 
-    setForm({ ...form, client_id: clientId, site_id: "" });
+    setForm({ ...form, client_id: clientId, site_id: "", asset_id: "" });
+
+    setAssets([]);
 
     void fetchSites(clientId);
+
+  };
+
+
+
+  const handleSiteChange = (siteId: string) => {
+
+    setForm({ ...form, site_id: siteId, asset_id: "" });
+
+    void fetchAssets(siteId);
 
   };
 
@@ -586,7 +681,11 @@ export function WorkOrdersPage() {
 
       client_id: site?.client_id ?? form.client_id,
 
+      asset_id: "",
+
     });
+
+    void fetchAssets(siteId);
 
   };
 
@@ -1034,7 +1133,7 @@ export function WorkOrdersPage() {
 
                             ? handleRequestSiteChange(e.target.value)
 
-                            : setForm({ ...form, site_id: e.target.value })
+                            : handleSiteChange(e.target.value)
 
                         }
 
@@ -1110,7 +1209,7 @@ export function WorkOrdersPage() {
 
                       value={form.site_id}
 
-                      onChange={(e) => setForm({ ...form, site_id: e.target.value })}
+                      onChange={(e) => handleSiteChange(e.target.value)}
 
                       required
 
@@ -1141,6 +1240,42 @@ export function WorkOrdersPage() {
                 </div>
 
               )}
+
+
+
+              <div>
+
+                <label className="block text-sm font-medium text-neutral-700">{t("asset")}</label>
+
+                <select
+
+                  className="w-full rounded-md border border-neutral-300 p-2"
+
+                  value={form.asset_id}
+
+                  onChange={(e) => setForm({ ...form, asset_id: e.target.value })}
+
+                  required
+
+                  disabled={!form.site_id}
+
+                >
+
+                  <option value="">{t("select_asset")}</option>
+
+                  {assets.map((a) => (
+
+                    <option key={a.id} value={a.id}>
+
+                      {a.name} ({a.category})
+
+                    </option>
+
+                  ))}
+
+                </select>
+
+              </div>
 
 
 

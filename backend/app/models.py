@@ -293,6 +293,7 @@ class MaintenanceSchedule(Base):
     next_due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    ai_meta_json: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     asset: Mapped["Asset"] = relationship(back_populates="schedules")
@@ -351,6 +352,8 @@ class WorkOrder(Base):
     )
     client: Mapped["Client"] = relationship("Client", foreign_keys=[client_id])
     site: Mapped["Site"] = relationship("Site", foreign_keys=[site_id])
+    asset: Mapped[Optional["Asset"]] = relationship("Asset", foreign_keys=[asset_id])
+    location: Mapped[Optional["Location"]] = relationship("Location", foreign_keys=[location_id])
 
     report: Mapped[Optional["MaintenanceReport"]] = relationship(
         back_populates="work_order", uselist=False, cascade="all, delete-orphan"

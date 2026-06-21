@@ -10,6 +10,7 @@ from fastapi import BackgroundTasks, HTTPException
 
 from app.core.security import hash_password
 from app.models import (
+    Asset,
     Client,
     Site,
     Tenant,
@@ -118,12 +119,31 @@ def technician(db_session, tenant):
     return _make_user(db_session, tenant, UserRole.technician)
 
 
-def _wo_create_body(client_id, site_id):
+@pytest.fixture
+def asset_a(db_session, tenant, site_a):
+    a = Asset(id=uuid4(), tenant_id=tenant.id, site_id=site_a.id, name="Asset A")
+    db_session.add(a)
+    db_session.commit()
+    db_session.refresh(a)
+    return a
+
+
+@pytest.fixture
+def asset_b(db_session, tenant, site_b):
+    a = Asset(id=uuid4(), tenant_id=tenant.id, site_id=site_b.id, name="Asset B")
+    db_session.add(a)
+    db_session.commit()
+    db_session.refresh(a)
+    return a
+
+
+def _wo_create_body(client_id, site_id, asset_id):
     from app.schemas import WorkOrderCreate
 
     return WorkOrderCreate(
         client_id=client_id,
         site_id=site_id,
+        asset_id=asset_id,
         title="Test WO Request",
         source=WorkOrderSource.corrective,
         urgency=Urgency.normal,
@@ -136,11 +156,11 @@ def _wo_create_body(client_id, site_id):
 
 
 def test_WR01_client_admin_can_request_work_order(
-    db_session, client_admin_a, client_a, site_a
+    db_session, client_admin_a, client_a, site_a, asset_a
 ):
     from app.api.routes.work_orders import request_work_order
 
-    body = _wo_create_body(client_a.id, site_a.id)
+    body = _wo_create_body(client_a.id, site_a.id, asset_a.id)
     wo = request_work_order(body, db_session, client_admin_a, client_admin_a, BackgroundTasks())
 
     assert wo.status == WorkOrderStatus.requested
@@ -155,11 +175,11 @@ def test_WR01_client_admin_can_request_work_order(
 
 
 def test_WR02_site_manager_can_request_work_order_for_scoped_site(
-    db_session, site_manager_a, client_a, site_a
+    db_session, site_manager_a, client_a, site_a, asset_a
 ):
     from app.api.routes.work_orders import request_work_order
 
-    body = _wo_create_body(client_a.id, site_a.id)
+    body = _wo_create_body(client_a.id, site_a.id, asset_a.id)
     wo = request_work_order(body, db_session, site_manager_a, site_manager_a, BackgroundTasks())
 
     assert wo.status == WorkOrderStatus.requested
@@ -172,11 +192,11 @@ def test_WR02_site_manager_can_request_work_order_for_scoped_site(
 
 
 def test_WR03_site_manager_blocked_from_unscoped_site(
-    db_session, site_manager_a, client_b, site_b
+    db_session, site_manager_a, client_b, site_b, asset_b
 ):
     from app.api.routes.work_orders import request_work_order
 
-    body = _wo_create_body(client_b.id, site_b.id)
+    body = _wo_create_body(client_b.id, site_b.id, asset_b.id)
 
     with pytest.raises(HTTPException) as exc_info:
         request_work_order(body, db_session, site_manager_a, site_manager_a, BackgroundTasks())
@@ -207,12 +227,12 @@ def test_WR04_client_admin_cannot_direct_create_work_order(db_session, client_ad
 
 
 def test_WR05_company_admin_approves_request(
-    db_session, company_admin, client_admin_a, client_a, site_a
+    db_session, company_admin, client_admin_a, client_a, site_a, asset_a
 ):
     from app.api.routes.work_orders import approve_work_order_request, request_work_order
 
     # client_admin submits request
-    body = _wo_create_body(client_a.id, site_a.id)
+    body = _wo_create_body(client_a.id, site_a.id, asset_a.id)
     wo_out = request_work_order(body, db_session, client_admin_a, client_admin_a, BackgroundTasks())
     assert wo_out.status == WorkOrderStatus.requested
 
@@ -231,12 +251,12 @@ def test_WR05_company_admin_approves_request(
 
 
 def test_WR06_company_admin_declines_request(
-    db_session, company_admin, client_admin_a, client_a, site_a
+    db_session, company_admin, client_admin_a, client_a, site_a, asset_a
 ):
     from app.api.routes.work_orders import decline_work_order_request, request_work_order
     from app.schemas import DeclineRequestBody
 
-    body = _wo_create_body(client_a.id, site_a.id)
+    body = _wo_create_body(client_a.id, site_a.id, asset_a.id)
     wo_out = request_work_order(body, db_session, client_admin_a, client_admin_a, BackgroundTasks())
 
     decline_body = DeclineRequestBody(reason="Insufficient budget")
@@ -249,13 +269,13 @@ def test_WR06_company_admin_declines_request(
 
 
 def test_WR06b_decline_requires_reason(
-    db_session, company_admin, client_admin_a, client_a, site_a
+    db_session, company_admin, client_admin_a, client_a, site_a, asset_a
 ):
     from app.api.routes.work_orders import request_work_order
     from app.schemas import DeclineRequestBody
     from pydantic import ValidationError
 
-    body = _wo_create_body(client_a.id, site_a.id)
+    body = _wo_create_body(client_a.id, site_a.id, asset_a.id)
     wo_out = request_work_order(body, db_session, client_admin_a, client_admin_a, BackgroundTasks())
 
     with pytest.raises(ValidationError):
