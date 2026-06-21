@@ -14,7 +14,7 @@ npm run build:css    # Tailwind CSS one-time build (minified)
 
 ## Architecture Overview
 
-**Facility Management System (FMS)** — React 18 + TypeScript + Vite SPA with bilingual support (English/Arabic, RTL).
+**Facility Management System (Orbit)** — React 18 + TypeScript + Vite SPA with bilingual support (English/Arabic, RTL).
 
 ### Tech Stack
 - **Framework:** React 18 with TypeScript (JSX mode)

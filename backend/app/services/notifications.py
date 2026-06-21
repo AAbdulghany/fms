@@ -72,7 +72,7 @@ class NotificationService:
             NotificationEvent.PAYMENT_OVERDUE: ("Payment Overdue", "Invoice {number} is now overdue."),
         }
         
-        template = mapping.get(event_type, ("Notification", "You have a new update in NexTask FMS"))
+        template = mapping.get(event_type, ("Notification", "You have a new update in Orbit"))
         subject = template[0].format(**context)
         body = template[1].format(**context)
         return subject, body
