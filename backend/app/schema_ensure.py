@@ -62,6 +62,19 @@ def ensure_schema(engine: Engine) -> None:
                         )
                     )
 
+        if insp.has_table("maintenance_schedules"):
+            cols = {c["name"] for c in insp.get_columns("maintenance_schedules")}
+            if "ai_meta_json" not in cols:
+                if dialect == "sqlite":
+                    conn.execute(text("ALTER TABLE maintenance_schedules ADD COLUMN ai_meta_json JSON DEFAULT '{}'"))
+                else:
+                    conn.execute(
+                        text(
+                            "ALTER TABLE maintenance_schedules "
+                            "ADD COLUMN IF NOT EXISTS ai_meta_json JSONB NOT NULL DEFAULT '{}'::jsonb"
+                        )
+                    )
+
         if insp.has_table("assets"):
             cols = {c["name"] for c in insp.get_columns("assets")}
             if "label_code" not in cols:
