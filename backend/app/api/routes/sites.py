@@ -9,7 +9,15 @@ from app.api.deps import get_current_user, require_roles
 from app.core.security import hash_password
 from app.database import get_db
 from app.models import Client, Site, User, UserRole, UserSiteScope
-from app.schemas import SiteCreate, SiteOut, SiteProvisionRequest, SiteProvisionResponse
+from app.schemas import (
+    SiteAssignManagerRequest,
+    SiteAssignManagerResponse,
+    SiteCreate,
+    SiteOut,
+    SiteProvisionRequest,
+    SiteProvisionResponse,
+    SiteUpdate,
+)
 from app.services.audit import write_audit
 from app.services.provisioning import (
     build_manager_username,
@@ -171,26 +179,122 @@ def provision_site_with_manager(
     )
 
 
+def _get_site_or_404(db: Session, current: User, site_id: UUID) -> Site:
+    s = db.execute(
+        select(Site).where(Site.id == site_id).options(joinedload(Site.client))
+    ).scalar_one_or_none()
+    if not s or s.tenant_id != current.tenant_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="NOT_FOUND")
+    if current.role == UserRole.client_admin and current.client_id:
+        if s.client_id != current.client_id:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
+    if current.role == UserRole.site_manager:
+        scoped = db.scalars(
+            select(UserSiteScope.site_id).where(UserSiteScope.user_id == current.id)
+        ).all()
+        if s.id not in scoped:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
+    return s
+
+
+@router.patch("/{site_id}", response_model=SiteOut)
+def update_site(
+    site_id: UUID,
+    body: SiteUpdate,
+    db: Annotated[Session, Depends(get_db)],
+    current: Annotated[User, Depends(get_current_user)],
+    _: Annotated[User, _write],
+) -> SiteOut:
+    s = _get_site_or_404(db, current, site_id)
+    if body.name is not None:
+        s.name = body.name.strip()
+    if body.timezone is not None:
+        s.timezone = body.timezone.strip()
+    if body.status is not None:
+        s.status = body.status.strip()
+    addr = dict(s.address_json or {})
+    if body.address is not None:
+        addr["address"] = body.address.strip() if body.address else None
+    if body.city is not None:
+        addr["city"] = body.city.strip() if body.city else None
+    if body.country is not None:
+        addr["country"] = body.country.strip() if body.country else None
+    s.address_json = addr
+    write_audit(
+        db,
+        tenant_id=current.tenant_id,
+        actor=current,
+        action="update",
+        entity_type="site",
+        entity_id=str(s.id),
+        after={"name": s.name},
+    )
+    db.commit()
+    db.refresh(s)
+    s = db.execute(
+        select(Site).where(Site.id == s.id).options(joinedload(Site.client))
+    ).scalar_one()
+    return _site_to_out(s)
+
+
+@router.post("/{site_id}/assign-manager", response_model=SiteAssignManagerResponse)
+def assign_site_manager(
+    site_id: UUID,
+    body: SiteAssignManagerRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current: Annotated[User, Depends(get_current_user)],
+    _: Annotated[User, _provision],
+) -> SiteAssignManagerResponse:
+    s = _get_site_or_404(db, current, site_id)
+    client = db.get(Client, s.client_id)
+    if not client:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_CLIENT")
+
+    slug = company_slug(client.legal_name)
+    first_name = body.manager_full_name.strip().split()[0]
+    base_username = build_manager_username(first_name, "smgr", slug)
+    username = ensure_unique_username(db, current.tenant_id, base_username)
+    pwd = generate_initial_password()
+    email = synthetic_email(username, current.tenant_id)
+
+    mgr = User(
+        tenant_id=current.tenant_id,
+        client_id=None,
+        email=email,
+        username=username,
+        password_hash=hash_password(pwd),
+        full_name=body.manager_full_name.strip(),
+        role=UserRole.site_manager,
+        locale="ar",
+        is_active=True,
+        is_platform_admin=False,
+        metadata_json={"must_change_password": True},
+    )
+    db.add(mgr)
+    db.flush()
+    db.add(UserSiteScope(user_id=mgr.id, site_id=s.id))
+
+    write_audit(
+        db,
+        tenant_id=current.tenant_id,
+        actor=current,
+        action="assign_manager",
+        entity_type="site",
+        entity_id=str(s.id),
+        after={"manager_username": username},
+    )
+    db.commit()
+    return SiteAssignManagerResponse(
+        manager_username=username,
+        manager_email=email,
+        initial_password=pwd,
+    )
+
+
 @router.get("/{site_id}", response_model=SiteOut)
 def get_site(
     site_id: UUID,
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
 ) -> SiteOut:
-    s = db.execute(
-        select(Site)
-        .where(Site.id == site_id)
-        .options(joinedload(Site.client))
-    ).scalar_one_or_none()
-    
-    if not s or s.tenant_id != current.tenant_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="NOT_FOUND")
-    if current.role == UserRole.client_admin and current.client_id:
-        cl = db.get(Client, current.client_id)
-        if cl and s.client_id != cl.id:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
-    if current.role == UserRole.site_manager:
-        scoped = db.scalars(select(UserSiteScope.site_id).where(UserSiteScope.user_id == current.id)).all()
-        if s.id not in scoped:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
-    return _site_to_out(s)
+    return _site_to_out(_get_site_or_404(db, current, site_id))

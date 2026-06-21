@@ -1,14 +1,14 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
 from app.core.security import hash_password
 from app.database import get_db
-from app.models import Client, Site, User, UserRole, UserSiteScope
+from app.models import Client, Site, User, UserRole, UserSiteScope, WorkOrder, WorkOrderStatus
 from app.rbac import tenant_admin_roles_for_require
 from app.schemas import (
     ClientCreate,
@@ -31,13 +31,65 @@ router = APIRouter(prefix="/clients", tags=["clients"])
 
 _admin = Depends(require_roles(*tenant_admin_roles_for_require()))
 
+_ACTIVE_WO_STATUSES = {
+    WorkOrderStatus.requested,
+    WorkOrderStatus.created,
+    WorkOrderStatus.assigned,
+    WorkOrderStatus.in_progress,
+    WorkOrderStatus.on_hold,
+}
+
+
+def _client_to_out(db: Session, c: Client) -> ClientOut:
+    sites_count = int(
+        db.scalar(
+            select(func.count())
+            .select_from(Site)
+            .where(Site.client_id == c.id, Site.status == "active")
+        )
+        or 0
+    )
+    active_wo_count = int(
+        db.scalar(
+            select(func.count())
+            .select_from(WorkOrder)
+            .where(
+                WorkOrder.client_id == c.id,
+                WorkOrder.status.in_(_ACTIVE_WO_STATUSES),
+            )
+        )
+        or 0
+    )
+    admin = db.scalar(
+        select(User)
+        .where(
+            User.client_id == c.id,
+            User.role == UserRole.client_admin,
+            User.is_active.is_(True),
+        )
+        .order_by(User.created_at.asc())
+        .limit(1)
+    )
+    return ClientOut(
+        id=c.id,
+        legal_name=c.legal_name,
+        code=c.code,
+        billing_email=c.billing_email,
+        status=c.status,
+        activity_type=c.activity_type,
+        sites_count=sites_count,
+        active_wo_count=active_wo_count,
+        primary_contact_email=admin.email if admin else c.billing_email,
+        primary_contact_phone=admin.phone if admin else None,
+    )
+
 
 @router.get("", response_model=list[ClientOut])
 def list_clients(
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
-    include_archived: bool = False,
-) -> list[Client]:
+    include_archived: bool = Query(False),
+) -> list[ClientOut]:
     q = select(Client).where(Client.tenant_id == current.tenant_id)
     if not include_archived:
         q = q.where(Client.status == "active")
@@ -55,7 +107,8 @@ def list_clients(
         if not client_ids:
             return []
         q = q.where(Client.id.in_(client_ids))
-    return list(db.scalars(q).all())
+    clients = list(db.scalars(q).all())
+    return [_client_to_out(db, c) for c in clients]
 
 
 @router.post("", response_model=ClientOut)
@@ -75,6 +128,9 @@ def create_client(
     )
     db.add(c)
     db.flush()
+    from app.services.billing_setup import ensure_client_active_contract
+
+    ensure_client_active_contract(db, current.tenant_id, c.id)
     write_audit(
         db,
         tenant_id=current.tenant_id,
@@ -116,6 +172,17 @@ def provision_client_with_manager(
     pwd = generate_initial_password()
     email = synthetic_email(username, current.tenant_id)
 
+    site = Site(
+        tenant_id=current.tenant_id,
+        client_id=c.id,
+        name=body.site_name.strip(),
+        timezone=body.timezone,
+        address_json={"city": body.city, "country": body.country},
+        status="active",
+    )
+    db.add(site)
+    db.flush()
+
     mgr = User(
         tenant_id=current.tenant_id,
         client_id=c.id,
@@ -132,6 +199,10 @@ def provision_client_with_manager(
     db.add(mgr)
     db.flush()
 
+    from app.services.billing_setup import ensure_client_active_contract
+
+    ensure_client_active_contract(db, current.tenant_id, c.id)
+
     write_audit(
         db,
         tenant_id=current.tenant_id,
@@ -139,13 +210,13 @@ def provision_client_with_manager(
         action="provision",
         entity_type="client",
         entity_id=str(c.id),
-        after={"legal_name": c.legal_name, "manager_username": username},
+        after={"legal_name": c.legal_name, "manager_username": username, "site_name": site.name},
     )
     db.commit()
     db.refresh(c)
 
     return ClientProvisionResponse(
-        client=ClientOut.model_validate(c),
+        client=_client_to_out(db, c),
         company_id=c.id,
         company_code=c.code,
         manager_username=username,
@@ -159,13 +230,13 @@ def get_client(
     client_id: UUID,
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
-) -> Client:
+) -> ClientOut:
     c = db.get(Client, client_id)
     if not c or c.tenant_id != current.tenant_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="NOT_FOUND")
     if current.role == UserRole.client_admin and current.client_id and c.id != current.client_id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
-    return c
+    return _client_to_out(db, c)
 
 
 @router.patch("/{client_id}", response_model=ClientOut)

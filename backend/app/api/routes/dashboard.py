@@ -109,7 +109,10 @@ def dashboard_summary(
             return out
 
     # Counts
-    cq = select(func.count()).select_from(Client).where(Client.tenant_id == tid)
+    cq = select(func.count()).select_from(Client).where(
+        Client.tenant_id == tid,
+        Client.status == "active",
+    )
     if client_filter:
         cq = cq.where(Client.id == client_filter)
     out.clients_count = int(db.scalar(cq) or 0)
@@ -137,12 +140,13 @@ def dashboard_summary(
         wq = wq.where(WorkOrder.site_id.in_(site_ids))
     out.open_work_orders = int(db.scalar(wq) or 0)
 
-    tech_q = select(func.count()).select_from(User).where(
+    op_users_q = select(func.count()).select_from(User).where(
         User.tenant_id == tid,
-        User.role == UserRole.technician,
         User.is_active.is_(True),
+        User.is_platform_admin.is_(False),
+        User.role.notin_([UserRole.super_user, UserRole.sw_dev]),
     )
-    out.technicians_count = int(db.scalar(tech_q) or 0)
+    out.operational_users_count = int(db.scalar(op_users_q) or 0)
 
     inv_q = select(func.count()).select_from(Invoice).where(
         Invoice.tenant_id == tid,

@@ -29,6 +29,15 @@ class UserPublic(BaseModel):
     locale: str
     is_active: bool
     is_platform_admin: bool = False
+    phone: Optional[str] = None
+    job_title: Optional[str] = None
+    accreditation: Optional[str] = None
+
+
+class UserMeOut(UserPublic):
+    """Authenticated user profile including tenant subscription features."""
+
+    features: list[str] = Field(default_factory=list)
 
 
 class UserListOut(BaseModel):
@@ -68,6 +77,9 @@ class UserPatchMe(BaseModel):
 
     full_name: Optional[str] = Field(None, min_length=1, max_length=255)
     password: Optional[str] = Field(None, min_length=6, max_length=128)
+    phone: Optional[str] = Field(None, max_length=64)
+    job_title: Optional[str] = Field(None, max_length=128)
+    accreditation: Optional[str] = Field(None, max_length=128)
 
 
 class UserCreateBody(BaseModel):
@@ -91,9 +103,13 @@ class UserPatchBody(BaseModel):
     """Payload for PATCH /users/{id}."""
 
     full_name: Optional[str] = Field(None, min_length=1, max_length=255)
+    email: Optional[str] = Field(None, max_length=255)
+    phone: Optional[str] = Field(None, max_length=64)
     is_active: Optional[bool] = None
     role: Optional[UserRole] = None
     locale: Optional[str] = None
+    phone: Optional[str] = Field(None, max_length=64)
+    email: Optional[str] = Field(None, max_length=320)
 
 
 class UserBrief(BaseModel):
@@ -152,6 +168,10 @@ class ClientProvisionRequest(BaseModel):
     legal_name: str = Field(..., min_length=1, max_length=255)
     manager_full_name: str = Field(..., min_length=1, max_length=255)
     activity_type: Optional[str] = Field(None, max_length=64)
+    site_name: str = Field(..., min_length=1, max_length=255)
+    city: str = Field(..., min_length=1, max_length=100)
+    country: str = Field(..., min_length=1, max_length=100)
+    timezone: str = Field(default="Asia/Riyadh", min_length=1, max_length=64)
 
 
 class ClientProvisionResponse(BaseModel):
@@ -177,6 +197,15 @@ class ClientOut(BaseModel):
     billing_email: Optional[str]
     status: str = "active"
     activity_type: Optional[str] = None
+    sites_count: int = 0
+    active_wo_count: int = 0
+    primary_contact_email: Optional[str] = None
+    primary_contact_phone: Optional[str] = None
+
+
+class ClientSummaryOut(ClientOut):
+    """Alias for list view; aggregates already included in ClientOut (NT-P5-B4)."""
+    pass
 
 
 class SiteCreate(BaseModel):
@@ -184,6 +213,31 @@ class SiteCreate(BaseModel):
     name: str
     timezone: str = "Asia/Riyadh"
     address_json: dict[str, Any] = Field(default_factory=dict)
+
+
+class SiteUpdate(BaseModel):
+    """Payload for PATCH /sites/{site_id} (NT-P5-S01)."""
+
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    timezone: Optional[str] = Field(None, max_length=64)
+    address: Optional[str] = Field(None, max_length=512)
+    city: Optional[str] = Field(None, max_length=100)
+    country: Optional[str] = Field(None, max_length=100)
+    status: Optional[str] = Field(None, max_length=32)
+
+
+class SiteAssignManagerRequest(BaseModel):
+    """Payload for POST /sites/{site_id}/assign-manager (NT-P5-S02)."""
+
+    manager_full_name: str = Field(..., min_length=1, max_length=255)
+
+
+class SiteAssignManagerResponse(BaseModel):
+    """Response for POST /sites/{site_id}/assign-manager (NT-P5-S02)."""
+
+    manager_username: str
+    manager_email: str
+    initial_password: str
 
 
 class SiteOut(BaseModel):
@@ -220,6 +274,7 @@ class MaintenanceScheduleCreate(BaseModel):
     template_id: UUID
     frequency: str = "monthly"
     custom_days: Optional[int] = None
+    last_maintenance_date: Optional[date] = None
 
 
 class MaintenanceScheduleOut(BaseModel):
@@ -231,6 +286,25 @@ class MaintenanceScheduleOut(BaseModel):
     frequency: str
     next_due_at: datetime
     is_active: bool
+    ai_meta_json: dict[str, Any] = Field(default_factory=dict)
+
+
+class MaintenanceCalendarEventOut(BaseModel):
+    asset_id: UUID
+    asset_name: str
+    site_id: UUID
+    client_id: UUID
+    schedule_id: UUID
+    frequency: str
+    due_at: datetime
+    bucket: str
+    year: int
+    view: str
+
+
+class AiSchedulingStubOut(BaseModel):
+    status: str = "not_implemented"
+    message: str = "AI scheduling is a future-phase placeholder."
 
 
 class AssetCreate(BaseModel):
@@ -245,7 +319,31 @@ class AssetCreate(BaseModel):
     warranty_until: Optional[date] = None
     max_repair_count: Optional[int] = None
     max_age_years: Optional[int] = None
+    floor: Optional[str] = Field(None, max_length=64)
+    room: Optional[str] = Field(None, max_length=64)
+    smart_labels: list[str] = Field(default_factory=list)
+    criticality: Optional[str] = Field(None, max_length=32)
+    last_maintenance_date: Optional[date] = None
+    is_spare: bool = False
     schedule: Optional[MaintenanceScheduleCreate] = None
+
+
+class AssetUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    category: Optional[str] = Field(None, max_length=64)
+    model: Optional[str] = None
+    serial: Optional[str] = None
+    installed_on: Optional[date] = None
+    warranty_until: Optional[date] = None
+    max_repair_count: Optional[int] = None
+    max_age_years: Optional[int] = None
+    floor: Optional[str] = Field(None, max_length=64)
+    room: Optional[str] = Field(None, max_length=64)
+    smart_labels: Optional[list[str]] = None
+    criticality: Optional[str] = Field(None, max_length=32)
+    last_maintenance_date: Optional[date] = None
+    lifecycle_status: Optional[AssetLifecycleStatus] = None
+    is_spare: Optional[bool] = None
 
 
 class AssetOut(BaseModel):
@@ -267,7 +365,17 @@ class AssetOut(BaseModel):
     label_code: Optional[str] = None
     qr_payload: Optional[str] = None
     next_due_at: Optional[datetime] = None
+    floor: Optional[str] = None
+    room: Optional[str] = None
+    smart_labels: list[str] = Field(default_factory=list)
+    criticality: Optional[str] = None
+    last_maintenance_date: Optional[date] = None
     schedules: list["MaintenanceScheduleOut"] = Field(default_factory=list)
+    company_name: Optional[str] = None
+    site_name: Optional[str] = None
+    expected_eol_date: Optional[date] = None
+    is_spare: bool = False
+    photo_url: Optional[str] = None
 
 
 class ReportTemplateCreate(BaseModel):
@@ -291,10 +399,33 @@ class ReportTemplateOut(BaseModel):
     is_active: bool
 
 
+class ObservationFieldDef(BaseModel):
+    id: str = Field(min_length=1, max_length=64)
+    type: str = Field(default="textarea")
+    label: str = Field(min_length=1, max_length=255)
+    options: list[str] = Field(default_factory=list)
+    required: bool = False
+    rows: int = 4
+
+
+class CategoryObservationsOut(BaseModel):
+    categories: dict[str, list[ObservationFieldDef]]
+
+
+class CategoryObservationsUpdate(BaseModel):
+    fields: list[ObservationFieldDef]
+
+
+class TemplateSyncResult(BaseModel):
+    created: int = 0
+    updated: int = 0
+    unchanged: int = 0
+
+
 class WorkOrderCreate(BaseModel):
     client_id: UUID
     site_id: UUID
-    asset_id: Optional[UUID] = None
+    asset_id: UUID
     location_id: Optional[UUID] = None
     source: WorkOrderSource = WorkOrderSource.corrective
     category: str = "general"
@@ -313,6 +444,8 @@ class WorkOrderUpdate(BaseModel):
     template_id: Optional[UUID] = None
     assignee_user_id: Optional[UUID] = None
     tags: Optional[list[str]] = None
+    hold_reason: Optional[str] = Field(None, min_length=1, max_length=2000)
+    cancellation_reason: Optional[str] = Field(None, min_length=1, max_length=2000)
 
 
 class WorkOrderOut(BaseModel):
@@ -337,6 +470,15 @@ class WorkOrderOut(BaseModel):
     assignee: Optional[UserBrief] = None
     company_name: Optional[str] = None
     site_name: Optional[str] = None
+    asset_name: Optional[str] = None
+    asset_category: Optional[str] = None
+    asset_serial: Optional[str] = None
+    asset_label_code: Optional[str] = None
+    asset_model: Optional[str] = None
+    site_address: Optional[str] = None
+    site_city: Optional[str] = None
+    site_country: Optional[str] = None
+    location_name: Optional[str] = None
     opened_at: datetime
     closed_at: Optional[datetime]
     tags: list[str] = []
@@ -352,6 +494,7 @@ class DeclineRequestBody(BaseModel):
 
 class ReportAnswersUpdate(BaseModel):
     answers: dict[str, Any]
+    pdf_lang: Optional[str] = None
 
 
 class MaintenanceReportOut(BaseModel):
@@ -398,6 +541,15 @@ class InvoiceOut(BaseModel):
     total_sar: Decimal
     currency: str
     due_date: Optional[date]
+    issued_at: Optional[datetime] = None
+    billing_email: Optional[str] = None
+    notes: str = ""
+    work_order_title: str = ""
+    client_name: Optional[str] = None
+    labor_hours: Decimal = Decimal("0")
+    labor_rate_sar: Decimal = Decimal("0")
+    labor_amount_sar: Decimal = Decimal("0")
+    service_fee_sar: Decimal = Decimal("0")
     line_items: list[InvoiceLineOut] = []
 
 
@@ -444,6 +596,7 @@ class InvoicePreviewOut(BaseModel):
     completion_date: Optional[date] = None
     currency: str
     labor_hours: Decimal
+    labor_rate_sar: Decimal = Decimal("0")
     labor_amount_sar: Decimal
     parts: list[dict[str, Any]] = Field(default_factory=list)
     service_fee_sar: Decimal = Decimal("0")
@@ -456,6 +609,18 @@ class InvoicePreviewOut(BaseModel):
 
 class SendInvoiceBody(BaseModel):
     recipient_email: Optional[str] = None
+
+
+class InvoicePatchBody(BaseModel):
+    due_date: Optional[date] = None
+    issued_at: Optional[date] = None
+    currency: Optional[str] = None
+    billing_email: Optional[str] = None
+    notes: Optional[str] = None
+    work_order_title: Optional[str] = None
+    labor_hours: Optional[Decimal] = None
+    labor_rate_sar: Optional[Decimal] = None
+    service_fee_sar: Optional[Decimal] = None
 
 
 class AssetImportRow(BaseModel):
@@ -770,7 +935,7 @@ class DashboardSummaryOut(BaseModel):
     sites_count: Optional[int] = None
     assets_count: Optional[int] = None
     open_work_orders: int = 0
-    technicians_count: Optional[int] = None
+    operational_users_count: Optional[int] = None
     pending_invoices_draft: Optional[int] = None
     my_assigned_open: Optional[int] = None
     my_in_progress: Optional[int] = None

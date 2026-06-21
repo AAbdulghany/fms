@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { apiFetch } from "../lib/api";
@@ -7,6 +7,8 @@ import type { Site, Asset, AssetLifecycleStatus, WorkOrder, PaginatedWorkOrders 
 import { EmptyState } from "../components/EmptyState";
 import { AssetLifecycleBadge } from "../components/AssetLifecycleBadge";
 import { AssetRegisterModal } from "../components/AssetRegisterModal";
+import { SiteEditModal } from "../components/SiteEditModal";
+import { SiteQRModal } from "../components/SiteQrModal";
 
 type AssetOutApi = {
   id: string;
@@ -53,8 +55,12 @@ export default function SiteDetailPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"assets" | "work-orders" | "locations" | "schedule">("assets");
   const [registerOpen, setRegisterOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
 
-  useEffect(() => {
+  const loadSite = useCallback(() => {
+    if (!id) return;
+    setLoading(true);
     void (async () => {
       try {
         type SiteApi = {
@@ -81,11 +87,9 @@ export default function SiteDetailPage() {
           company_name: siteData.company_name,
         });
 
-        // Fetch assets for this site
         const assetsData = await apiFetch<AssetOutApi[]>(`/sites/${id}/assets`);
         setAssets(assetsData.map(mapToDisplayAsset));
 
-        // Fetch work orders for this site
         const woData = await apiFetch<PaginatedWorkOrders>(`/work-orders?site_id=${id}&page_size=50`);
         setWorkOrders(woData.data);
       } catch (error) {
@@ -95,6 +99,10 @@ export default function SiteDetailPage() {
       }
     })();
   }, [id]);
+
+  useEffect(() => {
+    loadSite();
+  }, [loadSite]);
 
   if (loading) {
     return (
@@ -156,13 +164,13 @@ export default function SiteDetailPage() {
           <div className="flex gap-2">
             <button
               className="rounded-lg border border-neutral-300 bg-neutral-0 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
-              onClick={() => { /* edit site – future implementation */ }}
+              onClick={() => setEditOpen(true)}
             >
               {t("edit")}
             </button>
             <button
               className="rounded-lg border border-neutral-300 bg-neutral-0 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
-              onClick={() => { /* QR code – future implementation */ }}
+              onClick={() => setQrOpen(true)}
             >
               {t("qr_code")}
             </button>
@@ -319,7 +327,7 @@ export default function SiteDetailPage() {
           <div className="flex items-center justify-end">
             <button
               className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
-              onClick={() => navigate("/work-orders", { state: { prefillClientId: site.company_id, prefillSiteId: site.id } })}
+              onClick={() => navigate("/work-orders?open=create", { state: { prefillClientId: site.company_id, prefillSiteId: site.id } })}
             >
               + {t("create_work_order")}
             </button>
@@ -392,17 +400,26 @@ export default function SiteDetailPage() {
       )}
 
       {site && (
-        <AssetRegisterModal
-          open={registerOpen}
-          onClose={() => setRegisterOpen(false)}
-          onCreated={() => {
-            void (async () => {
-              const assetsData = await apiFetch<AssetOutApi[]>(`/sites/${id}/assets`);
-              setAssets(assetsData.map(mapToDisplayAsset));
-            })();
-          }}
-          initialSiteId={site.id}
-        />
+        <>
+          <AssetRegisterModal
+            open={registerOpen}
+            onClose={() => setRegisterOpen(false)}
+            onCreated={loadSite}
+            initialSiteId={site.id}
+          />
+          <SiteEditModal
+            open={editOpen}
+            site={site}
+            onClose={() => setEditOpen(false)}
+            onSaved={loadSite}
+          />
+          <SiteQRModal
+            open={qrOpen}
+            siteId={site.id}
+            siteName={site.name}
+            onClose={() => setQrOpen(false)}
+          />
+        </>
       )}
     </div>
   );

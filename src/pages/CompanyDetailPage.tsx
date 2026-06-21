@@ -8,7 +8,7 @@ import { formatMoneyAmount } from "../lib/formatCurrency";
 import { EmptyState } from "../components/EmptyState";
 import { CompanyEditModal } from "../components/CompanyEditModal";
 import { SiteProvisionModal } from "../components/SiteProvisionModal";
-import { ProvisionCredentialsModal } from "../components/ProvisionCredentialsModal";
+import { SiteAssignManagerModal } from "../components/SiteAssignManagerModal";
 
 type ClientApi = {
   id: string;
@@ -16,6 +16,9 @@ type ClientApi = {
   code: string;
   billing_email: string | null;
   status: string;
+  primary_contact_email?: string | null;
+  primary_contact_phone?: string | null;
+  admin_user_id?: string | null;
 };
 
 export default function CompanyDetailPage() {
@@ -28,8 +31,14 @@ export default function CompanyDetailPage() {
   const [activeTab, setActiveTab] = useState<"sites" | "work-orders" | "invoices" | "settings">("sites");
   const [searchQuery, setSearchQuery] = useState("");
   const [editOpen, setEditOpen] = useState(false);
-  const [addSiteOpen, setAddSiteOpen] = useState(false);
-  const [siteCreds, setSiteCreds] = useState<{ username: string; email: string; initialPassword: string } | null>(null);
+  const [siteModal, setSiteModal] = useState<"add-only" | "provision" | null>(null);
+  const [assignManagerSite, setAssignManagerSite] = useState<Site | null>(null);
+  // Settings tab state
+  const [settingsPhone, setSettingsPhone] = useState("");
+  const [settingsEmail, setSettingsEmail] = useState("");
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [settingsSaved, setSettingsSaved] = useState(false);
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [woTotal, setWoTotal] = useState(0);
   const [woPage, setWoPage] = useState(1);
@@ -47,10 +56,13 @@ export default function CompanyDetailPage() {
           id: c.id,
           name: c.legal_name,
           code: c.code,
-          contact_email: c.billing_email ?? "",
+          contact_email: c.primary_contact_email ?? c.billing_email ?? "",
+          contact_phone: c.primary_contact_phone ?? undefined,
           status: st as Company["status"],
           created_at: new Date().toISOString(),
         });
+        setSettingsEmail(c.primary_contact_email ?? c.billing_email ?? "");
+        setSettingsPhone(c.primary_contact_phone ?? "");
 
         type SiteApi = {
           id: string;
@@ -58,6 +70,11 @@ export default function CompanyDetailPage() {
           name: string;
           timezone: string;
           status: string;
+          city?: string;
+          country?: string;
+          address?: string;
+          asset_count?: number;
+          active_wo_count?: number;
         };
         const sitesData = await apiFetch<SiteApi[]>(`/sites?client_id=${id}`);
         setSites(
@@ -65,11 +82,13 @@ export default function CompanyDetailPage() {
             id: s.id,
             company_id: s.client_id,
             name: s.name,
-            address: "",
-            city: "",
-            country: "",
+            address: s.address ?? "",
+            city: s.city ?? "",
+            country: s.country ?? "",
             timezone: s.timezone,
             status: s.status === "active" ? "active" : "inactive",
+            asset_count: s.asset_count,
+            active_wo_count: s.active_wo_count,
           }))
         );
       } catch (error) {
@@ -160,17 +179,16 @@ export default function CompanyDetailPage() {
     site.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const siteDefaults = sites.length > 0
+    ? {
+        city: sites[0].city ?? "",
+        country: sites[0].country ?? "",
+        timezone: sites[0].timezone ?? "",
+      }
+    : { city: "", country: "", timezone: "" };
+
   return (
     <div className="space-y-6">
-      <ProvisionCredentialsModal
-        open={!!siteCreds}
-        title={t("site_created_credentials")}
-        username={siteCreds?.username ?? ""}
-        email={siteCreds?.email ?? ""}
-        initialPassword={siteCreds?.initialPassword ?? ""}
-        onClose={() => setSiteCreds(null)}
-      />
-
       <CompanyEditModal
         open={editOpen}
         companyId={id}
@@ -181,11 +199,22 @@ export default function CompanyDetailPage() {
       />
 
       <SiteProvisionModal
-        open={addSiteOpen}
+        open={siteModal !== null}
         clientId={id}
-        onClose={() => setAddSiteOpen(false)}
-        onProvisioned={(c) => {
-          setSiteCreds(c);
+        mode={siteModal === "provision" ? "provision" : "add-only"}
+        defaultCity={siteDefaults.city}
+        defaultCountry={siteDefaults.country}
+        defaultTimezone={siteDefaults.timezone}
+        onClose={() => setSiteModal(null)}
+        onAdded={() => load()}
+      />
+
+      <SiteAssignManagerModal
+        open={assignManagerSite !== null}
+        siteId={assignManagerSite?.id ?? ""}
+        siteName={assignManagerSite?.name ?? ""}
+        onClose={() => setAssignManagerSite(null)}
+        onAssigned={() => {
           load();
         }}
       />
@@ -291,6 +320,17 @@ export default function CompanyDetailPage() {
           >
             {t("invoices")}
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("settings")}
+            className={`border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
+              activeTab === "settings"
+                ? "border-primary-600 text-primary-600"
+                : "border-transparent text-neutral-600 hover:text-neutral-900"
+            }`}
+          >
+            {t("settings")}
+          </button>
         </nav>
       </div>
 
@@ -308,11 +348,19 @@ export default function CompanyDetailPage() {
             </div>
             <button
               type="button"
-              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 disabled:opacity-50"
+              className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-50"
               disabled={company.status === "archived"}
-              onClick={() => setAddSiteOpen(true)}
+              onClick={() => setSiteModal("add-only")}
             >
               + {t("add_site")}
+            </button>
+            <button
+              type="button"
+              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 disabled:opacity-50"
+              disabled={company.status === "archived"}
+              onClick={() => setSiteModal("provision")}
+            >
+              + {t("add_site_manager_title")}
             </button>
           </div>
 
@@ -332,7 +380,7 @@ export default function CompanyDetailPage() {
               description={t("site_empty_hint")}
               action={{
                 label: `+ ${t("add_site")}`,
-                onClick: () => setAddSiteOpen(true),
+                onClick: () => setSiteModal("add-only"),
               }}
             />
           ) : filteredSites.length === 0 ? (
@@ -371,19 +419,51 @@ export default function CompanyDetailPage() {
                     <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
                       {t("active_wos")}
                     </th>
+                    <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
+                      {t("actions")}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200">
                   {filteredSites.map((site) => (
                     <tr
                       key={site.id}
-                      onClick={() => navigate(`/sites/${site.id}`)}
-                      className="cursor-pointer transition-colors hover:bg-neutral-50"
+                      className="transition-colors hover:bg-neutral-50"
                     >
-                      <td className="px-6 py-4 text-sm font-medium text-primary-600">{site.name}</td>
-                      <td className="px-6 py-4 text-sm text-neutral-900">{site.timezone}</td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-900">{site.asset_count ?? 0}</td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-900">{site.active_wo_count ?? 0}</td>
+                      <td
+                        className="cursor-pointer px-6 py-4 text-sm font-medium text-primary-600"
+                        onClick={() => navigate(`/sites/${site.id}`)}
+                      >
+                        {site.name}
+                      </td>
+                      <td
+                        className="cursor-pointer px-6 py-4 text-sm text-neutral-900"
+                        onClick={() => navigate(`/sites/${site.id}`)}
+                      >
+                        {site.timezone}
+                      </td>
+                      <td
+                        className="cursor-pointer whitespace-nowrap px-6 py-4 text-sm text-neutral-900"
+                        onClick={() => navigate(`/sites/${site.id}`)}
+                      >
+                        {site.asset_count ?? 0}
+                      </td>
+                      <td
+                        className="cursor-pointer whitespace-nowrap px-6 py-4 text-sm text-neutral-900"
+                        onClick={() => navigate(`/sites/${site.id}`)}
+                      >
+                        {site.active_wo_count ?? 0}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm">
+                        <button
+                          type="button"
+                          className="rounded-md border border-neutral-300 px-3 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-40"
+                          disabled={company.status === "archived"}
+                          onClick={(e) => { e.stopPropagation(); setAssignManagerSite(site); }}
+                        >
+                          {t("assign_manager")}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -402,7 +482,7 @@ export default function CompanyDetailPage() {
             <button
               type="button"
               className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
-              onClick={() => navigate("/work-orders", { state: { prefillClientId: id } })}
+              onClick={() => navigate("/work-orders?open=create", { state: { prefillClientId: id } })}
             >
               + {t("create_work_order")}
             </button>
@@ -525,6 +605,70 @@ export default function CompanyDetailPage() {
               </table>
             </div>
           )}
+        </div>
+      )}
+      {activeTab === "settings" && (
+        <div className="space-y-6">
+          <div className="rounded-lg border border-neutral-200 bg-neutral-0 p-6 shadow-sm">
+            <h2 className="mb-4 text-lg font-semibold text-neutral-900">{t("company_contact_settings")}</h2>
+            <form
+              className="space-y-4 max-w-md"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setSettingsSaving(true);
+                setSettingsError(null);
+                setSettingsSaved(false);
+                try {
+                  // TODO: backend PATCH /clients/{id} or PATCH /users/{adminUserId}
+                  await apiFetch(`/clients/${id}`, {
+                    method: "PATCH",
+                    json: {
+                      billing_email: settingsEmail.trim() || undefined,
+                      primary_contact_phone: settingsPhone.trim() || undefined,
+                    },
+                  });
+                  setSettingsSaved(true);
+                  load();
+                } catch (err) {
+                  setSettingsError(err instanceof Error ? err.message : t("error"));
+                } finally {
+                  setSettingsSaving(false);
+                }
+              }}
+            >
+              <div>
+                <label className="mb-1 block text-sm font-medium text-neutral-700">{t("contact_email")}</label>
+                <input
+                  type="email"
+                  className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+                  value={settingsEmail}
+                  onChange={(e) => setSettingsEmail(e.target.value)}
+                  placeholder="billing@example.com"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-neutral-700">{t("contact_phone")}</label>
+                <input
+                  type="tel"
+                  className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+                  value={settingsPhone}
+                  onChange={(e) => setSettingsPhone(e.target.value)}
+                  placeholder="+966 5xx xxx xxx"
+                />
+              </div>
+              {settingsError && <p className="text-sm text-error-main">{settingsError}</p>}
+              {settingsSaved && <p className="text-sm text-success-dark">{t("settings_saved")}</p>}
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={settingsSaving}
+                  className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+                >
+                  {settingsSaving ? t("loading") : t("save")}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

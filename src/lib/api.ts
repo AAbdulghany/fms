@@ -85,6 +85,21 @@ export async function apiFetch<T>(
   return res.text() as Promise<T>;
 }
 
+/** Extract a human-readable message from apiFetch errors (JSON string body). */
+export function parseApiError(err: unknown, fallback = "Error"): string {
+  const raw = err instanceof Error ? err.message : String(err);
+  try {
+    const parsed = JSON.parse(raw) as { detail?: string | { code?: string; missing_fields?: string[] } };
+    if (typeof parsed.detail === "string") return parsed.detail;
+    if (parsed.detail && typeof parsed.detail === "object" && parsed.detail.code) {
+      return parsed.detail.code;
+    }
+  } catch {
+    /* plain text */
+  }
+  return raw || fallback;
+}
+
 /** Authenticated binary download (e.g. generated report PDF). */
 export async function apiFetchBlob(path: string): Promise<Blob> {
   let res = await request(path, { method: "GET" });
@@ -107,6 +122,25 @@ export async function apiFetchBlob(path: string): Promise<Blob> {
     throw new Error(JSON.stringify(err));
   }
   return res.blob();
+}
+
+/** Open a PDF (or other blob) from an authenticated GET in a new tab. */
+export async function openAuthenticatedBlob(path: string): Promise<void> {
+  const blob = await apiFetchBlob(path);
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank", "noopener,noreferrer");
+  window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
+}
+
+/** Download a file from an authenticated GET. */
+export async function downloadAuthenticatedFile(path: string, filename: string): Promise<void> {
+  const blob = await apiFetchBlob(path);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function notifyAuthTokenChanged() {

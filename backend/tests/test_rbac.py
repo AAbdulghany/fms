@@ -271,6 +271,21 @@ def asset_a(db_session, tenant_a, site_a):
 
 
 @pytest.fixture
+def asset_b(db_session, tenant_a, site_b):
+    """Create asset in Site B."""
+    asset = Asset(
+        id=uuid4(),
+        tenant_id=tenant_a.id,
+        site_id=site_b.id,
+        name="Asset B",
+    )
+    db_session.add(asset)
+    db_session.commit()
+    db_session.refresh(asset)
+    return asset
+
+
+@pytest.fixture
 def invoice_a(db_session, tenant_a, client_a, work_order_a):
     """Create invoice for work order A."""
     invoice = Invoice(
@@ -365,7 +380,7 @@ def test_super_admin_can_list_all_work_orders(db_session, super_admin_user, work
     assert work_order_b.id in wo_ids
 
 
-def test_super_admin_can_create_work_order(db_session, super_admin_user, client_a, site_a):
+def test_super_admin_can_create_work_order(db_session, super_admin_user, client_a, site_a, asset_a):
     """super_admin can create work orders."""
     from fastapi import BackgroundTasks
 
@@ -376,6 +391,7 @@ def test_super_admin_can_create_work_order(db_session, super_admin_user, client_
     wo_in = WorkOrderCreate(
         client_id=client_a.id,
         site_id=site_a.id,
+        asset_id=asset_a.id,
         title="New WO",
         source=WorkOrderSource.corrective,
         urgency=Urgency.normal
@@ -485,7 +501,7 @@ def test_company_admin_cannot_list_users(db_session, company_admin_user):
     assert exc_info.value.status_code == 403
 
 
-def test_company_admin_can_create_work_orders(db_session, company_admin_user, client_a, site_a):
+def test_company_admin_can_create_work_orders(db_session, company_admin_user, client_a, site_a, asset_a):
     """company_admin can create work orders."""
     from fastapi import BackgroundTasks
 
@@ -496,6 +512,7 @@ def test_company_admin_can_create_work_orders(db_session, company_admin_user, cl
     wo_in = WorkOrderCreate(
         client_id=client_a.id,
         site_id=site_a.id,
+        asset_id=asset_a.id,
         title="Company Admin WO",
         source=WorkOrderSource.preventive,
         urgency=Urgency.normal
@@ -668,7 +685,7 @@ def test_site_manager_cannot_access_other_site_work_order(
     assert exc_info.value.status_code == 403
 
 
-def test_site_manager_can_request_work_orders(db_session, site_manager_user, client_a, site_a):
+def test_site_manager_can_request_work_orders(db_session, site_manager_user, client_a, site_a, asset_a):
     """site_manager can submit work order requests (request endpoint) for their sites."""
     from fastapi import BackgroundTasks
 
@@ -679,6 +696,7 @@ def test_site_manager_can_request_work_orders(db_session, site_manager_user, cli
     wo_in = WorkOrderCreate(
         client_id=client_a.id,
         site_id=site_a.id,
+        asset_id=asset_a.id,
         title="Site Manager WO Request",
         source=WorkOrderSource.corrective,
         urgency=Urgency.normal,
@@ -940,7 +958,7 @@ def test_manager_cannot_create_sites(db_session, manager_user):
 
 
 def test_site_manager_cannot_create_work_order_on_unscoped_site(
-    db_session, site_manager_user, client_b, site_b
+    db_session, site_manager_user, client_b, site_b, asset_b
 ):
     """site_manager scoped to site_a is blocked from creating a WO on site_b."""
     from fastapi import BackgroundTasks
@@ -952,6 +970,7 @@ def test_site_manager_cannot_create_work_order_on_unscoped_site(
     wo_in = WorkOrderCreate(
         client_id=client_b.id,
         site_id=site_b.id,
+        asset_id=asset_b.id,
         title="IDOR attempt WO",
         source=WorkOrderSource.corrective,
         urgency=Urgency.normal,
@@ -964,7 +983,7 @@ def test_site_manager_cannot_create_work_order_on_unscoped_site(
 
 
 def test_client_admin_cannot_create_work_order_for_other_client(
-    db_session, client_admin_user, client_b, site_b
+    db_session, client_admin_user, client_b, site_b, asset_b
 ):
     """client_admin scoped to client_a is blocked from creating a WO for client_b."""
     from fastapi import BackgroundTasks
@@ -976,6 +995,7 @@ def test_client_admin_cannot_create_work_order_for_other_client(
     wo_in = WorkOrderCreate(
         client_id=client_b.id,
         site_id=site_b.id,
+        asset_id=asset_b.id,
         title="Cross-client IDOR attempt",
         source=WorkOrderSource.corrective,
         urgency=Urgency.normal,
