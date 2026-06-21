@@ -8,9 +8,15 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user, require_feature, require_roles
 from app.database import get_db
-from app.models import Client, Invoice, InvoiceStatus, User, UserRole
-from app.schemas import InvoiceOut, SendInvoiceBody
+from app.models import Client, Invoice, InvoiceStatus, User, UserRole, WorkOrder
+from app.schemas import InvoiceOut, InvoicePatchBody, SendInvoiceBody
 from app.services.audit import write_audit
+from app.services.billing import (
+    ALLOWED_INVOICE_CURRENCIES,
+    apply_invoice_charge_edits,
+    extract_invoice_charges,
+    recalculate_draft_invoice,
+)
 from app.services.email import send_invoice_email
 from app.services.pdf import render_invoice_pdf
 
@@ -32,6 +38,26 @@ def _access_invoice(db: Session, current: User, inv_id: UUID) -> Invoice:
     return inv
 
 
+def _invoice_out(db: Session, inv: Invoice) -> InvoiceOut:
+    client = db.get(Client, inv.client_id)
+    wo = db.get(WorkOrder, inv.work_order_id)
+    meta = inv.metadata_json or {}
+    charges = extract_invoice_charges(inv)
+    base = InvoiceOut.model_validate(inv)
+    return base.model_copy(
+        update={
+            "billing_email": (meta.get("billing_email") or (client.billing_email if client else None)),
+            "notes": meta.get("notes") or "",
+            "work_order_title": (meta.get("work_order_title") or (wo.title if wo else "") or ""),
+            "client_name": client.legal_name if client else None,
+            "labor_hours": charges["labor_hours"],
+            "labor_rate_sar": charges["labor_rate_sar"],
+            "labor_amount_sar": charges["labor_amount_sar"],
+            "service_fee_sar": charges["service_fee_sar"],
+        }
+    )
+
+
 @router.get("", response_model=list[InvoiceOut])
 def list_invoices(
     db: Annotated[Session, Depends(get_db)],
@@ -40,7 +66,7 @@ def list_invoices(
     client_id: UUID | None = Query(None),
     date_from: datetime | None = Query(None),
     date_to: datetime | None = Query(None),
-) -> list[Invoice]:
+) -> list[InvoiceOut]:
     q = select(Invoice).where(Invoice.tenant_id == current.tenant_id)
     
     # Role-based filtering
@@ -66,7 +92,7 @@ def list_invoices(
     
     q = q.options(selectinload(Invoice.line_items)).order_by(Invoice.number.desc())
     rows = db.scalars(q).all()
-    return list(rows)
+    return [_invoice_out(db, inv) for inv in rows]
 
 
 @router.get("/{invoice_id}", response_model=InvoiceOut)
@@ -74,11 +100,97 @@ def get_invoice(
     invoice_id: UUID,
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
-) -> Invoice:
+) -> InvoiceOut:
     inv = _access_invoice(db, current, invoice_id)
     db.refresh(inv)
     _ = inv.line_items
-    return inv
+    return _invoice_out(db, inv)
+
+
+@router.patch("/{invoice_id}", response_model=InvoiceOut)
+def patch_invoice(
+    invoice_id: UUID,
+    body: InvoicePatchBody,
+    db: Annotated[Session, Depends(get_db)],
+    current: Annotated[User, Depends(get_current_user)],
+    _: Annotated[User, _finance],
+) -> InvoiceOut:
+    inv = _access_invoice(db, current, invoice_id)
+    if inv.status not in (InvoiceStatus.draft, InvoiceStatus.approved):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVOICE_NOT_EDITABLE")
+
+    meta = dict(inv.metadata_json or {})
+    if body.due_date is not None:
+        inv.due_date = body.due_date
+    if body.issued_at is not None:
+        inv.issued_at = datetime.combine(body.issued_at, datetime.min.time()).replace(tzinfo=timezone.utc)
+    if body.currency is not None:
+        cur = body.currency.strip().upper()
+        if cur not in ALLOWED_INVOICE_CURRENCIES:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_CURRENCY")
+        inv.currency = cur
+    if body.billing_email is not None:
+        meta["billing_email"] = body.billing_email.strip()
+    if body.notes is not None:
+        meta["notes"] = body.notes
+    if body.work_order_title is not None:
+        meta["work_order_title"] = body.work_order_title.strip()
+    inv.metadata_json = meta
+
+    charge_fields = (body.labor_hours, body.labor_rate_sar, body.service_fee_sar)
+    if any(v is not None for v in charge_fields):
+        try:
+            apply_invoice_charge_edits(
+                inv,
+                labor_hours=body.labor_hours,
+                labor_rate_sar=body.labor_rate_sar,
+                service_fee_sar=body.service_fee_sar,
+            )
+        except ValueError as e:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    write_audit(
+        db,
+        tenant_id=current.tenant_id,
+        actor=current,
+        action="update_invoice",
+        entity_type="invoice",
+        entity_id=str(inv.id),
+        after={
+            "due_date": str(inv.due_date) if inv.due_date else None,
+            "currency": inv.currency,
+        },
+    )
+    db.commit()
+    db.refresh(inv)
+    _ = inv.line_items
+    return _invoice_out(db, inv)
+
+
+@router.post("/{invoice_id}/recalculate", response_model=InvoiceOut)
+def recalculate_invoice(
+    invoice_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current: Annotated[User, Depends(get_current_user)],
+    _: Annotated[User, _finance],
+) -> InvoiceOut:
+    inv = _access_invoice(db, current, invoice_id)
+    try:
+        recalculate_draft_invoice(db, inv)
+    except ValueError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(e))
+    write_audit(
+        db,
+        tenant_id=current.tenant_id,
+        actor=current,
+        action="recalculate_invoice",
+        entity_type="invoice",
+        entity_id=str(inv.id),
+    )
+    db.commit()
+    db.refresh(inv)
+    _ = inv.line_items
+    return _invoice_out(db, inv)
 
 
 @router.get("/{invoice_id}/pdf")
@@ -104,7 +216,7 @@ def approve_invoice(
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
     _: Annotated[User, _finance],
-) -> Invoice:
+) -> InvoiceOut:
     inv = _access_invoice(db, current, invoice_id)
     if inv.status != InvoiceStatus.draft:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_STATUS")
@@ -112,7 +224,7 @@ def approve_invoice(
     write_audit(db, tenant_id=current.tenant_id, actor=current, action="approve", entity_type="invoice", entity_id=str(inv.id))
     db.commit()
     db.refresh(inv)
-    return inv
+    return _invoice_out(db, inv)
 
 
 @router.post("/{invoice_id}/send", response_model=InvoiceOut)
@@ -122,12 +234,13 @@ def send_invoice(
     current: Annotated[User, Depends(get_current_user)],
     _: Annotated[User, _finance],
     body: SendInvoiceBody | None = None,
-) -> Invoice:
+) -> InvoiceOut:
     inv = _access_invoice(db, current, invoice_id)
     if inv.status not in (InvoiceStatus.approved, InvoiceStatus.draft):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_STATUS")
     client = db.get(Client, inv.client_id)
-    to_email = (body.recipient_email if body and body.recipient_email else None) or (
+    meta = inv.metadata_json or {}
+    to_email = (body.recipient_email if body and body.recipient_email else None) or meta.get("billing_email") or (
         client.billing_email if client else None
     )
     if not to_email:
@@ -152,7 +265,7 @@ def send_invoice(
     )
     db.commit()
     db.refresh(inv)
-    return inv
+    return _invoice_out(db, inv)
 
 
 @router.post("/{invoice_id}/mark-paid", response_model=InvoiceOut)
@@ -161,10 +274,10 @@ def mark_paid(
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
     _: Annotated[User, _finance],
-) -> Invoice:
+) -> InvoiceOut:
     inv = _access_invoice(db, current, invoice_id)
     inv.status = InvoiceStatus.paid
     inv.paid_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(inv)
-    return inv
+    return _invoice_out(db, inv)
