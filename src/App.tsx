@@ -1,8 +1,11 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { ReactNode, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { DashboardPage } from "./pages/DashboardPage";
+import { InvoiceDetailPage } from "./pages/InvoiceDetailPage";
 import { InvoicesPage } from "./pages/InvoicesPage";
 import { LoginPage } from "./pages/LoginPage";
 import { WorkOrderDetailPage } from "./pages/WorkOrderDetailPage";
@@ -19,6 +22,64 @@ import { SubscriptionPage } from "./pages/SubscriptionPage";
 import { PlatformPackagesPage } from "./pages/PlatformPackagesPage";
 import { MaintenanceCompaniesPage } from "./pages/MaintenanceCompaniesPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import ReportTemplatesPage from "./pages/ReportTemplatesPage";
+import { apiFetch } from "./lib/api";
+import type { User } from "./lib/types";
+import { hasFeature } from "./lib/features";
+
+interface FeatureRouteProps {
+  feature: string;
+  children: ReactNode;
+}
+
+function FeatureRoute({ feature, children }: FeatureRouteProps) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [user, setUser] = useState<User | null>(null);
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const data = await apiFetch<User>("/users/me");
+        setUser(data);
+      } catch {
+        // ignore — ProtectedRoute already guards auth
+      } finally {
+        setChecked(true);
+      }
+    })();
+  }, []);
+
+  if (!checked) return null;
+
+  if (user && !hasFeature(user, feature)) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="max-w-sm rounded-lg border border-neutral-200 bg-neutral-0 p-8 text-center shadow-sm">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-neutral-100">
+            <svg className="h-7 w-7 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <h2 className="mb-2 text-lg font-semibold text-neutral-900">{t("feature_not_available")}</h2>
+          <p className="text-sm text-neutral-500">
+            {t("feature_not_available_hint") || "This feature is not included in your current plan. Contact your administrator to enable it."}
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate("/dashboard")}
+            className="mt-5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+          >
+            {t("dashboard")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
 
 export default function App() {
   return (
@@ -87,7 +148,9 @@ export default function App() {
           element={
             <ProtectedRoute allowedRoles={["super_admin", "company_admin", "client_admin", "site_manager"]}>
               <Layout>
-                <AssetsPage />
+                <FeatureRoute feature="assets">
+                  <AssetsPage />
+                </FeatureRoute>
               </Layout>
             </ProtectedRoute>
           }
@@ -98,7 +161,9 @@ export default function App() {
           element={
             <ProtectedRoute allowedRoles={["super_admin", "company_admin", "client_admin", "site_manager"]}>
               <Layout>
-                <AssetDetailPage />
+                <FeatureRoute feature="assets">
+                  <AssetDetailPage />
+                </FeatureRoute>
               </Layout>
             </ProtectedRoute>
           }
@@ -132,6 +197,17 @@ export default function App() {
             <ProtectedRoute allowedRoles={["super_admin", "company_admin", "client_admin"]}>
               <Layout>
                 <InvoicesPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/invoices/:id"
+          element={
+            <ProtectedRoute allowedRoles={["super_admin", "company_admin", "client_admin"]}>
+              <Layout>
+                <InvoiceDetailPage />
               </Layout>
             </ProtectedRoute>
           }
@@ -211,6 +287,17 @@ export default function App() {
             <ProtectedRoute>
               <Layout>
                 <ProfilePage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/report-templates"
+          element={
+            <ProtectedRoute allowedRoles={["super_admin", "company_admin"]}>
+              <Layout>
+                <ReportTemplatesPage />
               </Layout>
             </ProtectedRoute>
           }

@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { apiFetch } from "../lib/api";
 import type { User, UserRole } from "../lib/types";
 import { hasAnyRole, isPlatformStaff } from "../lib/roles";
+import { hasFeature } from "../lib/features";
+import { OrbitLogo } from "./OrbitLogo";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -16,6 +18,7 @@ interface NavItem {
   icon: string;
   allowedRoles: UserRole[];
   platformAdminOnly?: boolean;
+  requiredFeature?: string;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -36,6 +39,7 @@ const NAV_ITEMS: NavItem[] = [
     labelKey: "assets",
     icon: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4",
     allowedRoles: ["super_admin", "company_admin", "client_admin", "site_manager"],
+    requiredFeature: "assets",
   },
   {
     path: "/work-orders",
@@ -88,6 +92,12 @@ const NAV_ITEMS: NavItem[] = [
     icon: "M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z",
     allowedRoles: ["super_admin", "company_admin", "client_admin"],
   },
+  {
+    path: "/report-templates",
+    labelKey: "report_templates",
+    icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
+    allowedRoles: ["super_admin", "company_admin"],
+  },
 ];
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
@@ -114,6 +124,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const visibleItems = NAV_ITEMS.filter((item) => {
     if (!user || !hasAnyRole(user.role, item.allowedRoles)) return false;
     if (item.platformAdminOnly && !isPlatformStaff(user)) return false;
+    if (item.requiredFeature && !hasFeature(user, item.requiredFeature)) return false;
     return true;
   }).sort((a, b) => {
     if (!user || !isPlatformStaff(user)) return 0;
@@ -138,9 +149,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         <div className="flex h-full min-h-0 w-full flex-col">
           <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-4 lg:hidden">
-            <span className="text-lg font-semibold text-primary-600 font-display-ar">
-              {t("app_title")}
-            </span>
+            <OrbitLogo iconSize={24} />
             <button
               type="button"
               onClick={onClose}

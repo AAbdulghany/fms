@@ -3,13 +3,16 @@ import { Navigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 import type { User, UserRole } from "../lib/types";
 import { hasAnyRole } from "../lib/roles";
+import { hasFeature } from "../lib/features";
+import { FeatureUnavailablePage } from "../pages/FeatureUnavailablePage";
 
 interface ProtectedRouteProps {
   children: ReactNode;
   allowedRoles?: UserRole[];
+  requiredFeature?: string;
 }
 
-export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, allowedRoles, requiredFeature }: ProtectedRouteProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -85,6 +88,10 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
         </div>
       </div>
     );
+  }
+
+  if (requiredFeature && !hasFeature(user, requiredFeature)) {
+    return <FeatureUnavailablePage feature={requiredFeature} />;
   }
 
   return <>{children}</>;
