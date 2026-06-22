@@ -131,4 +131,4 @@ No default company, site, asset, or work order.
 
 - Prior UAT: [01_wave3_uat_observations.md](./01_wave3_uat_observations.md)
 - WO request flow AgDR: `docs/phase3/AgDR-PHASE3-WO-REQUEST-FLOW.md`
-- RBAC roles: `docs/phase3-restructure/RBAC_ROLES.md`
+- RBAC roles: [architecture/RBAC.md](../architecture/RBAC.md)

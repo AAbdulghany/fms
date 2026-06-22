@@ -1,6 +1,6 @@
 # FMS Knowledge Hub
 
-> A learning resource for the NexTask FMS codebase. Study these topics to understand and contribute to Phase 3 development.
+> Learning resources for the **Orbit (FMS)** codebase. For operational runbooks, see **[docs/guides/](../guides/)** and **[docs/README.md](../README.md)**.
 
 ---
 
@@ -71,17 +71,17 @@ The Knowledge Hub contains hands-on tutorials based on the actual FMS codebase. 
 
 ## Development Environment
 
-```bash
-# Backend
-cd backend
-uv sync
-uv run pytest backend/tests/ -v
+See **[guides/local-development.md](../guides/local-development.md)** for the current setup.
 
-# Frontend
+```powershell
+# Backend tests (from repo root)
+uv run pytest backend/tests/ -q
+
+# Frontend dev
 npm run dev
 
-# Run specific test
-pytest backend/tests/test_rbac.py -v
+# Docker demo stack
+docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
 ```
 
 ---
@@ -90,7 +90,7 @@ pytest backend/tests/test_rbac.py -v
 
 | Purpose | Location |
 |---------|----------|
-| Models | `backend/app/models.py` |
+| Models | `backend/app/models/` (domain package) |
 | Routes | `backend/app/api/routes/` |
 | Schemas | `backend/app/schemas.py` |
 | Tests | `backend/tests/` |
@@ -138,14 +138,16 @@ pytest backend/tests/test_rbac.py -v
 
 ## Phase 3 Topics to Learn
 
-Based on the [Phase 3 Progress](./phase3/PHASE3_PROGRESS.md), these topics help complete Phase 3:
+Active delivery track: **[phase3-restructure/SPRINT_BACKLOG_NT.md](../phase3-restructure/SPRINT_BACKLOG_NT.md)**
 
 | Topic | Helps With |
 |-------|------------|
-| S3/Storage | File uploads documentation |
-| WebSocket | Real-time notifications |
-| Email | SMTP integration |
-| Multi-currency | Billing system |
+| ReportLab PDFs | Branded invoice & maintenance report exports (Wave 4) |
+| Feature gates | Subscription `assets` / `invoices` modules |
+| Playwright E2E | [guides/testing.md](../guides/testing.md) |
+| Bilingual API errors | `backend/app/core/errors.py` + `src/lib/errors.ts` |
+
+Historical progress (pre-restructure): [archive/phase3/PHASE3_PROGRESS.md](../archive/phase3/PHASE3_PROGRESS.md)
 
 ---
 
@@ -168,4 +170,4 @@ To add new topics:
 
 ---
 
-**Last Updated:** April 18, 2026
+**Last Updated:** June 2026 — Wave 6 cleanup / Wave 4 delivery

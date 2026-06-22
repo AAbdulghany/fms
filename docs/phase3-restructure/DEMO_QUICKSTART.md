@@ -1,5 +1,8 @@
 # Demo Quickstart — Docker commands & logins
 
+> **Canonical guide:** [guides/demo-stack.md](../guides/demo-stack.md)  
+> This file is kept for wave-doc cross-links; prefer the guide above.
+
 **Keep this file.** Single reference for running the pitch demo locally.
 
 | Item | Value |
@@ -237,6 +240,7 @@ Or stop local uvicorn and use Docker API at http://localhost:8000.
 
 ## Related docs
 
-- [DEMO_DEPLOY.md](DEMO_DEPLOY.md) — Railway / hosting
+- **Canonical guide:** [guides/demo-stack.md](../guides/demo-stack.md)
+- [guides/deployment.md](../guides/deployment.md) — Railway / hosting
 - [ENV_MATRIX.md](ENV_MATRIX.md) — `APP_ENV` behavior
 - [WAVE1_WAVE2_SIGNOFF.md](WAVE1_WAVE2_SIGNOFF.md) — delivery sign-off

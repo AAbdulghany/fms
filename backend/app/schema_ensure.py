@@ -1,4 +1,8 @@
-"""Apply lightweight DDL so existing DB volumes match current models (no Alembic required)."""
+"""Apply lightweight DDL for legacy volumes — see docs/decisions/AgDR-SCHEMA-ENSURE.md.
+
+Alembic is the source of truth for new schema changes. This module is a frozen
+safety net for columns/tables added before strict migration discipline.
+"""
 
 from __future__ import annotations
 

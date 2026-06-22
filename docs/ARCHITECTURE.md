@@ -1,6 +1,35 @@
 # Orbit — System Architecture & Technical Design
 
-This document captures the high-level architecture, data model, API shape, and cross-cutting concerns for the Facility Management System (FMS). It aligns with the Version 2.0 refined scope (multi-tenant SaaS, API-first, Arabic UI, English API/DB).
+This document captures the high-level architecture, data model, API shape, and cross-cutting concerns for the Facility Management System (FMS).
+
+> **Operational runbooks:** [guides/local-development.md](guides/local-development.md) · [guides/demo-stack.md](guides/demo-stack.md) · [guides/deployment.md](guides/deployment.md)  
+> **Current delivery:** [phase3-restructure/SPRINT_BACKLOG_NT.md](phase3-restructure/SPRINT_BACKLOG_NT.md)
+
+---
+
+## Current implementation snapshot (June 2026)
+
+What is **implemented today** vs aspirational targets later in this document:
+
+| Area | Implemented | Notes |
+|------|-------------|-------|
+| **API** | FastAPI, sync SQLAlchemy, `/api/v1` | Routes in `backend/app/api/routes/` |
+| **Auth** | JWT bearer + refresh tokens | `backend/app/core/security.py` |
+| **Tenancy** | Row-level `tenant_id` + context | `test_isolation.py`, `test_tenancy.py` |
+| **RBAC** | Platform roles + legacy tenant roles | [architecture/RBAC.md](architecture/RBAC.md) |
+| **Migrations** | Alembic + frozen `schema_ensure` | [AgDR-SCHEMA-ENSURE.md](decisions/AgDR-SCHEMA-ENSURE.md) |
+| **ORM / API schemas** | Domain packages | `backend/app/models/`, `backend/app/schemas/` |
+| **PDFs** | ReportLab — invoices + maintenance reports | `invoice_pdf.py`, `maintenance_report_pdf.py` |
+| **Feature gates** | `assets`, `invoices` subscription flags | Bypassed when `APP_ENV=development\|demo` |
+| **i18n** | Arabic default, English, RTL | Monolithic `src/i18n/index.ts` |
+| **Errors** | Bilingual API error catalog (NT-131) | `core/errors.py`, `lib/errors.ts` |
+| **Notifications** | In-app + email stub | `notification_service.py` (not Celery workers) |
+| **File storage** | Local / DB-backed documents | S3 presigned URLs — **not yet** |
+| **Workers** | None (PDF/email inline in API) | Celery/RQ — **target** |
+| **Mobile** | — | React Native — **Phase 3+ target** |
+| **Tests** | 219+ pytest, Playwright E2E | [guides/testing.md](guides/testing.md) |
+
+**Deploy profiles:** `docker-compose.yml` (dev), `docker-compose.demo.yml` (pitch), `deploy/demo/docker-compose.live.yml` (VM).
 
 ---
 
