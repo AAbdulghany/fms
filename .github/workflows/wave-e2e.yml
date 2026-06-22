@@ -49,6 +49,8 @@ jobs:
 
       - name: Playwright
         if: steps.check.outputs.exists == 'true'
+        env:
+          E2E_DEMO_PASSWORD_SUFFIX: "123"
         run: |
           npm ci
           npx playwright install --with-deps chromium
