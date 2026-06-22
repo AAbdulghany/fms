@@ -23,7 +23,7 @@ jobs:
       - name: Check E2E suite exists
         id: check
         run: |
-          if [ -f tests/e2e/wave3-assets.spec.ts ]; then
+          if [ -f tests/e2e/domains/assets/wave3-assets.spec.ts ]; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
@@ -54,7 +54,7 @@ jobs:
         run: |
           npm ci
           npx playwright install --with-deps chromium
-          E2E_BASE_URL=http://localhost:8080 npx playwright test tests/e2e/wave3-assets.spec.ts
+          E2E_BASE_URL=http://localhost:8080 npx playwright test tests/e2e/domains/assets/wave3-assets.spec.ts
 
       - name: Teardown
         if: always() && steps.check.outputs.exists == 'true'

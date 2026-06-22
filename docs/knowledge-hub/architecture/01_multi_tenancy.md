@@ -529,7 +529,7 @@ def list_clients(
 
 ## References
 
-- [FMS Models](backend/app/models.py)
+- [FMS Models package](backend/app/models/)
 - [FMS Isolation Tests](backend/tests/test_isolation.py)
 - [FMS Work Orders](backend/app/api/routes/work_orders.py)
 - [ARCHITECTURE.md](../ARCHITECTURE.md)

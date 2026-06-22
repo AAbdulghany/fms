@@ -214,11 +214,20 @@ __marimo__/
 backend/data/
 data/
 
+*.bak
+
 # Node.js
 node_modules/
 yarn.lock
 pnpm-lock.yaml
 bun.lockb
+
+# TypeScript / Playwright artifacts
+tsconfig.tsbuildinfo
+test-results/
+
+# Generated test PDFs (backend root)
+backend/_test_report.pdf
 
 # Yarn
 yarn.lock

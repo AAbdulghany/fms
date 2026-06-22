@@ -1,6 +1,7 @@
 # FMS User Guide — Local setup and seeding
 
-This guide describes how to run the Facility Management System (backend + frontend) with the **current toolchain** (`uv` for Python, `npm` for the web app) and how to create **only a super user** for development.
+> **Superseded by:** [guides/local-development.md](./guides/local-development.md)  
+> Content below is retained for reference; prefer the guide for up-to-date commands.
 
 ---
 
@@ -198,5 +199,6 @@ uv run pytest backend/tests/ -q
 
 ## Related documentation
 
-- Original runbook (partially superseded by this guide): [`HOW_TO_RUN.md`](./HOW_TO_RUN.md)
-- Architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md) (if present)
+- **Canonical runbooks:** [docs/guides/local-development.md](./guides/local-development.md)
+- Original runbook (redirect): [HOW_TO_RUN.md](./HOW_TO_RUN.md)
+- Architecture: [ARCHITECTURE.md](./ARCHITECTURE.md)
