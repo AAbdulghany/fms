@@ -153,7 +153,7 @@ npm run build
 python -m app.seed
 
 # Dev stack
-docker compose -f docker-compose.yml -f docker-compose.local.yml up -d db migrate
+docker compose -f docker-compose-local.yml -f docker-compose-hybrid.yml up -d db migrate
 cd backend && python -m uvicorn app.main:app --reload --port 8000
 npm run dev   # or npm run build && npm run preview
 ```

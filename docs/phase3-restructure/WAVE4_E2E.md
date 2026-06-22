@@ -119,7 +119,7 @@ Default recommendation: **Option 4** until you choose otherwise.
 npm install -D @playwright/test
 npx playwright install chromium
 
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up -d
 $env:E2E_BASE_URL="http://localhost:8080"
 npx playwright test tests/e2e/wave4-golden-path.spec.ts
 ```

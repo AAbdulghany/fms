@@ -12,7 +12,7 @@ Use for sales demos, E2E tests, and smoke testing the full nginx + API stack.
 From the repository root:
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build
 ```
 
 Wait for:
@@ -55,24 +55,24 @@ Local demo only — do not reuse in production.
 
 ```powershell
 # Start (after first build)
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up
 
 # Detached
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up -d
 
 # Stop
-docker compose -f docker-compose.yml -f docker-compose.demo.yml down
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml down
 
 # Rebuild after code changes
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build
 
 # Logs
-docker compose -f docker-compose.yml -f docker-compose.demo.yml logs -f api
-docker compose -f docker-compose.yml -f docker-compose.demo.yml logs migrate
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml logs -f api
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml logs migrate
 
 # Full reset (wipe DB volume + re-seed)
-docker compose -f docker-compose.yml -f docker-compose.demo.yml down -v
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml down -v
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build
 ```
 
 ---
@@ -82,7 +82,7 @@ docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
 | Profile | Command | DB | Seed module |
 |---------|---------|-----|-------------|
 | **Development** | `docker compose up --build` | `fms` | `test_seed` |
-| **Demo** | `docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build` | `fms_demo` | `pitch_seed` |
+| **Demo** | `docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build` | `fms_demo` | `pitch_seed` |
 
 Dev stack URLs: same ports (**8080** web, **8000** API).
 
@@ -93,7 +93,7 @@ Dev stack URLs: same ports (**8080** web, **8000** API).
 When editing Python on the host but Postgres runs in Docker demo:
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d db
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up -d db
 # Stop docker api if port 8000 is needed: docker compose ... stop api
 
 cd backend
@@ -142,21 +142,21 @@ Session token is invalidated; log in again afterward. Returns **403** outside `A
 Old images may have seeded before Alembic. Rebuild:
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.demo.yml build migrate
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml build migrate
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build
 ```
 
 ### `database "fms" does not exist`
 
-Demo uses **`fms_demo`**. Use current `docker-compose.demo.yml` (healthcheck targets `fms_demo`).
+Demo uses **`fms_demo`**. Use current `docker-compose-demo.yml` (healthcheck targets `fms_demo`).
 
 ### API — `could not translate host name "db"`
 
 Network race after Ctrl+C. Full cycle:
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.demo.yml down
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml down
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build
 ```
 
 ### Blank login / API down

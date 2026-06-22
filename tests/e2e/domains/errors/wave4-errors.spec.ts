@@ -7,9 +7,9 @@ const SCREAMING_SNAKE = /\b[A-Z]{2,}_[A-Z0-9_]+\b/;
 test.describe("Wave 4 — Error messages (ERR)", () => {
   test("ERR-07 login shows friendly text on bad password", async ({ page }) => {
     await page.goto("/login");
-    await page.getByLabel(/email/i).fill("admin@demo.com");
-    await page.getByLabel(/password/i).fill("wrong-password");
-    await page.getByRole("button", { name: /sign in|login|log in/i }).click();
+    await page.getByLabel(/email|username|البريد|اسم المستخدم/i).fill("admin@demo.com");
+    await page.getByLabel(/password|كلمة المرور/i).fill("wrong-password");
+    await page.getByRole("button", { name: /sign in|login|log in|تسجيل الدخول/i }).click();
     const alert = page.getByRole("alert");
     await expect(alert).toBeVisible();
     const text = await alert.textContent();

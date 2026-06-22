@@ -6,7 +6,7 @@ The **`demo/live`** branch is the **deployable demo snapshot** — it contains t
 
 | Path | Purpose |
 |------|---------|
-| `docker-compose.demo.yml` | Demo DB `fms_demo`, `APP_ENV=demo`, pitch seed |
+| `docker-compose-demo.yml` | Demo DB `fms_demo`, `APP_ENV=demo`, pitch seed |
 | `deploy/demo/` | Live overlay, env template, Ubuntu setup script |
 | `backend/app/pitch_seed.py` | Pitch demo data + logins |
 | `backend/app/docker_migrate.py` | Migrate + seed entrypoint for containers |
@@ -22,7 +22,7 @@ The **`demo/live`** branch is the **deployable demo snapshot** — it contains t
 
 | Path | Purpose |
 |------|---------|
-| `docker-compose.yml` | Base stack (db, migrate, api, web) |
+| `docker-compose-local.yml` | Base stack (db, migrate, api, web) |
 | `deploy/Dockerfile.api`, `deploy/Dockerfile.web`, `deploy/nginx.conf` | Container images |
 | `backend/` | FastAPI application |
 | `src/` | React frontend |
@@ -56,5 +56,5 @@ git push origin demo/live
 # On server:
 cd /opt/fms
 git pull origin demo/live
-docker compose -f docker-compose.yml -f docker-compose.demo.yml -f deploy/demo/docker-compose.live.yml --env-file deploy/demo/.env up -d --build
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml -f deploy/demo/docker-compose.live.yml --env-file deploy/demo/.env up -d --build
 ```

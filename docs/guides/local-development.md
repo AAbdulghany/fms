@@ -24,19 +24,19 @@ Run the **Orbit** web app and API on your machine with hot reload. Use this for 
 Starts Postgres + migrate; you run API and UI on the host:
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+docker compose -f docker-compose-local.yml -f docker-compose-hybrid.yml up -d
 ```
 
-- Database: `fms` on `localhost:5432`
+- Database: `fms_local` on `localhost:9432`
 - User / password: `fms` / `fms`
 
 ### Option B — DB container only (manual)
 
 ```powershell
-docker compose -f docker-compose.yml up -d db
+docker compose -f docker-compose-local.yml up -d db migrate
 ```
 
-Then run migrate yourself (step 3).
+Then run migrate yourself if you skipped it (step 3).
 
 ---
 
@@ -49,14 +49,14 @@ copy backend\.env.example backend\.env
 Default `DATABASE_URL`:
 
 ```text
-postgresql+psycopg2://fms:fms@localhost:5432/fms
+postgresql+psycopg2://fms:fms@localhost:9432/fms_local
 ```
 
-For hybrid dev against the **demo** database (`fms_demo`):
+For hybrid dev against the **demo** database (`fms_demo` on port `5433`):
 
 ```powershell
 copy backend\.env.demo.example backend\.env
-# Requires: docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d db
+# Requires: docker compose -f docker-compose-demo.yml up -d
 ```
 
 ---

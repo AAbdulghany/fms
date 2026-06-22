@@ -19,8 +19,8 @@ Use this skill **before** guessing at fixes when Docker or database connectivity
 
 | Profile | Compose command | Postgres DB | Migrate seed | API in Docker |
 |---------|-----------------|-------------|--------------|---------------|
-| **Development** | `docker compose up` | `fms` | `docker_migrate` → test_seed | port 8000 |
-| **Demo** | `docker compose -f docker-compose.yml -f docker-compose.demo.yml up` | `fms_demo` | `docker_migrate` → pitch_seed | port 8000 |
+| **Development** | `docker compose -f docker-compose-local.yml up` | `fms` | `docker_migrate` → test_seed | port 8000 |
+| **Demo** | `docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up` | `fms_demo` | `docker_migrate` → pitch_seed | port 8000 |
 
 **Critical:** Demo and dev use **different database names** on the same host port `5432`. Mixing them causes `FATAL: database "fms" does not exist` or empty/wrong data.
 
@@ -35,7 +35,7 @@ Symptom?
 ├─ database "fms" does not exist (local uvicorn OR db logs)
 │  ├─ Running demo compose? → DB is fms_demo only
 │  │  └─ Point DATABASE_URL at fms_demo OR use docker API not local uvicorn
-│  └─ Running dev compose? → need `docker compose up` (creates fms)
+│  └─ Running dev compose? → need `docker compose -f docker-compose-local.yml up --build` (creates `fms`)
 ├─ could not translate host name "db"
 │  └─ API started before db on network → `docker compose ... down` then `up`
 └─ local uvicorn fails but docker api works
@@ -47,9 +47,9 @@ Symptom?
 Run from repo root:
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.demo.yml ps
-docker compose -f docker-compose.yml -f docker-compose.demo.yml logs migrate --tail 30
-docker compose -f docker-compose.yml -f docker-compose.demo.yml logs api --tail 30
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml ps
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml logs migrate --tail 30
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml logs api --tail 30
 docker exec fms-db-1 psql -U fms -d fms_demo -c "\l"
 ```
 
@@ -74,16 +74,16 @@ python -c "from app.config import get_settings; print(get_settings().database_ur
 | Context | Cause | Fix |
 |---------|-------|-----|
 | **Local uvicorn** + demo Docker DB | Default URL uses `/fms`; Docker only has `fms_demo` | Copy `backend/.env.demo.example` → `backend/.env` |
-| **db container logs** (demo) | Old healthcheck probed `fms` | Use current `docker-compose.demo.yml` (`-d fms_demo`) |
-| **Fresh dev** | Never ran dev compose | `docker compose up --build` (creates `fms`) |
+| **db container logs** (demo) | Old healthcheck probed `fms` | Use current `docker-compose-demo.yml` (`-d fms_demo`) |
+| **Fresh dev** | Never ran dev compose | `docker compose -f docker-compose-local.yml up --build` (creates `fms`) |
 
 ### C. API: `could not translate host name "db"`
 
 - **Cause:** Stale `api` container started before `db` joined the network.
 - **Fix:**
   ```powershell
-  docker compose -f docker-compose.yml -f docker-compose.demo.yml down
-  docker compose -f docker-compose.yml -f docker-compose.demo.yml up
+  docker compose -f docker-compose-local.yml -f docker-compose-demo.yml down
+  docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up
   ```
 - **Prevention:** `api` depends_on `db` (healthy) + `migrate` (completed).
 
@@ -119,8 +119,8 @@ APP_ENV=demo
 ## Step 4 — Nuclear reset
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.demo.yml down -v
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml down -v
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build
 ```
 
 Wait for `Migrate complete.` and `Application startup complete.`

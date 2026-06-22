@@ -30,8 +30,8 @@
 |------|---------|-----|-----|----------|------|
 | **Local dev** | Vite + host uvicorn | `:5173` | `:8000` | Docker Postgres `fms` | `seed_super` or `seed` |
 | **Docker dev** | `docker compose up --build` | `:8080` | `:8000` | `fms` | `test_seed` via migrate |
-| **Docker demo** | `docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build` | `:8080` | `:8000` | `fms_demo` | `pitch_seed` via migrate |
-| **Hybrid** | `docker-compose.local.yml` (db only) + Vite + uvicorn | `:5173` | `:8000` | `fms` or `fms_demo` | manual |
+| **Docker demo** | `docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build` | `:8080` | `:8000` | `fms_demo` | `pitch_seed` via migrate |
+| **Hybrid** | `docker-compose-hybrid.yml` (db only) + Vite + uvicorn | `:5173` | `:8000` | `fms` or `fms_demo` | manual |
 
 ---
 
