@@ -2,13 +2,13 @@ import { useEffect, useState, type MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import { apiFetch, downloadAuthenticatedFile, parseApiError } from "../lib/api";
+import { apiFetch, downloadAuthenticatedFile, resolveApiError } from "../lib/api";
 import type { Invoice } from "../lib/types";
 import { formatMoneyAmount } from "../lib/formatCurrency";
 import { InvoicePreviewModal } from "../components/InvoicePreviewModal";
 
 export function InvoicesPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [rows, setRows] = useState<Invoice[]>([]);
   const [err, setErr] = useState<string | null>(null);
@@ -20,7 +20,7 @@ export function InvoicesPage() {
         const res = await apiFetch<Invoice[]>("/invoices");
         setRows(res);
       } catch (e) {
-        setErr(parseApiError(e, t("error")));
+        setErr(resolveApiError(e, t, i18n.language, t("error_generic")));
       }
     })();
   };
@@ -34,7 +34,7 @@ export function InvoicesPage() {
     try {
       await downloadAuthenticatedFile(`/invoices/${inv.id}/pdf`, `invoice-${inv.number}.pdf`);
     } catch (error) {
-      setErr(parseApiError(error, t("error")));
+      setErr(resolveApiError(error, t, i18n.language, t("error_generic")));
     }
   }
 

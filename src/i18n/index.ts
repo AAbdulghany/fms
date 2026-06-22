@@ -420,6 +420,16 @@ const resources = {
       error_report_status_locked: "يمكن ملء التقرير أثناء التنفيذ أو الإيقاف المؤقت فقط.",
       error_assignee_required: "يرجى اختيار موظف قبل تعيين أمر العمل.",
       error_cancellation_reason_required: "سبب الإلغاء مطلوب.",
+      error_generic: "حدث خطأ. يرجى المحاولة مرة أخرى.",
+      error_feature_not_available: "هذه الميزة غير متوفرة في باقة اشتراكك.",
+      error_not_found: "العنصر المطلوب غير موجود.",
+      error_forbidden: "ليس لديك صلاحية لتنفيذ هذا الإجراء.",
+      error_email_already_in_use: "البريد الإلكتروني مسجّل مسبقاً.",
+      error_code_in_use: "رمز الشركة مستخدم مسبقاً.",
+      error_invalid_transition: "تغيير الحالة غير مسموح.",
+      error_invalid_assignee: "لا يمكن تعيين المستخدم المحدد على أمر العمل.",
+      error_asset_retired: "الأصل مُستبدَل/متقاعد ولا يمكن تعديله.",
+      error_validation_missing_fields: "يرجى إكمال الحقول المطلوبة",
       report_unlocked_at_in_progress: "قسم التقرير متاح عندما يكون أمر العمل قيد التنفيذ.",
 
       // Company create — first site section
@@ -889,6 +899,16 @@ const resources = {
       error_report_status_locked: "The report can be filled while the work order is in progress or on hold.",
       error_assignee_required: "Please assign a user before changing status to assigned.",
       error_cancellation_reason_required: "Cancellation reason is required.",
+      error_generic: "Something went wrong. Please try again.",
+      error_feature_not_available: "This feature is not included in your subscription.",
+      error_not_found: "The requested item was not found.",
+      error_forbidden: "You don't have permission for this action.",
+      error_email_already_in_use: "This email address is already registered.",
+      error_code_in_use: "This company code is already in use.",
+      error_invalid_transition: "This status change is not allowed.",
+      error_invalid_assignee: "The selected user cannot be assigned to this work order.",
+      error_asset_retired: "This asset is retired and cannot be modified.",
+      error_validation_missing_fields: "Please complete the required fields",
       report_unlocked_at_in_progress: "The maintenance report is available once this work order is in progress.",
 
       // Company create — first site section

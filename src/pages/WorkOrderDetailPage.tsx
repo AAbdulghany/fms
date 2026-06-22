@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import { apiFetch, apiFetchBlob, downloadAuthenticatedFile } from "../lib/api";
+import { apiFetch, apiFetchBlob, downloadAuthenticatedFile, resolveApiError } from "../lib/api";
 import { resolveEffectiveReportSchema } from "../lib/reportSchema";
 import type { AuditLog, Comment, MaintenanceReport, ReportTemplate, WorkOrder, WorkOrderDocument, WorkOrderStatus, WorkOrderUserBrief } from "../lib/types";
 import { workOrderStatusPillClass } from "../lib/workOrderDisplay";
@@ -265,7 +265,7 @@ export function WorkOrderDetailPage() {
         setReportModalOpen(false);
       }
     } catch (e) {
-      setErr(mapTransitionError(e));
+      setErr(resolveApiError(e, t, i18n.language, t("error_generic")));
     }
   }
 
@@ -354,20 +354,6 @@ export function WorkOrderDetailPage() {
     }
   }
 
-  function mapTransitionError(e: unknown): string {
-    const raw = e instanceof Error ? e.message : String(e);
-    try {
-      const parsed = JSON.parse(raw) as { detail?: string | { code?: string } };
-      const code = typeof parsed.detail === "string" ? parsed.detail : (parsed.detail as { code?: string })?.code;
-      if (code === "HOLD_REASON_REQUIRED") return t("error_hold_reason_required") || "Hold reason is required.";
-      if (code === "REPORT_REQUIRED") return t("error_report_required") || "Report must be submitted before completing.";
-      if (code === "ASSIGNEE_REQUIRED") return t("error_assignee_required") || "Please assign a user first.";
-      if (code === "CANCELLATION_REASON_REQUIRED") return t("error_cancellation_reason_required") || "Cancellation reason is required.";
-      if (code === "REPORT_NOT_ALLOWED_AT_THIS_STATUS") return t("error_report_status_locked") || "Report can be filled while work is in progress or on hold.";
-    } catch { /* fall through */ }
-    return raw;
-  }
-
   async function patchStatus(extraPayload?: Record<string, string>) {
     if (!id || !nextStatus || !wo) return;
     setMsg(null);
@@ -385,7 +371,7 @@ export function WorkOrderDetailPage() {
         setReportModalOpen(true);
       }
     } catch (e) {
-      setErr(mapTransitionError(e));
+      setErr(resolveApiError(e, t, i18n.language, t("error_generic")));
     }
   }
 

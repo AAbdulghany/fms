@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { apiFetch, openAuthenticatedBlob, parseApiError } from "../lib/api";
+import { apiFetch, openAuthenticatedBlob, resolveApiError } from "../lib/api";
 import { formatMoneyAmount } from "../lib/formatCurrency";
 import type { Invoice, WorkOrder, PaginatedWorkOrders } from "../lib/types";
 
@@ -29,14 +29,16 @@ type Props = {
   onGenerated: () => void;
 };
 
-function invoiceErrorMessage(code: string, t: (key: string) => string): string {
-  const key = `error_${code.toLowerCase()}`;
-  const translated = t(key);
-  return translated !== key ? translated : code.replaceAll("_", " ").toLowerCase();
+function invoiceErrorMessage(
+  err: unknown,
+  t: (key: string) => string,
+  lang: string
+): string {
+  return resolveApiError(err, t, lang, t("error_generic"));
 }
 
 export function InvoicePreviewModal({ open, onClose, onGenerated }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [selectedWoId, setSelectedWoId] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -71,11 +73,10 @@ export function InvoicePreviewModal({ open, onClose, onGenerated }: Props) {
       })
       .catch((e) => {
         setPreview(null);
-        const code = parseApiError(e, t("error"));
-        setError(invoiceErrorMessage(code, t));
+        setError(invoiceErrorMessage(e, t, i18n.language));
       })
       .finally(() => setPreviewLoading(false));
-  }, [selectedWoId, t]);
+  }, [selectedWoId, t, i18n.language]);
 
   if (!open) return null;
 
@@ -89,8 +90,7 @@ export function InvoicePreviewModal({ open, onClose, onGenerated }: Props) {
       setGenerated(inv);
       onGenerated();
     } catch (err) {
-      const code = parseApiError(err, t("error"));
-      setError(invoiceErrorMessage(code, t));
+      setError(invoiceErrorMessage(err, t, i18n.language));
     } finally {
       setLoading(false);
     }
@@ -102,7 +102,7 @@ export function InvoicePreviewModal({ open, onClose, onGenerated }: Props) {
     try {
       await openAuthenticatedBlob(`/invoices/${generated.id}/pdf?inline=true`);
     } catch (err) {
-      setError(parseApiError(err, t("error")));
+      setError(invoiceErrorMessage(err, t, i18n.language));
     }
   }
 
@@ -113,8 +113,7 @@ export function InvoicePreviewModal({ open, onClose, onGenerated }: Props) {
       await apiFetch(`/invoices/${generated.id}/send`, { method: "POST" });
       onClose();
     } catch (err) {
-      const code = parseApiError(err, t("error"));
-      setError(invoiceErrorMessage(code, t));
+      setError(invoiceErrorMessage(err, t, i18n.language));
     } finally {
       setLoading(false);
     }
