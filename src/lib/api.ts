@@ -85,20 +85,7 @@ export async function apiFetch<T>(
   return res.text() as Promise<T>;
 }
 
-/** Extract a human-readable message from apiFetch errors (JSON string body). */
-export function parseApiError(err: unknown, fallback = "Error"): string {
-  const raw = err instanceof Error ? err.message : String(err);
-  try {
-    const parsed = JSON.parse(raw) as { detail?: string | { code?: string; missing_fields?: string[] } };
-    if (typeof parsed.detail === "string") return parsed.detail;
-    if (parsed.detail && typeof parsed.detail === "object" && parsed.detail.code) {
-      return parsed.detail.code;
-    }
-  } catch {
-    /* plain text */
-  }
-  return raw || fallback;
-}
+export { resolveApiError, parseApiError } from "./errors";
 
 /** Authenticated binary download (e.g. generated report PDF). */
 export async function apiFetchBlob(path: string): Promise<Blob> {

@@ -348,6 +348,7 @@ export default function CompanyDetailPage() {
             </div>
             <button
               type="button"
+              data-testid="company-add-site-button"
               className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-50"
               disabled={company.status === "archived"}
               onClick={() => setSiteModal("add-only")}

@@ -2,7 +2,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import { apiFetch, downloadAuthenticatedFile, openAuthenticatedBlob, parseApiError } from "../lib/api";
+import { apiFetch, downloadAuthenticatedFile, openAuthenticatedBlob, resolveApiError } from "../lib/api";
 import { formatMoneyAmount } from "../lib/formatCurrency";
 import type { Invoice } from "../lib/types";
 
@@ -19,7 +19,7 @@ function toDateInput(value?: string | null): string {
 
 export function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [me, setMe] = useState<UserMe | null>(null);
@@ -66,7 +66,7 @@ export function InvoiceDetailPage() {
       setMe(user);
       syncForm(inv);
     } catch (e) {
-      setErr(parseApiError(e, t("error")));
+      setErr(resolveApiError(e, t, i18n.language, t("error_generic")));
     } finally {
       setLoading(false);
     }
@@ -101,7 +101,7 @@ export function InvoiceDetailPage() {
       syncForm(updated);
       setMsg(t("invoice_saved") || "Invoice updated");
     } catch (e) {
-      setErr(parseApiError(e, t("error")));
+      setErr(resolveApiError(e, t, i18n.language, t("error_generic")));
     } finally {
       setSaving(false);
     }
@@ -118,7 +118,7 @@ export function InvoiceDetailPage() {
       syncForm(updated);
       setMsg(t(`invoice_${action.replace("-", "_")}_done`) || "Done");
     } catch (e) {
-      setErr(parseApiError(e, t("error")));
+      setErr(resolveApiError(e, t, i18n.language, t("error_generic")));
     } finally {
       setActing(false);
     }
@@ -135,7 +135,7 @@ export function InvoiceDetailPage() {
       syncForm(updated);
       setMsg(t("invoice_recalculated") || "Invoice recalculated from work order");
     } catch (e) {
-      setErr(parseApiError(e, t("error")));
+      setErr(resolveApiError(e, t, i18n.language, t("error_generic")));
     } finally {
       setActing(false);
     }
@@ -147,7 +147,7 @@ export function InvoiceDetailPage() {
     try {
       await openAuthenticatedBlob(`/invoices/${id}/pdf?inline=true`);
     } catch (e) {
-      setErr(parseApiError(e, t("error")));
+      setErr(resolveApiError(e, t, i18n.language, t("error_generic")));
     }
   }
 
@@ -160,7 +160,7 @@ export function InvoiceDetailPage() {
         `invoice-${invoice.number}.pdf`
       );
     } catch (e) {
-      setErr(parseApiError(e, t("error")));
+      setErr(resolveApiError(e, t, i18n.language, t("error_generic")));
     }
   }
 

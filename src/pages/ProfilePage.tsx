@@ -13,6 +13,9 @@ export function ProfilePage() {
 
   const [user, setUser] = useState<User | null>(null);
   const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
+  const [accreditation, setAccreditation] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(true);
@@ -26,6 +29,9 @@ export function ProfilePage() {
         const u = await apiFetch<User & { username?: string }>("/users/me");
         setUser(u);
         setFullName(u.full_name);
+        setPhone(u.phone ?? "");
+        setJobTitle(u.job_title ?? "");
+        setAccreditation(u.accreditation ?? "");
       } catch (e) {
         setErr(e instanceof Error ? e.message : t("error"));
       } finally {
@@ -48,8 +54,17 @@ export function ProfilePage() {
     }
     setSaving(true);
     try {
-      const body: { full_name: string; password?: string } = {
+      const body: {
+        full_name: string;
+        password?: string;
+        phone?: string;
+        job_title?: string;
+        accreditation?: string;
+      } = {
         full_name: fullName.trim(),
+        phone: phone.trim() || undefined,
+        job_title: jobTitle.trim() || undefined,
+        accreditation: accreditation.trim() || undefined,
       };
       if (password) body.password = password;
       const updated = await apiFetch<User>("/users/me", { method: "PATCH", json: body });
@@ -105,6 +120,35 @@ export function ProfilePage() {
             value={(user as User & { username?: string })?.username ?? "—"}
           />
           <p className="mt-1 text-xs text-neutral-500">{t("username_readonly_hint")}</p>
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-neutral-700">{t("contact_phone")}</label>
+          <input
+            type="tel"
+            className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-neutral-700">{t("job_title") || "Job title / role"}</label>
+          <input
+            className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+            value={jobTitle}
+            onChange={(e) => setJobTitle(e.target.value)}
+            placeholder={t("job_title_hint") || "e.g. Senior HVAC Technician"}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-neutral-700">
+            {t("accreditation") || "Accreditation / license"}
+          </label>
+          <input
+            className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+            value={accreditation}
+            onChange={(e) => setAccreditation(e.target.value)}
+            placeholder={t("accreditation_hint") || "License or certification number"}
+          />
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium text-neutral-700">{t("full_name")} *</label>

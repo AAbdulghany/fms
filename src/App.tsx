@@ -196,7 +196,9 @@ export default function App() {
           element={
             <ProtectedRoute allowedRoles={["super_admin", "company_admin", "client_admin"]}>
               <Layout>
-                <InvoicesPage />
+                <FeatureRoute feature="invoices">
+                  <InvoicesPage />
+                </FeatureRoute>
               </Layout>
             </ProtectedRoute>
           }
@@ -207,7 +209,9 @@ export default function App() {
           element={
             <ProtectedRoute allowedRoles={["super_admin", "company_admin", "client_admin"]}>
               <Layout>
-                <InvoiceDetailPage />
+                <FeatureRoute feature="invoices">
+                  <InvoiceDetailPage />
+                </FeatureRoute>
               </Layout>
             </ProtectedRoute>
           }

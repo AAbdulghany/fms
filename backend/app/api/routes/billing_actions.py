@@ -31,6 +31,7 @@ def invoice_preview(
         .options(
             joinedload(WorkOrder.client),
             joinedload(WorkOrder.site),
+            joinedload(WorkOrder.asset),
             joinedload(WorkOrder.assignee_user),
             joinedload(WorkOrder.report),
         )
@@ -71,8 +72,18 @@ def generate_invoice_from_wo(
     _: Annotated[User, _finance],
     body: Optional[GenerateInvoiceBody] = Body(default=None),
 ) -> InvoiceOut:
-    wo = db.get(WorkOrder, work_order_id)
-    if not wo or wo.tenant_id != current.tenant_id:
+    wo = db.scalars(
+        select(WorkOrder)
+        .where(WorkOrder.id == work_order_id, WorkOrder.tenant_id == current.tenant_id)
+        .options(
+            joinedload(WorkOrder.client),
+            joinedload(WorkOrder.site),
+            joinedload(WorkOrder.asset),
+            joinedload(WorkOrder.assignee_user),
+            joinedload(WorkOrder.report),
+        )
+    ).first()
+    if not wo:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="NOT_FOUND")
     try:
         inv = build_invoice_for_work_order(db, wo, currency_override=body.currency if body else None)

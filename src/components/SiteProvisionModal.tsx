@@ -135,7 +135,12 @@ export function SiteProvisionModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-md rounded-xl bg-neutral-0 p-6 shadow-xl" role="dialog" aria-modal>
+      <div
+        className="w-full max-w-md rounded-xl bg-neutral-0 p-6 shadow-xl"
+        role="dialog"
+        aria-modal
+        data-testid={isAddOnly ? "site-add-modal" : "site-provision-modal"}
+      >
         <h2 className="mb-4 text-xl font-bold text-neutral-900">
           {isAddOnly ? t("add_site") : t("add_site_manager_title")}
         </h2>

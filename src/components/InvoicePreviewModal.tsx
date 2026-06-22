@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { apiFetch } from "../lib/api";
+import { apiFetch, openAuthenticatedBlob, resolveApiError } from "../lib/api";
 import { formatMoneyAmount } from "../lib/formatCurrency";
 import type { Invoice, WorkOrder, PaginatedWorkOrders } from "../lib/types";
 
@@ -12,6 +12,7 @@ type Preview = {
   technician_name?: string | null;
   currency: string;
   labor_hours: string;
+  labor_rate_sar: string;
   labor_amount_sar: string;
   parts: { description: string; quantity: string; amount_sar: string }[];
   service_fee_sar: string;
@@ -28,13 +29,22 @@ type Props = {
   onGenerated: () => void;
 };
 
+function invoiceErrorMessage(
+  err: unknown,
+  t: (key: string) => string,
+  lang: string
+): string {
+  return resolveApiError(err, t, lang, t("error_generic"));
+}
+
 export function InvoicePreviewModal({ open, onClose, onGenerated }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [selectedWoId, setSelectedWoId] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [generated, setGenerated] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -42,6 +52,7 @@ export function InvoicePreviewModal({ open, onClose, onGenerated }: Props) {
     setPreview(null);
     setGenerated(null);
     setSelectedWoId("");
+    setError(null);
     void apiFetch<PaginatedWorkOrders>("/work-orders?page_size=100").then((res) => {
       setWorkOrders(res.data.filter((wo) => ["verified", "closed"].includes(wo.status)));
     });
@@ -50,12 +61,22 @@ export function InvoicePreviewModal({ open, onClose, onGenerated }: Props) {
   useEffect(() => {
     if (!selectedWoId) {
       setPreview(null);
+      setError(null);
       return;
     }
+    setPreviewLoading(true);
+    setError(null);
     void apiFetch<Preview>(`/work-orders/${selectedWoId}/invoice-preview`)
-      .then(setPreview)
-      .catch((e) => setError(e instanceof Error ? e.message : t("error")));
-  }, [selectedWoId, t]);
+      .then((data) => {
+        setPreview(data);
+        setError(null);
+      })
+      .catch((e) => {
+        setPreview(null);
+        setError(invoiceErrorMessage(e, t, i18n.language));
+      })
+      .finally(() => setPreviewLoading(false));
+  }, [selectedWoId, t, i18n.language]);
 
   if (!open) return null;
 
@@ -69,15 +90,20 @@ export function InvoicePreviewModal({ open, onClose, onGenerated }: Props) {
       setGenerated(inv);
       onGenerated();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("error"));
+      setError(invoiceErrorMessage(err, t, i18n.language));
     } finally {
       setLoading(false);
     }
   }
 
-  function printPdf() {
+  async function printPdf() {
     if (!generated) return;
-    window.open(`/api/v1/invoices/${generated.id}/pdf?inline=true`, "_blank");
+    setError(null);
+    try {
+      await openAuthenticatedBlob(`/invoices/${generated.id}/pdf?inline=true`);
+    } catch (err) {
+      setError(invoiceErrorMessage(err, t, i18n.language));
+    }
   }
 
   async function sendInvoice() {
@@ -87,7 +113,7 @@ export function InvoicePreviewModal({ open, onClose, onGenerated }: Props) {
       await apiFetch(`/invoices/${generated.id}/send`, { method: "POST" });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("error"));
+      setError(invoiceErrorMessage(err, t, i18n.language));
     } finally {
       setLoading(false);
     }
@@ -114,14 +140,23 @@ export function InvoicePreviewModal({ open, onClose, onGenerated }: Props) {
                 ))}
               </select>
             </div>
+            {previewLoading && (
+              <p className="text-sm text-neutral-500">{t("loading")}</p>
+            )}
             {preview && (
               <div className="rounded-lg border border-neutral-200 p-4 text-sm space-y-2">
                 <p>
                   <strong>{preview.work_order_title}</strong> — {preview.client_name} / {preview.site_name}
                 </p>
                 <p>
-                  {t("labor")}: {preview.labor_hours}h — {formatMoneyAmount(preview.labor_amount_sar, preview.currency)}
+                  {t("labor")}: {preview.labor_hours}h @ {formatMoneyAmount(preview.labor_rate_sar, preview.currency)}/h —{" "}
+                  {formatMoneyAmount(preview.labor_amount_sar, preview.currency)}
                 </p>
+                {Number(preview.service_fee_sar) > 0 && (
+                  <p>
+                    {t("service_fee")}: {formatMoneyAmount(preview.service_fee_sar, preview.currency)}
+                  </p>
+                )}
                 {preview.parts.map((p, i) => (
                   <p key={i}>
                     {p.description} × {p.quantity} — {formatMoneyAmount(p.amount_sar, preview.currency)}
