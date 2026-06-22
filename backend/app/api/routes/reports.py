@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_user, require_roles
 from app.database import get_db
-from app.models import MaintenanceReport, ReportStatus, Tenant, User, UserRole, WorkOrder
+from app.models import MaintenanceReport, ReportStatus, Tenant, User, UserRole, UserSiteScope, WorkOrder
 from app.schemas import MaintenanceReportOut, RejectReportBody
 from app.services.audit import write_audit
 from app.services.maintenance_report_pdf import resolve_report_locale
@@ -28,13 +28,25 @@ _approvers = Depends(
 )
 
 
+def _assert_wo_access(db: Session, current: User, wo: WorkOrder) -> None:
+    """Mirror work_orders._access_wo RBAC for report endpoints."""
+    if current.role == UserRole.technician and wo.assignee_user_id != current.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
+    if current.role == UserRole.client_admin and current.client_id and wo.client_id != current.client_id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
+    if current.role == UserRole.site_manager:
+        scoped = db.scalars(select(UserSiteScope.site_id).where(UserSiteScope.user_id == current.id)).all()
+        if scoped and wo.site_id not in scoped:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
+
+
 def _get_report(db: Session, current: User, report_id: UUID) -> MaintenanceReport:
     r = db.get(MaintenanceReport, report_id)
     if not r or r.tenant_id != current.tenant_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="NOT_FOUND")
     wo = r.work_order
-    if current.role == UserRole.client_admin and current.client_id and wo.client_id != current.client_id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
+    if wo:
+        _assert_wo_access(db, current, wo)
     return r
 
 
