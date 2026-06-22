@@ -16,7 +16,8 @@
 | B Invoice validation | backend-engineer | NT-123 | ✅ Done |
 | C Branded PDFs | backend-engineer | NT-124, NT-125 | ✅ Done |
 | D Feature gate | backend-engineer + frontend-engineer | NT-126 | ✅ Done |
-| E QA + E2E | qa-engineer | NT-127 | 🟡 Partial — backend tests + E2E plan; Playwright deferred |
+| E QA + E2E | qa-engineer | NT-127, NT-132, NT-133 | 🟡 In progress |
+| F UX errors | frontend-engineer + backend-engineer | NT-131 | ⬜ Planned |
 
 ---
 
@@ -29,7 +30,10 @@
 | **NT-124** | Branded PDF mandatory fields (invoice + maintenance report) | backend-engineer | NT-123 | ✅ | `test_maintenance_report_pdf.py` |
 | **NT-125** | PDF SW copyright watermark (platform_settings) | backend-engineer | NT-124 | ✅ | `test_maintenance_report_pdf.py` (watermark assert) |
 | **NT-126** | Enforce `invoices` feature gate (API + nav + routes) | BE + FE | NT-108 | ✅ | `test_wave4_invoices.py` + FE `FeatureRoute` |
-| **NT-127** | Invoice module QA (INV-01–INV-06) | qa-engineer | NT-122–126 | 🟡 | Backend 25/25 wave4 tests; E2E spec planned |
+| **NT-127** | Invoice module QA (INV-01–INV-06) | qa-engineer | NT-122–126 | 🟡 | Backend 25/25; Playwright suite B |
+| **NT-131** | User-friendly error messages (no raw codes in UI) | FE + BE | NT-122 | 🟡 | Catalog + handler + invoice/WO pages; ~30 codes remain |
+| **NT-132** | Golden path E2E: company → invoice (GP-01–GP-12) | qa-engineer + FE | NT-127 | 🟡 | Spec scaffold `wave4-golden-path.spec.ts` |
+| **NT-133** | Test strategy: acceptance / regression / E2E / full matrix | qa-engineer + tech-lead | — | ✅ | [TEST_STRATEGY.md](TEST_STRATEGY.md) + matrix |
 
 ---
 
@@ -62,8 +66,28 @@
 
 ### NT-127
 - [x] Backend regression suite for invoice/billing/PDF paths
-- [ ] Playwright `wave4-invoices.spec.ts` (INV-01–06) — deferred to follow-up PR
+- [ ] Playwright suite B `wave4-invoices.spec.ts` (INV-01–06)
 - [x] E2E plan documented in [WAVE4_E2E.md](WAVE4_E2E.md)
+
+### NT-131
+- [ ] Central `resolveApiError()` — all pages use it (not raw `parseApiError` codes)
+- [ ] i18n AR/EN for ~40 API error codes (see ERR table in full matrix)
+- [ ] E2E spot-check: no `SCREAMING_SNAKE` visible in UI on forced errors
+- [ ] API keeps stable machine codes for tests/logs (no breaking change)
+
+### NT-132
+- [ ] Playwright suite A GP-03–GP-12 (serial spec; GP-02 skipped)
+- [ ] API fixture: `POST /clients` before GP-03 (company with 0 sites)
+- [ ] **Separate flows GP-03–06:** company detail (site) → `/assets` → `/work-orders` → WO detail
+- [ ] Unique company/site names per run (`E2E-{timestamp}`)
+- [ ] Technician + company_admin role switch mid-journey (GP-07–09)
+- [x] Navigation model documented in [WAVE4_E2E.md](WAVE4_E2E.md)
+
+### NT-133
+- [x] Four-tier model documented ([TEST_STRATEGY.md](TEST_STRATEGY.md))
+- [x] Full matrix stub ([WAVE4_FULL_TEST_MATRIX.md](WAVE4_FULL_TEST_MATRIX.md))
+- [ ] PR template + ticket tracker columns for tier mapping
+- [ ] CI job labels acceptance vs regression vs E2E
 
 ---
 
@@ -87,7 +111,10 @@
 | ID | Gap | Owner | Notes |
 |----|-----|-------|-------|
 | NT-P2-W03 | WO lifecycle RBAC UI hints (partial) | FE | FSM backend complete; dropdown hints optional |
-| NT-127 | Playwright INV-01–06 | qa-engineer | Backend coverage sufficient for wave merge; E2E in next sprint slice |
+| NT-127 | Playwright INV-01–06 | qa-engineer | Suite B in [WAVE4_E2E.md](WAVE4_E2E.md) |
+| NT-131 | Friendly error messages | FE + BE | ~40 codes still show raw in many pages |
+| NT-132 | Golden path E2E GP-03–12 | qa-engineer | GP-02 skipped; API setup + GP-03 add site |
+| NT-133 | Test taxonomy docs | qa-engineer | Acceptance / regression / E2E / full matrix |
 
 ---
 

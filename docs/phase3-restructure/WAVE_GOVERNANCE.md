@@ -58,6 +58,8 @@ git push -u origin feature/phase-3-restructure/wave3
 | Ticket tracker | `WAVE{N}_TICKETS.md` | tech-lead |
 | Sign-off gate | `WAVE{N}_SIGNOFF.md` | qa-engineer + Abdullah |
 | E2E test plan | `WAVE{N}_E2E.md` | qa-engineer |
+| Full test matrix | `WAVE{N}_FULL_TEST_MATRIX.md` | qa-engineer |
+| Test strategy (once) | [TEST_STRATEGY.md](TEST_STRATEGY.md) | qa-engineer + tech-lead |
 | UAT observations | `WAVE{N}_OBSERVATIONS.md` (when UAT run) | qa-engineer + product |
 | Backend tests | `backend/tests/test_wave{N}_*.py` | qa-engineer / feature dev |
 | CI scope | `.github/workflows/ci.yml` (wave label or path filter) | platform-engineer |
@@ -84,6 +86,18 @@ git push -u origin feature/phase-3-restructure/wave3
 - [ ] pytest cases added/updated (IDs)
 - [ ] npm run build
 - [ ] Manual smoke (role + route)
+
+### Acceptance (ticket AC)
+- [ ] AC bullets mapped to test IDs (see TEST_STRATEGY.md)
+
+### Regression
+- [ ] Full `pytest -q` + build green
+
+### E2E
+- [ ] Scenario IDs (GP-xx / INV-xx) — spec file or N/A + reason
+
+### Full matrix
+- [ ] Rows updated in `WAVE{N}_FULL_TEST_MATRIX.md`
 
 ## AgDR / schema
 - [ ] N/A  OR  link to AgDR / migration ticket

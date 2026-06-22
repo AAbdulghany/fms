@@ -89,7 +89,10 @@ See [WAVE1_WAVE2_SIGNOFF.md](WAVE1_WAVE2_SIGNOFF.md).
 | **NT-124** | PDF: engineer, hours, rate, currency, both company names    | backend-engineer                     | ✅ Done | branded invoice + maintenance report |
 | **NT-125** | PDF: SW company copyright watermark (platform_settings)     | backend-engineer                     | ✅ Done | `pdf_brand` / platform copyright |
 | **NT-126** | Enforce `invoices` feature gate                             | backend-engineer + frontend-engineer | ✅ Done | API + `FeatureRoute` + sidebar |
-| **NT-127** | Invoice module QA (INV-01–INV-06)                           | qa-engineer                          | 🟡 Partial | 25 backend tests; Playwright deferred |
+| **NT-127** | Invoice module QA (INV-01–INV-06)                           | qa-engineer                          | 🟡 Partial | Suite B Playwright |
+| **NT-131** | User-friendly error messages (no raw API codes in UI)       | frontend-engineer + backend-engineer | ⬜ Planned | ~40 i18n keys + central resolver |
+| **NT-132** | Golden path E2E: company → site → asset → WO → invoice      | qa-engineer + frontend-engineer      | ⬜ Planned | GP-01–GP-12 Playwright |
+| **NT-133** | Test strategy: acceptance / regression / E2E / full matrix   | qa-engineer + tech-lead              | 🟡 Docs done | [TEST_STRATEGY.md](TEST_STRATEGY.md) |
 
 
 ---
