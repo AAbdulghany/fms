@@ -1,0 +1,72 @@
+# Demo stack — isolated database with pre-seeded users (sales/testing)
+# Usage: docker compose -f docker-compose-demo.yml up -d --build
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: fms
+      POSTGRES_PASSWORD: fms
+      POSTGRES_DB: fms_demo
+    ports:
+      - "5433:5432"
+    volumes:
+      - fms_demo_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fms -d fms_demo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.api
+    environment:
+      DATABASE_URL: postgresql+psycopg2://fms:fms@db:5432/fms_demo
+      SECRET_KEY: ${SECRET_KEY:-demo-secret}
+      APP_ENV: demo
+      SEED_MODULE: pitch
+    depends_on:
+      db:
+        condition: service_healthy
+    command: python -m app.docker_migrate
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.api
+    environment:
+      DATABASE_URL: postgresql+psycopg2://fms:fms@db:5432/fms_demo
+      SECRET_KEY: ${SECRET_KEY:-demo-secret}
+      APP_ENV: demo
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:8080}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      FROM_EMAIL: ${FROM_EMAIL:-demo@fms.local}
+    ports:
+      - "8001:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: on-failure
+
+  web:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.web
+    ports:
+      - "8081:8080"
+    depends_on:
+      - api
+    environment:
+      VITE_API_URL: http://localhost:8001
+
+volumes:
+  fms_demo_pgdata:

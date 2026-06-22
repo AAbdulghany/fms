@@ -82,8 +82,11 @@ export function LoginPage() {
           <p role="alert" className="rounded-md bg-error-light px-3 py-2 text-sm text-error-dark">{error}</p>
         )}
         <div>
-          <label className="mb-1 block text-sm text-neutral-600">{t("login_identifier")}</label>
+          <label htmlFor="login-identifier" className="mb-1 block text-sm text-neutral-600">
+            {t("login_identifier")}
+          </label>
           <input
+            id="login-identifier"
             className="w-full rounded-md border border-neutral-300 px-3 py-2"
             type="text"
             value={identifier}
@@ -92,8 +95,11 @@ export function LoginPage() {
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm text-neutral-600">{t("password")}</label>
+          <label htmlFor="login-password" className="mb-1 block text-sm text-neutral-600">
+            {t("password")}
+          </label>
           <input
+            id="login-password"
             className="w-full rounded-md border border-neutral-300 px-3 py-2"
             type="password"
             value={password}

@@ -25,7 +25,7 @@ python -m pytest -q
 cd ..
 npm run build
 
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build
 # Open http://localhost:8080 — smoke-test super + client logins
 ```
 
@@ -101,8 +101,8 @@ WEB_PORT=8080
 
 ```bash
 docker compose \
-  -f docker-compose.yml \
-  -f docker-compose.demo.yml \
+  -f docker-compose-local.yml \
+  -f docker-compose-demo.yml \
   -f deploy/demo/docker-compose.live.yml \
   --env-file deploy/demo/.env \
   up -d --build
@@ -212,7 +212,7 @@ cd /opt/fms
 git fetch origin
 git checkout demo/live
 git pull origin demo/live
-docker compose -f docker-compose.yml -f docker-compose.demo.yml -f deploy/demo/docker-compose.live.yml --env-file deploy/demo/.env up -d --build
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml -f deploy/demo/docker-compose.live.yml --env-file deploy/demo/.env up -d --build
 ```
 
 Rollback to tag:

@@ -164,7 +164,7 @@ Four more hooks added by the rule-audit ticket ([#13](https://github.com/me2resh
 ^\.github/workflows/          # GitHub Actions workflow files
 ```
 
-All path patterns use the `(^|/)` anchor so they catch **monorepo layouts** (`backend/Dockerfile`, `web/docker-compose.yml`, `services/api/Dockerfile.prod`) as well as root-level files. This was refined post-#13 in #18 — the original `^Dockerfile` only caught root-level files and silently skipped monorepo Dockerfiles.
+All path patterns use the `(^|/)` anchor so they catch **monorepo layouts** (`backend/Dockerfile`, `web/docker-compose-local.yml`, `services/api/Dockerfile.prod`) as well as root-level files. This was refined post-#13 in #18 — the original `^Dockerfile` only caught root-level files and silently skipped monorepo Dockerfiles.
 
 **Customize:** set `.architecture_paths` in `.claude/project-config.json` to a JSON array of regex patterns. The default list is deliberately narrow — see AgDR-0001 for why dependency manifests (`package.json`, `go.mod`) and API schemas are explicitly excluded.
 

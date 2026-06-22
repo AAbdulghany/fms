@@ -20,7 +20,7 @@
 ## Minimal local start
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+docker compose -f docker-compose-local.yml -f docker-compose-hybrid.yml up -d
 uv sync
 uv run alembic -c backend/alembic.ini upgrade head
 $env:PYTHONPATH = "backend"; uv run python -m app.seed_super

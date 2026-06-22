@@ -12,7 +12,7 @@
 ## Local demo stack
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build
 ```
 
 Open http://localhost:8080 — logins in [DEMO_QUICKSTART.md](DEMO_QUICKSTART.md).
@@ -28,7 +28,7 @@ Open http://localhost:8080 — logins in [DEMO_QUICKSTART.md](DEMO_QUICKSTART.md
 | Profile | Command | DB | Seed |
 |---------|---------|-----|------|
 | Development | `docker compose up` | `fms` | `app.test_seed` |
-| Demo | `docker compose -f docker-compose.yml -f docker-compose.demo.yml up` | `fms_demo` | `app.pitch_seed` |
+| Demo | `docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up` | `fms_demo` | `app.pitch_seed` |
 
 ---
 

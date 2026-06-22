@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     secret_key: str = "change-me-in-production-use-openssl-rand-hex-32"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
-    database_url: str = "postgresql+psycopg2://fms:fms@localhost:5432/fms"
+    database_url: str = "postgresql+psycopg2://fms:fms@localhost:9432/fms_local"
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     # demo | development | production — controls license freeze bypass (dev/demo)
     app_env: str = "development"

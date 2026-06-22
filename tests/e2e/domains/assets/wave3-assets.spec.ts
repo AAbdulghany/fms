@@ -42,7 +42,7 @@ test.describe("Wave 3 — Assets module (AST-01–AST-06)", () => {
   test("AST-06 client_admin can open register asset modal", async ({ page }) => {
     await login(page, DEMO_USERS.clientAdmin.email, DEMO_USERS.clientAdmin.password);
     await page.goto("/assets");
-    await page.getByRole("button", { name: /register asset/i }).click();
-    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.getByRole("button", { name: /register asset|تسجيل أصل/i }).click();
+    await expect(page.getByRole("heading", { name: /register asset|تسجيل أصل/i })).toBeVisible();
   });
 });

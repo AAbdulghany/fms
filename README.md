@@ -14,7 +14,7 @@
 ### Pitch demo (Docker — recommended for first run)
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build
 ```
 
 Open **http://localhost:8080** — login `super@demo.com` / `super123`
@@ -24,7 +24,7 @@ Full commands, logins, troubleshooting: **[docs/guides/demo-stack.md](docs/guide
 ### Local development (hot reload)
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+docker compose -f docker-compose-local.yml -f docker-compose-hybrid.yml up -d
 uv sync
 uv run alembic -c backend/alembic.ini upgrade head
 $env:PYTHONPATH = "backend"; uv run python -m app.seed_super
@@ -72,7 +72,7 @@ FMS/
 ├── tests/e2e/            # Playwright scenarios
 ├── docs/                 # Runbooks, architecture, wave trackers
 ├── deploy/               # Dockerfiles, nginx, live demo overlay
-└── docker-compose*.yml   # Dev, demo, local hybrid profiles
+└── docker-compose-*.yml   # local (dev), demo, hybrid profiles
 ```
 
 ---

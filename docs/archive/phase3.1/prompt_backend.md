@@ -29,7 +29,7 @@ Phase 3 MVP is signed off. Build Phase 3.1 milestones M1–M6 per AgDRs in `docs
 - `POST /assets/import/preview` + `POST /assets/import`
 
 ### M5 Hosting
-- Dockerfiles in `deploy/`, full `docker-compose.yml`
+- Dockerfiles in `deploy/`, full `docker-compose-local.yml`
 
 ### M6 Subscription
 - `subscription.py` service + `ensure_active_subscription` dep
