@@ -55,7 +55,7 @@ playwright.config.ts
 ## CI integration
 
 - Trigger: PR to `feature/phase-3-restructure/wave3` + nightly on wave branch  
-- Workflow: `.github/workflows/wave-e2e.yml`  
+- Workflow: `.github/workflows/playwright-e2e-demo.yml`  
 - Service container: demo compose or Render preview URL (future)
 
 ---

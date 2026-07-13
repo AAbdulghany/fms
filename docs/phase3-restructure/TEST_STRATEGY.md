@@ -35,7 +35,7 @@ Every wave ticket and PR must map work to **one or more** of the tiers below. Do
 
 - **Scope:** Multi-step user journeys visible in the SPA (login → action → assert DOM/network).
 - **Format:** Scenario ID (`GP-01`, `INV-03`, `AST-01`) in `WAVE{N}_E2E.md` + matching `test()` in Playwright.
-- **Pass rule:** Green in `wave-e2e.yml` or explicitly skipped with backend substitute + sign-off note.
+- **Pass rule:** Green in `playwright-e2e-demo.yml` or explicitly skipped with backend substitute + sign-off note.
 - **Not for:** Unit-level validation logic (use Acceptance pytest).
 
 ### Full test cases

@@ -14,10 +14,18 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: "list",
+  reporter: process.env.CI
+    ? [
+        ["list"],
+        ["json", { outputFile: "test-results/e2e-results.json" }],
+        ["html", { open: "never", outputFolder: "playwright-report" }],
+      ]
+    : [["list"]],
   use: {
     baseURL,
     trace: "on-first-retry",
+    screenshot: "only-on-failure",
   },
+  outputDir: "test-results/artifacts",
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
 });

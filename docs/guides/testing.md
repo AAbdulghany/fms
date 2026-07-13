@@ -128,11 +128,13 @@ Fixtures: `tests/e2e/fixtures/auth.ts` — demo users compose passwords from `E2
 
 ### CI
 
-`.github/workflows/wave-e2e.yml`:
+[`.github/workflows/playwright-e2e-demo.yml`](../../.github/workflows/playwright-e2e-demo.yml):
 
-- Triggers on `feature/phase-3-restructure/wave3|wave4` PRs
-- Starts `docker-compose-demo.yml`, waits for `http://localhost:9001/health`
-- Runs Wave 3 assets spec against `http://localhost:9081`
+- Runs on **push to `main`** (including when a PR is merged into main) and manual dispatch
+- Starts `docker-compose-demo.yml`, waits for API `:9001` and web `:9081`
+- Runs **all** Playwright specs under `tests/e2e/`
+- On failure: writes `test-results/e2e-failure-summary.json` + GitHub job summary
+- Uploads `test-results/` and `playwright-report/` artifacts
 
 ---
 

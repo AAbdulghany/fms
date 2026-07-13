@@ -141,5 +141,5 @@ NT-101 → NT-102 → NT-103 ─┬→ NT-105..NT-111 (licensing)
 - **Wave merge PR** → target `dev` after [WAVE{N}_SIGNOFF.md](WAVE3_SIGNOFF.md) complete
 - Required sections: Summary, Test plan, AgDR link if schema change
 - 2-review gate: code-reviewer (Rex) + human (Abdullah)
-- CI must pass: `.github/workflows/ci.yml` (+ `wave-e2e.yml` when E2E exists)
+- CI must pass: `.github/workflows/ci.yml` (+ `playwright-e2e-demo.yml` when E2E exists)
 

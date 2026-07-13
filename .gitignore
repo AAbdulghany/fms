@@ -225,6 +225,7 @@ bun.lockb
 # TypeScript / Playwright artifacts
 tsconfig.tsbuildinfo
 test-results/
+playwright-report/
 
 # Generated test PDFs (backend root)
 backend/_test_report.pdf
