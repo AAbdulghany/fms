@@ -17,7 +17,7 @@ Wave-scoped end-to-end tests for Phase 3 restructure.
 
 ```powershell
 # Local run (demo stack must be up)
-$env:E2E_BASE_URL="http://localhost:8080"
+$env:E2E_BASE_URL="http://localhost:9081"
 # Demo passwords: {role} prefix + suffix (matches pitch seed; default suffix below)
 $env:E2E_DEMO_PASSWORD_SUFFIX="123"
 npx playwright test tests/e2e/

@@ -15,68 +15,55 @@
 import { test, expect } from "@playwright/test";
 import { login, DEMO_USERS } from "../../fixtures/auth";
 
-const runId = Date.now();
-const siteName = `E2E Site ${runId}`;
-
-/** Set by API setup before GP-03 (implement in fixture). */
-let companyId: string | undefined;
-
 test.describe.configure({ mode: "serial" });
 
 test.describe("Wave 4 — Golden path (GP-03–GP-12)", () => {
-  test.fixme("GP-01 company_admin login", async ({ page }) => {
+  test("GP-01 company_admin login", async ({ page }) => {
     await login(page, DEMO_USERS.companyAdmin.email, DEMO_USERS.companyAdmin.password);
     await expect(page).toHaveURL(/\/dashboard/);
   });
 
-  test.fixme("setup API create company for GP-03", async ({ request }) => {
-    // POST /api/v1/clients after auth — not GP-02 UI; seeds companyId with 0 sites
-    void request;
-    void companyId;
+  test.skip("setup API create company for GP-03", async () => {
+    // POST /api/v1/clients after auth — seeds companyId with 0 sites (not yet implemented).
   });
 
-  test.fixme("GP-03 add site on company detail Sites tab", async ({ page }) => {
-    await login(page, DEMO_USERS.companyAdmin.email, DEMO_USERS.companyAdmin.password);
-    await page.goto(`/companies/${companyId}`);
-    await page.getByTestId("company-add-site-button").click();
-    await expect(page.getByTestId("site-add-modal")).toBeVisible();
-    void siteName;
+  test.skip("GP-03 add site on company detail Sites tab", async () => {
+    // Depends on API setup companyId + Sites tab add-site modal.
   });
 
-  test.fixme("GP-04 register asset on /assets", async ({ page }) => {
-    await page.goto("/assets");
+  test.skip("GP-04 register asset on /assets", async () => {
+    // Depends on GP-03 site existing for asset registration.
   });
 
-  test.fixme("GP-05 create work order on /work-orders", async ({ page }) => {
-    await page.goto("/work-orders");
+  test.skip("GP-05 create work order on /work-orders", async () => {
+    // Depends on GP-04 asset.
   });
 
-  test.fixme("GP-06 assign technician on WO detail", async ({ page }) => {
-    void page;
+  test.skip("GP-06 assign technician on WO detail", async () => {
+    // Depends on GP-05 WO.
   });
 
-  test.fixme("GP-07 technician starts in_progress", async ({ page }) => {
-    await login(page, DEMO_USERS.technician.email, DEMO_USERS.technician.password);
+  test.skip("GP-07 technician starts in_progress", async () => {
+    // Depends on GP-06 assignment.
   });
 
-  test.fixme("GP-08 submit report with labor hours", async ({ page }) => {
-    void page;
+  test.skip("GP-08 submit report with labor hours", async () => {
+    // Depends on GP-07 in_progress.
   });
 
-  test.fixme("GP-09 complete and verify work order", async ({ page }) => {
-    await login(page, DEMO_USERS.companyAdmin.email, DEMO_USERS.companyAdmin.password);
-    void page;
+  test.skip("GP-09 complete and verify work order", async () => {
+    // Depends on GP-08 submitted report.
   });
 
-  test.fixme("GP-10 invoice preview", async ({ page }) => {
-    void page;
+  test.skip("GP-10 invoice preview", async () => {
+    // Depends on GP-09 verified WO.
   });
 
-  test.fixme("GP-11 generate invoice", async ({ page }) => {
-    void page;
+  test.skip("GP-11 generate invoice", async () => {
+    // Depends on GP-10 preview.
   });
 
-  test.fixme("GP-12 download invoice PDF", async ({ page }) => {
-    void page;
+  test.skip("GP-12 download invoice PDF", async () => {
+    // Depends on GP-11 generated invoice.
   });
 });

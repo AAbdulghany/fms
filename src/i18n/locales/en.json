@@ -427,6 +427,8 @@
   "error_forbidden": "You don't have permission for this action.",
   "error_email_already_in_use": "This email address is already registered.",
   "error_code_in_use": "This company code is already in use.",
+  "error_invalid_credentials": "Invalid email or password.",
+  "error_user_inactive": "This account is inactive. Contact your administrator.",
   "error_invalid_transition": "This status change is not allowed.",
   "error_invalid_assignee": "The selected user cannot be assigned to this work order.",
   "error_asset_retired": "This asset is retired and cannot be modified.",

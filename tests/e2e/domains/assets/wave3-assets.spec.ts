@@ -12,6 +12,7 @@ test.describe("Wave 3 — Assets module (AST-01–AST-06)", () => {
   test("AST-02 switch to yearly calendar view", async ({ page }) => {
     await login(page, DEMO_USERS.companyAdmin.email, DEMO_USERS.companyAdmin.password);
     await page.goto("/assets");
+    await expect(page.getByTestId("maintenance-calendar")).toBeVisible();
     await page.getByTestId("calendar-view-yearly").click();
     await expect(page.getByTestId("calendar-grid-yearly")).toBeVisible();
   });
@@ -19,9 +20,12 @@ test.describe("Wave 3 — Assets module (AST-01–AST-06)", () => {
   test("AST-03 select asset shows work order linkage panel", async ({ page }) => {
     await login(page, DEMO_USERS.companyAdmin.email, DEMO_USERS.companyAdmin.password);
     await page.goto("/assets");
-    const firstAsset = page.locator("[data-testid^='calendar-asset-']").first();
-    if (await firstAsset.count()) {
-      await firstAsset.click();
+    await expect(page.getByTestId("maintenance-calendar")).toBeVisible();
+    const assetCells = page.locator("[data-testid^='calendar-asset-']");
+    // pitch_seed may have no MaintenanceSchedule rows — empty panel is valid then.
+    const count = await assetCells.count();
+    if (count > 0) {
+      await assetCells.first().click();
       await expect(page.getByTestId("asset-wo-panel")).toBeVisible();
     } else {
       await expect(page.getByTestId("asset-wo-panel-empty")).toBeVisible();

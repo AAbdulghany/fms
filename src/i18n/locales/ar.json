@@ -427,6 +427,8 @@
   "error_forbidden": "ليس لديك صلاحية لتنفيذ هذا الإجراء.",
   "error_email_already_in_use": "البريد الإلكتروني مسجّل مسبقاً.",
   "error_code_in_use": "رمز الشركة مستخدم مسبقاً.",
+  "error_invalid_credentials": "البريد أو كلمة المرور غير صحيحة.",
+  "error_user_inactive": "الحساب غير نشط — تواصل مع المسؤول.",
   "error_invalid_transition": "تغيير الحالة غير مسموح.",
   "error_invalid_assignee": "لا يمكن تعيين المستخدم المحدد على أمر العمل.",
   "error_asset_retired": "الأصل مُستبدَل/متقاعد ولا يمكن تعديله.",

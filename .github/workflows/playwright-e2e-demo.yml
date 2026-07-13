@@ -2,6 +2,8 @@
 #
 # Runs after a PR is merged into main (push to main).
 # Also: manual dispatch for ad-hoc runs.
+#
+# Caching: npm (setup-node), Playwright browsers (~/.cache/ms-playwright).
 
 name: Playwright E2E (demo stack)
 
@@ -57,11 +59,30 @@ jobs:
           node-version: "20"
           cache: npm
 
-      - name: Install dependencies & Playwright
+      - name: Install npm dependencies
         if: steps.check.outputs.exists == 'true'
-        run: |
-          npm ci
-          npx playwright install --with-deps chromium
+        run: npm ci
+
+      - name: Get Playwright version
+        if: steps.check.outputs.exists == 'true'
+        id: pw
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        if: steps.check.outputs.exists == 'true'
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.pw.outputs.version }}-chromium
+
+      - name: Install Playwright browsers
+        if: steps.check.outputs.exists == 'true' && steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright OS deps (browsers cached)
+        if: steps.check.outputs.exists == 'true' && steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
 
       - name: Run E2E scenarios (tests/e2e)
         id: e2e
