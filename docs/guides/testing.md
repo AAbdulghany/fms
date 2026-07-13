@@ -67,15 +67,26 @@ npm run build
 
 ## E2E (Playwright)
 
-Config: `playwright.config.ts` → `testDir: ./tests/e2e`, default base URL `http://localhost:8080`.
+Config: `playwright.config.ts` → `testDir: ./tests/e2e`.
 
-### Prerequisites
+### Which URL to use
 
-Demo stack must be running:
+| How you run the app | Start command | `E2E_BASE_URL` |
+|---------------------|---------------|----------------|
+| **Demo Docker** (recommended for E2E) | `docker compose -f docker-compose-demo.yml up -d --build` | `http://localhost:9081` |
+| **Local full Docker** | `docker compose -f docker-compose-local.yml up -d --build` | `http://localhost:9080` |
+| **Hybrid** (Docker DB + host API/UI) | hybrid compose + `uvicorn` + `npm run dev` | `http://localhost:5173` |
+
+Default in `playwright.config.ts` is **`http://localhost:9081`** (demo stack) when `E2E_BASE_URL` is unset.
+
+### Prerequisites (demo stack — recommended)
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d --build
+docker compose -f docker-compose-demo.yml up -d --build
+docker compose -f docker-compose-demo.yml logs migrate --tail 10
 ```
+
+Wait for `Migrate complete.` and open http://localhost:9081 once to confirm.
 
 ### Run locally
 
@@ -83,15 +94,22 @@ docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d --build
 npm ci
 npx playwright install chromium
 
-$env:E2E_BASE_URL = "http://localhost:8080"
+$env:E2E_BASE_URL = "http://localhost:9081"
 $env:E2E_DEMO_PASSWORD_SUFFIX = "123"
 npx playwright test tests/e2e/
+```
+
+**Hybrid dev** (only if Vite + uvicorn are already running):
+
+```powershell
+$env:E2E_BASE_URL = "http://localhost:5173"
+npx playwright test tests/e2e/domains/assets/wave3-assets.spec.ts
 ```
 
 Single suite:
 
 ```powershell
-npx playwright test tests/e2e/wave3-assets.spec.ts
+npx playwright test tests/e2e/domains/assets/wave3-assets.spec.ts
 ```
 
 ### E2E specs
@@ -110,11 +128,13 @@ Fixtures: `tests/e2e/fixtures/auth.ts` — demo users compose passwords from `E2
 
 ### CI
 
-`.github/workflows/wave-e2e.yml`:
+[`.github/workflows/playwright-e2e-demo.yml`](../../.github/workflows/playwright-e2e-demo.yml):
 
-- Triggers on `feature/phase-3-restructure/wave3|wave4` PRs
-- Starts demo compose, waits for `http://localhost:8000/health`
-- Runs Wave 3 assets spec against `http://localhost:8080`
+- Runs on **push to `main`** (including when a PR is merged into main) and manual dispatch
+- Starts `docker-compose-demo.yml`, waits for API `:9001` and web `:9081`
+- Runs **all** Playwright specs under `tests/e2e/`
+- On failure: writes `test-results/e2e-failure-summary.json` + GitHub job summary
+- Uploads `test-results/` and `playwright-report/` artifacts
 
 ---
 
@@ -126,8 +146,9 @@ uv run pytest backend/tests/ -q
 npm run build
 
 # Optional E2E (demo stack up)
-$env:E2E_BASE_URL="http://localhost:8080"
-npx playwright test tests/e2e/wave3-assets.spec.ts
+docker compose -f docker-compose-demo.yml up -d --build
+$env:E2E_BASE_URL="http://localhost:9081"
+npx playwright test tests/e2e/domains/assets/wave3-assets.spec.ts
 ```
 
 ---

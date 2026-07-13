@@ -401,4 +401,5 @@ def demo_reset(
             entity_id="demo",
         )
     db.commit()
-    return {"status": "ok", "message": "Demo database reset complete", **info}
+    str_info = {k: str(v) for k, v in info.items()}
+    return {"status": "ok", "message": "Demo database reset complete", **str_info}

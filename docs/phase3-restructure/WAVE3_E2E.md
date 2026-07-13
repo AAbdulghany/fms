@@ -19,7 +19,7 @@ npx playwright install chromium
 **Run locally (demo stack up):**
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up -d
 $env:E2E_BASE_URL="http://localhost:8080"
 npx playwright test tests/e2e/wave3-assets.spec.ts
 ```
@@ -55,7 +55,7 @@ playwright.config.ts
 ## CI integration
 
 - Trigger: PR to `feature/phase-3-restructure/wave3` + nightly on wave branch  
-- Workflow: `.github/workflows/wave-e2e.yml`  
+- Workflow: `.github/workflows/playwright-e2e-demo.yml`  
 - Service container: demo compose or Render preview URL (future)
 
 ---

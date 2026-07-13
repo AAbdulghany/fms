@@ -81,7 +81,7 @@ uv run pytest backend/tests/ -q
 npm run dev
 
 # Docker demo stack
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build
 ```
 
 ---

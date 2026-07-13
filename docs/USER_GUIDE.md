@@ -23,13 +23,13 @@ Install **uv**: see [https://docs.astral.sh/uv/](https://docs.astral.sh/uv/).
 From the **repository root**:
 
 ```powershell
-docker compose -f docker-compose.yml up -d
+docker compose -f docker-compose-local.yml up -d
 ```
 
 Default database (matches `backend/.env.example` when present):
 
-- Host: `localhost:5432`
-- User / password / database: `fms` / `fms` / `fms`
+- Host: `localhost:9432`
+- User / password / database: `fms` / `fms` / `fms_local`
 
 If you do not use Docker, create a PostgreSQL database and user that match your `DATABASE_URL`.
 
@@ -45,7 +45,7 @@ copy backend\.env.example backend\.env
 
 Ensure `DATABASE_URL` points at your database, for example:
 
-`postgresql+psycopg2://fms:fms@localhost:5432/fms`
+`postgresql+psycopg2://fms:fms@localhost:9432/fms_local`
 
 ---
 

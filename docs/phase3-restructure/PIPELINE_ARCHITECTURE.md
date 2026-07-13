@@ -63,7 +63,7 @@
 | Docker demo smoke | `compose up` + `/health` + login API | Infra regressions (weekly) |
 
 **Trigger:** push to wave branch, schedule cron, manual  
-**Workflow:** `.github/workflows/wave-e2e.yml`
+**Workflow:** `.github/workflows/playwright-e2e-demo.yml`
 
 ### Stage 3 — **Review** (human + agent gates)
 

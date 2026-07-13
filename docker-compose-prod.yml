@@ -1,0 +1,85 @@
+# Production stack — use environment variables for all secrets
+# Usage:
+#   export DATABASE_URL="postgresql+psycopg2://user:pass@prod-db:5432/fms_prod"
+#   export SECRET_KEY="your-production-secret-key"
+#   export API_IMAGE="your-registry/fms-api:v1.0.0"
+#   export WEB_IMAGE="your-registry/fms-web:v1.0.0"
+#   docker compose -f docker-compose-prod.yml up -d
+#
+# For external database (no db service):
+#   docker compose -f docker-compose-prod.yml up -d api web
+#
+# For self-hosted database:
+#   Uncomment the 'db' service below and adjust accordingly
+
+services:
+  # Uncomment if using embedded PostgreSQL in production
+  # db:
+  #   image: postgres:16-alpine
+  #   environment:
+  #     POSTGRES_USER: fms
+  #     POSTGRES_PASSWORD: ${DB_PASSWORD:?error}
+  #     POSTGRES_DB: fms_prod
+  #   volumes:
+  #     - fms_prod_pgdata:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U fms -d fms_prod"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   restart: always
+
+  migrate:
+    image: ${API_IMAGE:?error}
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?error}
+      SECRET_KEY: ${SECRET_KEY:?error}
+      APP_ENV: production
+    # depends_on:                      # uncomment when using the embedded db service
+    #   db:
+    #     condition: service_healthy
+    command: python -m app.docker_migrate
+    restart: "no"
+
+  api:
+    image: ${API_IMAGE:?error}
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?error}
+      SECRET_KEY: ${SECRET_KEY:?error}
+      APP_ENV: production
+      CORS_ORIGINS: ${CORS_ORIGINS:?error}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:?error}
+      SMTP_HOST: ${SMTP_HOST:?error}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:?error}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:?error}
+      FROM_EMAIL: ${FROM_EMAIL:?error}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  web:
+    image: ${WEB_IMAGE:?error}
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    depends_on:
+      - api
+    restart: always
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  fms_prod_pgdata:

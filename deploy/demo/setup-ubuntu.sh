@@ -32,5 +32,5 @@ fi
 echo "==> Done. Next steps:"
 echo "  1. Clone repo branch demo/live"
 echo "  2. cp deploy/demo/.env.example deploy/demo/.env && nano deploy/demo/.env"
-echo "  3. docker compose -f docker-compose.yml -f docker-compose.demo.yml -f deploy/demo/docker-compose.live.yml --env-file deploy/demo/.env up -d --build"
+echo "  3. docker compose -f docker-compose-local.yml -f docker-compose-demo.yml -f deploy/demo/docker-compose.live.yml --env-file deploy/demo/.env up -d --build"
 echo "  4. Optional TLS: install Caddy — see docs/phase3-restructure/DEMO_LIVE_DEPLOY.md"

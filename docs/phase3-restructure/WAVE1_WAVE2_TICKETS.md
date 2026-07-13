@@ -54,7 +54,7 @@
 
 | Ticket | Agent             | Status | Tests                     | GitHub |
 | ------ | ----------------- | ------ | ------------------------- | ------ |
-| NT-112 | platform-engineer | ✅ Done | `docker-compose.demo.yml` | #11    |
+| NT-112 | platform-engineer | ✅ Done | `docker-compose-demo.yml` | #11    |
 | NT-113 | backend-engineer  | ✅ Done | `test_wave2_demo.py` seed | #13    |
 | NT-114 | backend-engineer  | ✅ Done | demo reset endpoint       | #15    |
 | NT-115 | platform-engineer | ✅ Done | `DEMO_DEPLOY.md`          | #17    |
@@ -62,7 +62,7 @@
 
 ### Demo deliverables (Wave 2)
 
-- `docker-compose.demo.yml` — `fms_demo` DB, `APP_ENV=demo`, pitch seed on migrate
+- `docker-compose-demo.yml` — `fms_demo` DB, `APP_ENV=demo`, pitch seed on migrate
 - `backend/app/pitch_seed.py` — 1 tenant, 2 clients, 4 assets, 3 WOs, 2 invoices
 - `POST /platform/demo/reset` — demo env only
 - `docs/phase3-restructure/DEMO_DEPLOY.md`

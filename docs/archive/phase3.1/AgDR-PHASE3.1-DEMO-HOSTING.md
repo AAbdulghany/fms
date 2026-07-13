@@ -15,7 +15,7 @@ User → Nginx/Caddy → Vite static + FastAPI API → Postgres
 
 ## Decision
 
-1. Extend `docker-compose.yml` with `api`, `web`, `migrate` services.
+1. Extend `docker-compose-local.yml` with `api`, `web`, `migrate` services.
 2. Add `deploy/` with `Dockerfile.api`, `Dockerfile.web`, `nginx.conf`.
 3. Document Railway/Render deployment in `DEMO_DEPLOY.md`.
 4. Seed demo tenant via existing `test_seed.py` on migrate.

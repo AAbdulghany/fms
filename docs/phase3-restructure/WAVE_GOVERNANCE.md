@@ -117,7 +117,7 @@ git push -u origin feature/phase-3-restructure/wave3
 | Gate | Tool / role |
 |------|-------------|
 | CI green | GitHub Actions `ci.yml` |
-| E2E green | `wave-e2e.yml` (Playwright) |
+| E2E green | `playwright-e2e-demo.yml` (Playwright) |
 | Sign-off doc | `WAVE{N}_SIGNOFF.md` all boxes checked |
 | Rex review | code-reviewer on wave PR |
 | Human approval | Abdullah |

@@ -28,9 +28,9 @@ See [ENV_MATRIX.md](../phase3-restructure/ENV_MATRIX.md).
 
 | File | Purpose |
 |------|---------|
-| `docker-compose.yml` | Base: db, migrate, api, web |
-| `docker-compose.demo.yml` | Overlay: `fms_demo`, `APP_ENV=demo`, pitch seed |
-| `docker-compose.local.yml` | DB + migrate only (host API/UI) |
+| `docker-compose-local.yml` | Base: db, migrate, api, web |
+| `docker-compose-demo.yml` | Overlay: `fms_demo`, `APP_ENV=demo`, pitch seed |
+| `docker-compose-hybrid.yml` | DB + migrate only (host API/UI) |
 | `deploy/demo/docker-compose.live.yml` | Production VM: web on port 80, env from file |
 
 ---
@@ -38,7 +38,7 @@ See [ENV_MATRIX.md](../phase3-restructure/ENV_MATRIX.md).
 ## Local demo (reference)
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build
 ```
 
 → http://localhost:8080
@@ -60,8 +60,8 @@ Summary:
 git clone -b demo/live <repo-url> /opt/fms
 cd /opt/fms
 cp deploy/demo/.env.example deploy/demo/.env   # edit SECRET_KEY, PUBLIC_APP_URL, CORS
-docker compose -f docker-compose.yml \
-  -f docker-compose.demo.yml \
+docker compose -f docker-compose-local.yml \
+  -f docker-compose-demo.yml \
   -f deploy/demo/docker-compose.live.yml \
   --env-file deploy/demo/.env up -d --build
 ```

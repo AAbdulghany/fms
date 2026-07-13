@@ -29,7 +29,7 @@ What is **implemented today** vs aspirational targets later in this document:
 | **Mobile** | — | React Native — **Phase 3+ target** |
 | **Tests** | 219+ pytest, Playwright E2E | [guides/testing.md](guides/testing.md) |
 
-**Deploy profiles:** `docker-compose.yml` (dev), `docker-compose.demo.yml` (pitch), `deploy/demo/docker-compose.live.yml` (VM).
+**Deploy profiles:** `docker-compose-local.yml` (dev), `docker-compose-demo.yml` (pitch), `deploy/demo/docker-compose.live.yml` (VM).
 
 ---
 
