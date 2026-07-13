@@ -4,9 +4,12 @@ import { Page } from "@playwright/test";
 const DEMO_PASSWORD_SUFFIX = process.env.E2E_DEMO_PASSWORD_SUFFIX ?? "123";
 
 /** Login form labels/button — AR default UI + EN toggle. */
-const IDENTIFIER_LABEL = /email|username|البريد|اسم المستخدم/i;
-const PASSWORD_LABEL = /password|كلمة المرور/i;
-const SUBMIT_BUTTON = /sign in|login|log in|تسجيل الدخول/i;
+export const IDENTIFIER_LABEL = /email|username|البريد|اسم المستخدم/i;
+export const PASSWORD_LABEL = /password|كلمة المرور/i;
+export const SUBMIT_BUTTON = /sign in|login|log in|تسجيل الدخول/i;
+
+/** Invoices page heading — AR default + EN. */
+export const INVOICES_HEADING = /invoices|الفواتير/i;
 
 export async function login(page: Page, email: string, password: string) {
   await page.goto("/login");
