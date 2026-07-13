@@ -73,11 +73,11 @@ Config: `playwright.config.ts` → `testDir: ./tests/e2e`.
 
 | How you run the app | Start command | `E2E_BASE_URL` |
 |---------------------|---------------|----------------|
-| **Demo Docker** (recommended for E2E) | `docker compose -f docker-compose-demo.yml up -d --build` | `http://localhost:8081` |
+| **Demo Docker** (recommended for E2E) | `docker compose -f docker-compose-demo.yml up -d --build` | `http://localhost:9081` |
 | **Local full Docker** | `docker compose -f docker-compose-local.yml up -d --build` | `http://localhost:9080` |
 | **Hybrid** (Docker DB + host API/UI) | hybrid compose + `uvicorn` + `npm run dev` | `http://localhost:5173` |
 
-Default in `playwright.config.ts` is **`http://localhost:8081`** (demo stack) when `E2E_BASE_URL` is unset.
+Default in `playwright.config.ts` is **`http://localhost:9081`** (demo stack) when `E2E_BASE_URL` is unset.
 
 ### Prerequisites (demo stack — recommended)
 
@@ -86,7 +86,7 @@ docker compose -f docker-compose-demo.yml up -d --build
 docker compose -f docker-compose-demo.yml logs migrate --tail 10
 ```
 
-Wait for `Migrate complete.` and open http://localhost:8081 once to confirm.
+Wait for `Migrate complete.` and open http://localhost:9081 once to confirm.
 
 ### Run locally
 
@@ -94,7 +94,7 @@ Wait for `Migrate complete.` and open http://localhost:8081 once to confirm.
 npm ci
 npx playwright install chromium
 
-$env:E2E_BASE_URL = "http://localhost:8081"
+$env:E2E_BASE_URL = "http://localhost:9081"
 $env:E2E_DEMO_PASSWORD_SUFFIX = "123"
 npx playwright test tests/e2e/
 ```
@@ -131,8 +131,8 @@ Fixtures: `tests/e2e/fixtures/auth.ts` — demo users compose passwords from `E2
 `.github/workflows/wave-e2e.yml`:
 
 - Triggers on `feature/phase-3-restructure/wave3|wave4` PRs
-- Starts `docker-compose-demo.yml`, waits for `http://localhost:8001/health`
-- Runs Wave 3 assets spec against `http://localhost:8081`
+- Starts `docker-compose-demo.yml`, waits for `http://localhost:9001/health`
+- Runs Wave 3 assets spec against `http://localhost:9081`
 
 ---
 
@@ -145,7 +145,7 @@ npm run build
 
 # Optional E2E (demo stack up)
 docker compose -f docker-compose-demo.yml up -d --build
-$env:E2E_BASE_URL="http://localhost:8081"
+$env:E2E_BASE_URL="http://localhost:9081"
 npx playwright test tests/e2e/domains/assets/wave3-assets.spec.ts
 ```
 

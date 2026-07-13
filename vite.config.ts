@@ -19,4 +19,12 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    proxy: {
+      "/api": {
+        target: process.env.VITE_PREVIEW_API_TARGET ?? "http://127.0.0.1:9001",
+        changeOrigin: true,
+      },
+    },
+  },
 });

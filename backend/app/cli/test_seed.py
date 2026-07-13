@@ -1,133 +1,160 @@
-import uuid
-from datetime import datetime, timezone
-from sqlalchemy import create_engine, select, text
-from sqlalchemy.orm import Session
-from app.database import SessionLocal, engine, Base
-from app.models import (
-    Tenant, User, Client, Site, Asset, 
-    UserRole, ReportTemplate, WorkOrder, 
-    WorkOrderStatus, Urgency, WorkOrderSource
-)
+"""Dev/CI seed: tenant + comprehensive role-hierarchy users ONLY.
+
+No clients, sites, assets, or work orders — just enough data to exercise
+every authentication role in automated tests and local development.
+
+Run from backend folder:
+  python -m app.test_seed   (shim) — or via docker_migrate SEED_MODULE=test
+"""
+from __future__ import annotations
+
 from app.cli._demo_passwords import demo_password
-from app.core.security import hash_password
-from app.standard_inspection_report_schema import STANDARD_INSPECTION_SCHEMA
+from app.cli._seed_lib import UserSeedSpec, create_seed_user, truncate_tenant_data
+from app.database import SessionLocal, engine
+from app.models import Tenant, TenantSubscription, UserRole
+from app.schema_ensure import ensure_schema
+from app.services.platform_bootstrap import (
+    ensure_default_packages,
+    ensure_platform_settings,
+    run_wave0_platform_bootstrap,
+)
 
-def seed_data():
-    db = SessionLocal()
-    try:
-        print("Cleaning old data...")
-        # Clear tables in order of dependency
-        db.execute(text("TRUNCATE TABLE audit_logs, invoice_line_items, invoices, maintenance_reports, work_orders, maintenance_schedules, assets, sites, clients, users, tenants CASCADE"))
+TENANT_NAME = "Orbit Demo Co"
 
-        # 1. Create Tenant
-        tenant = Tenant(name="Orbit Demo Co", status="active")
-        db.add(tenant)
-        db.flush()
-        t_id = tenant.id
-        print(f"Created Tenant: {tenant.name} ({t_id})")
+SEED_USER_SPECS: list[UserSeedSpec] = [
+    UserSeedSpec(
+        email="super@demo.com",
+        pw_local="super",
+        role=UserRole.super_user,
+        full_name="Super Admin",
+        username="superadmin",
+        phone="+966500000001",
+        locale="en",
+        is_platform=True,
+        metadata_json={"seed_profile": "test"},
+    ),
+    UserSeedSpec(
+        email="swdev@demo.com",
+        pw_local="swdev",
+        role=UserRole.sw_dev,
+        full_name="SW Developer",
+        username="swdev",
+        phone="+966500000002",
+        locale="en",
+        is_platform=True,
+        metadata_json={"seed_profile": "test"},
+    ),
+    UserSeedSpec(
+        email="admin@demo.com",
+        pw_local="admin",
+        role=UserRole.company_admin,
+        full_name="Company Admin",
+        username="companyadmin",
+        phone="+966500000003",
+        locale="ar",
+        metadata_json={"seed_profile": "test"},
+    ),
+    UserSeedSpec(
+        email="engineer@demo.com",
+        pw_local="engineer",
+        role=UserRole.company_engineer,
+        full_name="Company Engineer",
+        username="engineer",
+        phone="+966500000004",
+        locale="ar",
+        metadata_json={"seed_profile": "test"},
+    ),
+    UserSeedSpec(
+        email="manager@demo.com",
+        pw_local="manager",
+        role=UserRole.manager,
+        full_name="Operations Manager",
+        username="manager",
+        phone="+966500000005",
+        locale="ar",
+        metadata_json={"seed_profile": "test"},
+    ),
+    UserSeedSpec(
+        email="client@demo.com",
+        pw_local="client",
+        role=UserRole.client_admin,
+        full_name="Client Admin",
+        username="clientadmin",
+        phone="+966500000006",
+        locale="ar",
+        # No client_id — test seed has no clients
+        metadata_json={"seed_profile": "test"},
+    ),
+    UserSeedSpec(
+        email="site@demo.com",
+        pw_local="site",
+        role=UserRole.site_manager,
+        full_name="Site Manager",
+        username="sitemanager",
+        phone="+966500000007",
+        locale="ar",
+        metadata_json={"seed_profile": "test"},
+    ),
+    UserSeedSpec(
+        email="tech@demo.com",
+        pw_local="tech",
+        role=UserRole.technician,
+        full_name="Field Technician",
+        username="technician",
+        phone="+966500000008",
+        locale="ar",
+        metadata_json={"seed_profile": "test"},
+    ),
+]
 
-        # 2. Create Client and Site
-        client = Client(tenant_id=t_id, legal_name="Global Enterprises Ltd", code="GE-001")
-        db.add(client)
-        db.flush()
 
-        from app.services.billing_setup import ensure_client_active_contract
-
-        ensure_client_active_contract(db, t_id, client.id)
-        
-        site = Site(
-            tenant_id=t_id,
-            client_id=client.id,
-            name="Main Corporate HQ",
-            timezone="Asia/Riyadh",
-            address_json={
-                "address": "456 Business Park Avenue",
-                "city": "Jeddah",
-                "country": "Saudi Arabia"
-            }
-        )
-        db.add(site)
-        db.flush()
-        print(f"Created Client {client.legal_name} and Site {site.name}")
-
-        # 3. Create Assets
-        asset1 = Asset(tenant_id=t_id, site_id=site.id, name="HVAC Unit 01", category="HVAC", serial="HVAC-123")
-        asset2 = Asset(tenant_id=t_id, site_id=site.id, name="Elevator North", category="Elevators", serial="ELV-999")
-        db.add_all([asset1, asset2])
-        db.flush()
-
-        # 4. Create a Report Template
-        tmpl = ReportTemplate(
-            tenant_id=t_id,
-            name="Standard Inspection",
-            code="STD-INSP",
-            schema_json=STANDARD_INSPECTION_SCHEMA,
-        )
-        db.add(tmpl)
-        db.flush()
-
-        # 5. Create Test Users (passwords via demo_password — suffix from DEMO_PASSWORD_SUFFIX)
-        users_data = [
-            {"email": "super@demo.com", "pw_local": "super", "role": UserRole.super_user, "is_platform": True},
-            {"email": "swdev@demo.com", "pw_local": "swdev", "role": UserRole.sw_dev, "is_platform": True},
-            {"email": "admin@demo.com", "pw_local": "admin", "role": UserRole.company_admin, "is_platform": False},
-            {"email": "client@demo.com", "pw_local": "client", "role": UserRole.client_admin, "is_platform": False, "client_id": client.id},
-            {"email": "site@demo.com", "pw_local": "site", "role": UserRole.site_manager, "is_platform": False},
-            {"email": "tech@demo.com", "pw_local": "tech", "role": UserRole.technician, "is_platform": False},
-            {"email": "manager@demo.com", "pw_local": "manager", "role": UserRole.manager, "is_platform": False},
-        ]
-
-        for u_data in users_data:
-            password = demo_password(u_data["pw_local"])
-            user = User(
-                tenant_id=t_id,
-                email=u_data["email"],
-                password_hash=hash_password(password),
-                role=u_data["role"],
-                is_platform_admin=u_data.get("is_platform", False),
-                client_id=u_data.get("client_id"),
-                is_active=True
-            )
-            db.add(user)
-            # If site manager, give them access to the site
-            if u_data["role"] == UserRole.site_manager:
-                from app.models import UserSiteScope
-                scope = UserSiteScope(user_id=user.id, site_id=site.id) # This is tricky because user.id isn't set yet
-                # We'll handle scopes after all users are flushed
-        
-        db.flush()
-
-        # Fix Site Manager Scope
-        site_mgr = db.scalar(select(User).where(User.email == "site@demo.com"))
-        from app.models import UserSiteScope
-        db.add(UserSiteScope(user_id=site_mgr.id, site_id=site.id))
-
-        # 6. Create a few Initial Work Orders
-        wo1 = WorkOrder(
-            tenant_id=t_id, client_id=client.id, site_id=site.id, asset_id=asset1.id,
-            title="Quarterly HVAC Check", urgency=Urgency.normal, 
-            status=WorkOrderStatus.created, source=WorkOrderSource.preventive,
-            template_id=tmpl.id
-        )
-        wo2 = WorkOrder(
-            tenant_id=t_id, client_id=client.id, site_id=site.id, asset_id=asset2.id,
-            title="Elevator Emergency Stop failure", urgency=Urgency.emergency, 
-            status=WorkOrderStatus.assigned, source=WorkOrderSource.corrective,
-            template_id=tmpl.id
-        )
-        db.add_all([wo1, wo2])
-
+def seed_data() -> dict[str, str]:
+    """Reset and seed dev/test users only. Called by docker_migrate."""
+    ensure_schema(engine)
+    with SessionLocal() as db:
+        run_wave0_platform_bootstrap(db)
         db.commit()
-        print("\\n--- TEST USERS READY ---")
-        for u in users_data:
-            print(f"  {u['email']} / {demo_password(u['pw_local'])} ({u['role'].value})")
-        print("------------------------")
 
-    except Exception as e:
-        print(f"Error during seeding: {e}")
-        db.rollback()
-    finally:
-        db.close()
+    with SessionLocal() as db:
+        result = _seed(db)
+        db.commit()
+
+    print("\n--- TEST USERS READY ---")
+    for spec in SEED_USER_SPECS:
+        print(f"  {spec.email} / {demo_password(spec.pw_local)} ({spec.role.value})")
+    print("------------------------")
+    return result
+
+
+def _seed(db) -> dict[str, str]:
+    """Wipe + re-create tenant and users. Caller must commit."""
+    truncate_tenant_data(db)
+
+    packages = ensure_default_packages(db)
+    ensure_platform_settings(db)
+
+    tenant = Tenant(name=TENANT_NAME, status="active", settings_json={})
+    db.add(tenant)
+    db.flush()
+
+    db.add(
+        TenantSubscription(
+            tenant_id=tenant.id,
+            package_id=packages["pro"].id,
+            status="active",
+        )
+    )
+    db.flush()
+
+    for spec in SEED_USER_SPECS:
+        create_seed_user(db, tenant.id, spec)
+
+    db.flush()
+    return {
+        "tenant_id": str(tenant.id),
+        "users_created": str(len(SEED_USER_SPECS)),
+    }
+
 
 if __name__ == "__main__":
     seed_data()

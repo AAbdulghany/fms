@@ -86,6 +86,7 @@ export function resolveApiError(
   }
 
   const raw = err instanceof Error ? err.message : String(err);
+  if (raw === "{}" || raw === "[]") return fallback;
   if (raw.length > 200) return fallback;
   return raw || fallback;
 }

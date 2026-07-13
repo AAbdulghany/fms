@@ -1,8 +1,27 @@
-# Local development
+# Local development (step by step)
 
-Run the **Orbit** web app and API on your machine with hot reload. Use this for day-to-day feature work.
+Day-to-day coding: **host API + Vite**, Postgres in Docker.
 
-**Docker pitch demo** (isolated `fms_demo`, full stack): see [demo-stack.md](./demo-stack.md).
+**Pitch / sales demo** (full Docker + Cloudflare): [demo-stack.md](./demo-stack.md) · [docker-seed-profiles.md](./docker-seed-profiles.md)
+
+---
+
+## Choose a profile (do not mix)
+
+| Profile | When to use | UI | API | Postgres host port | Database |
+|---------|-------------|-----|-----|--------------------|----------|
+| **A — Hybrid DEV** (this guide) | Feature work with hot reload | `:5173` Vite | host `:8000` | **9432** | `fms_local` |
+| **B — Full Docker DEV** | Run without installing Python/Node API | `:9080` | Docker `:9000` | **9432** | `fms_local` |
+| **C — Docker DEMO** | Sales, E2E, Cloudflare tunnel | `:9081` | Docker `:9001` | **9543** | `fms_demo` |
+
+**Rule:** `backend/.env` `DATABASE_URL` must match the Postgres you actually started. Wrong port → `connection refused` or `password authentication failed` (often a **native Windows Postgres** on 5432/5433, not Docker).
+
+```powershell
+# See who owns a port (PowerShell)
+netstat -ano | findstr ":9432"
+netstat -ano | findstr ":9543"
+netstat -ano | findstr ":5433"
+```
 
 ---
 
@@ -10,168 +29,183 @@ Run the **Orbit** web app and API on your machine with hot reload. Use this for 
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Python | 3.11+ (CI uses 3.12) | FastAPI backend |
-| Node.js | 18+ (CI uses 20) | Vite frontend |
-| Docker Desktop | optional | PostgreSQL locally |
-| uv | recommended | Python deps from repo root (`pyproject.toml`) |
+| Docker Desktop | current | Postgres (and optional full stack) |
+| Python | 3.11+ | Host API |
+| Node.js | 18+ | Vite |
+| uv | recommended | Python deps from repo root |
 
 ---
 
-## 1. PostgreSQL
+## Profile A — Hybrid DEV (recommended)
 
-### Option A — DB only (recommended for dev)
+### 1. Start Postgres (+ migrate)
 
-Starts Postgres + migrate; you run API and UI on the host:
+From the **repository root** (not `backend/`):
 
 ```powershell
+cd E:\03Workset\FMS
 docker compose -f docker-compose-local.yml -f docker-compose-hybrid.yml up -d
 ```
 
-- Database: `fms_local` on `localhost:9432`
-- User / password: `fms` / `fms`
+Wait until `db` is healthy. Migrate runs once and exits.
 
-### Option B — DB container only (manual)
+| | |
+|--|--|
+| Host | `localhost:9432` |
+| DB | `fms_local` |
+| User / password | `fms` / `fms` |
 
-```powershell
-docker compose -f docker-compose-local.yml up -d db migrate
-```
-
-Then run migrate yourself if you skipped it (step 3).
-
----
-
-## 2. Backend configuration
+### 2. Backend `.env`
 
 ```powershell
 copy backend\.env.example backend\.env
 ```
 
-Default `DATABASE_URL`:
+Must contain:
 
-```text
-postgresql+psycopg2://fms:fms@localhost:9432/fms_local
+```env
+DATABASE_URL=postgresql+psycopg2://fms:fms@localhost:9432/fms_local
+APP_ENV=development
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:9080
 ```
 
-For hybrid dev against the **demo** database (`fms_demo` on port `5433`):
+**Do not** use `.env.demo.example` for hybrid coding.
 
-```powershell
-copy backend\.env.demo.example backend\.env
-# Requires: docker compose -f docker-compose-demo.yml up -d
-```
-
----
-
-## 3. Install dependencies & migrate
-
-From the **repository root**:
+### 3. Install & migrate (if needed)
 
 ```powershell
 uv sync
 uv run alembic -c backend/alembic.ini upgrade head
 ```
 
-On startup, the API also runs `schema_ensure` (runtime DDL patches alongside Alembic).
+### 4. Seed (users only via Docker migrate, or manual)
 
----
-
-## 4. Seed data
-
-Pick one:
-
-| Seed | Command | Creates |
-|------|---------|---------|
-| **Super user only** | `uv run python -m app.seed_super` (with `PYTHONPATH=backend`) | `super@demo.com` / `super123`, tenant shell |
-| **Dev dataset** | `cd backend` → `python -m app.seed` | Company admin, technician, sample WOs (skips if tenant exists) |
-| **Docker dev stack** | automatic via `docker_migrate` + `test_seed` | Used when running full `docker compose up` |
-
-Minimal super-user seed:
+Docker hybrid migrate already runs `test_seed` (users only). To add a single super user manually:
 
 ```powershell
 $env:PYTHONPATH = "backend"
 uv run python -m app.seed_super
 ```
 
----
-
-## 5. Run the API
+### 5. Run API (host)
 
 ```powershell
 cd backend
 $env:PYTHONPATH = "."
-uv run python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 | URL | Purpose |
 |-----|---------|
-| http://127.0.0.1:8000 | API root |
-| http://127.0.0.1:8000/docs | OpenAPI (Swagger) |
-| http://127.0.0.1:8000/health | Health check |
+| http://127.0.0.1:8000/health | Health |
+| http://127.0.0.1:8000/docs | OpenAPI |
 
----
+### 6. Run frontend
 
-## 6. Run the frontend
-
-Second terminal, **repository root**:
+Second terminal, **repo root**:
 
 ```powershell
 npm install
 npm run dev
 ```
 
-| URL | Purpose |
-|-----|---------|
-| http://localhost:5173 | SPA (Arabic default, EN toggle) |
+Open **http://localhost:5173** — Vite proxies `/api` → `http://127.0.0.1:8000`.
 
-Vite proxies `/api` → `http://127.0.0.1:8000` (see `vite.config.ts`).
+### 7. Dev logins (after seed)
 
-Production build check:
+Password pattern: `{local-part}123` (e.g. `admin123`).
+
+| Email | Role |
+|-------|------|
+| super@demo.com | super_user |
+| admin@demo.com | company_admin |
+| tech@demo.com | technician |
+
+Full roster: [docker-seed-profiles.md](./docker-seed-profiles.md).
+
+---
+
+## Profile B — Full Docker DEV
 
 ```powershell
-npm run build
-npm run preview
+cd E:\03Workset\FMS
+docker compose -f docker-compose-local.yml up -d --build
 ```
 
----
-
-## 7. Demo logins (after seed)
-
-Password pattern: `{role-prefix}123` (e.g. admin + 123 → admin123).
-
-| Email | Role | Notes |
-|-------|------|-------|
-| super@demo.com | super_user / super_admin | Platform admin |
-| admin@demo.com | company_admin | Maintenance company |
-| client@demo.com | client_admin | End client |
-| site@demo.com | site_manager | Site-scoped |
-| tech@demo.com | technician | Field work |
-
-Full pitch demo roster: [demo-stack.md](./demo-stack.md).
+Open **http://localhost:9080**. No host uvicorn needed.
 
 ---
 
-## 8. Feature flags (local)
+## Feature flags
 
-Subscription feature gates (`assets`, `invoices`) are **bypassed** when `APP_ENV=development` or `demo`. See [ENV_MATRIX.md](../phase3-restructure/ENV_MATRIX.md).
+Subscription gates (`assets`, `invoices`) are **bypassed** when `APP_ENV=development` or `demo`. See [ENV_MATRIX.md](../phase3-restructure/ENV_MATRIX.md).
 
 ---
 
-## 9. Troubleshooting
+## Troubleshooting (once and for all)
 
-| Issue | Fix |
-|-------|-----|
-| `ModuleNotFoundError: app` | Set `PYTHONPATH=backend` or run from `backend/` with `PYTHONPATH=.` |
-| DB connection refused | Ensure Postgres container is healthy; check `DATABASE_URL` |
-| `database "fms" does not exist` | Wrong profile — dev uses `fms`, demo uses `fms_demo` |
-| Frontend API errors | Confirm API on port **8000** and `npm run dev` is running |
-| CORS errors | Add your origin to `CORS_ORIGINS` in `backend/.env` |
-| Alembic not found | Use `uv run alembic -c backend/alembic.ini` from repo root |
+### `password authentication failed for user "fms"` on 5433
 
-Docker-specific issues: [demo-stack.md](./demo-stack.md) or `/docker-debug` skill.
+**Cause:** Host traffic hit **native Windows Postgres** (or an old volume), not the Orbit Docker DB. Demo Docker now uses **9543**, not 5433.
+
+**Fix for coding:**
+
+```powershell
+copy backend\.env.example backend\.env
+docker compose -f docker-compose-local.yml -f docker-compose-hybrid.yml up -d
+# Restart uvicorn
+```
+
+**Fix for demo host API:**
+
+```powershell
+copy backend\.env.demo.example backend\.env
+# DATABASE_URL must use :9543/fms_demo
+docker compose -f docker-compose-demo.yml up -d
+```
+
+### `connection refused` on 9432
+
+Postgres container not running:
+
+```powershell
+docker compose -f docker-compose-local.yml -f docker-compose-hybrid.yml up -d db
+docker compose -f docker-compose-local.yml ps
+```
+
+### `open ...\backend\docker-compose-*.yml: not found`
+
+Compose files live in the **repo root**. Always:
+
+```powershell
+cd E:\03Workset\FMS
+docker compose -f docker-compose-demo.yml up -d
+```
+
+### `ModuleNotFoundError: app`
+
+```powershell
+cd backend
+$env:PYTHONPATH = "."
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+### Preview shows `{}` on login
+
+`npm run preview` needs an API. Use Vite `npm run dev` (proxies to :8000) or Docker UI **http://localhost:9081**.
+
+### Confirm which DB the API uses
+
+```powershell
+cd backend
+python -c "from app.config import get_settings; print(get_settings().database_url)"
+```
 
 ---
 
 ## Related
 
+- [demo-stack.md](./demo-stack.md) — Docker demo + Cloudflare tunnel
+- [docker-seed-profiles.md](./docker-seed-profiles.md) — `test_seed` vs `pitch_seed`
 - [testing.md](./testing.md) — pytest & Playwright
-- [ARCHITECTURE.md](../ARCHITECTURE.md) — system design
-- [CLAUDE.md](../../CLAUDE.md) — agent-oriented codebase summary
+- `/docker-debug` skill — compose failure tree

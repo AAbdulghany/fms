@@ -111,17 +111,20 @@ STANDARD_INSPECTION_SCHEMA: dict = {
         {
             "id": "sec_visit",
             "title": "Site visit",
+            "title_key": "report_section_sec_visit",
             "fields": [
                 {
                     "id": "inspection_end_time",
                     "type": "time",
                     "label": "End time",
+                    "label_key": "report_field_inspection_end_time",
                     "required": True,
                 },
                 {
                     "id": "environmental_factors",
                     "type": "textarea",
                     "label": "Environmental / site conditions (optional)",
+                    "label_key": "report_field_environmental_factors",
                     "rows": 3,
                     "required": False,
                 },
@@ -129,6 +132,7 @@ STANDARD_INSPECTION_SCHEMA: dict = {
                     "id": "tests_performed",
                     "type": "textarea",
                     "label": "Specific tests performed",
+                    "label_key": "report_field_tests_performed",
                     "rows": 4,
                     "required": True,
                 },
@@ -136,6 +140,7 @@ STANDARD_INSPECTION_SCHEMA: dict = {
                     "id": "areas_not_inspected",
                     "type": "textarea",
                     "label": "Areas not inspected or deemed unsafe",
+                    "label_key": "report_field_areas_not_inspected",
                     "rows": 3,
                     "required": False,
                 },
@@ -144,17 +149,20 @@ STANDARD_INSPECTION_SCHEMA: dict = {
         {
             "id": "sec_observations",
             "title": "Observations",
+            "title_key": "report_section_sec_observations",
             "category_variant": True,
             "fields": _DEFAULT_OBS,
         },
         {
             "id": "sec_evidence",
             "title": "Supporting evidence",
+            "title_key": "report_section_sec_evidence",
             "fields": [
                 {
                     "id": "photo_documentation",
                     "type": "photo",
                     "label": "Photo documentation",
+                    "label_key": "report_field_photo_documentation",
                     "max_photos": 12,
                     "required": False,
                     "required_when": {
@@ -167,23 +175,25 @@ STANDARD_INSPECTION_SCHEMA: dict = {
         {
             "id": "sec_resolution",
             "title": "Resolution",
+            "title_key": "report_section_sec_resolution",
             "fields": [
                 {
                     "id": "parts_used",
                     "type": "parts_used",
-                    "label_key": "parts",
+                    "label_key": "parts_used",
                     "required": False,
                 },
                 {
                     "id": "labor_log",
                     "type": "labor_log",
-                    "label_key": "labor",
+                    "label_key": "labor_hours",
                     "required": False,
                 },
                 {
                     "id": "recommended_actions",
                     "type": "textarea",
                     "label": "Recommended actions",
+                    "label_key": "report_field_recommended_actions",
                     "rows": 4,
                     "required": False,
                 },

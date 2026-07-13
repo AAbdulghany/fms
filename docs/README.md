@@ -17,7 +17,9 @@
 |------------|------|
 | Run locally (Vite + uvicorn) | [guides/local-development.md](./guides/local-development.md) |
 | Run the pitch demo (Docker) | [guides/demo-stack.md](./guides/demo-stack.md) |
-| Run tests (pytest + Playwright) | [guides/testing.md](./guides/testing.md) |
+| Share demo via Cloudflare Tunnel | [guides/demo-stack.md](./guides/demo-stack.md#part-2--share-the-demo-with-cloudflare-tunnel) |
+| Understand Docker seed profiles | [guides/docker-seed-profiles.md](./guides/docker-seed-profiles.md) |
+| Run tests (pytest & Playwright) | [guides/testing.md](./guides/testing.md) |
 | Deploy demo to a server | [guides/deployment.md](./guides/deployment.md) |
 | Understand architecture | [ARCHITECTURE.md](./ARCHITECTURE.md) |
 | See current wave tickets | [phase3-restructure/SPRINT_BACKLOG_NT.md](./phase3-restructure/SPRINT_BACKLOG_NT.md) |
@@ -28,10 +30,11 @@
 
 | Mode | Command | UI | API | Database | Seed |
 |------|---------|-----|-----|----------|------|
-| **Local dev** | Vite + host uvicorn | `:5173` | `:8000` | Docker Postgres `fms` | `seed_super` or `seed` |
-| **Docker dev** | `docker compose up --build` | `:8080` | `:8000` | `fms` | `test_seed` via migrate |
-| **Docker demo** | `docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build` | `:8080` | `:8000` | `fms_demo` | `pitch_seed` via migrate |
-| **Hybrid** | `docker-compose-hybrid.yml` (db only) + Vite + uvicorn | `:5173` | `:8000` | `fms` or `fms_demo` | manual |
+| **Local hybrid DEV** | hybrid compose + Vite + uvicorn | `:5173` | `:8000` | `fms_local` **:9432** | `test_seed` |
+| **Docker DEV** | `docker compose -f docker-compose-local.yml up --build` | `:9080` | `:9000` | `fms_local` **:9432** | `test_seed` |
+| **Docker DEMO** | `docker compose -f docker-compose-demo.yml up --build` | `:9081` | `:9001` | `fms_demo` **:9543** | `pitch_seed` |
+
+Compose projects are isolated: **`fms-local`** vs **`fms-demo`** (separate `name:` in each file). Do not mix `.env` ports.
 
 ---
 

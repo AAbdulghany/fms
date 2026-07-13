@@ -17,12 +17,14 @@ Use this skill **before** guessing at fixes when Docker or database connectivity
 
 ## Architecture map (two profiles)
 
-| Profile | Compose command | Postgres DB | Migrate seed | API in Docker |
-|---------|-----------------|-------------|--------------|---------------|
-| **Development** | `docker compose -f docker-compose-local.yml up` | `fms` | `docker_migrate` → test_seed | port 8000 |
-| **Demo** | `docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up` | `fms_demo` | `docker_migrate` → pitch_seed | port 8000 |
+| Profile | Compose command | Postgres DB | Host ports (web / API / DB) | Migrate seed | Dataset |
+|---------|-----------------|-------------|-----------------------------|---------------------|---------|
+| **Development** | `docker compose -f docker-compose-local.yml up` | `fms_local` (project **fms-local**) | **9080** / **9000** / **9432** | `test_seed` | Users only |
+| **Demo** | `docker compose -f docker-compose-demo.yml up` | `fms_demo` (project **fms-demo**) | **9081** / **9001** / **9543** | `pitch_seed` | Rich demo (~50 WOs) |
 
-**Critical:** Demo and dev use **different database names** on the same host port `5432`. Mixing them causes `FATAL: database "fms" does not exist` or empty/wrong data.
+**Full seed profile reference:** [`docs/guides/docker-seed-profiles.md`](../../docs/guides/docker-seed-profiles.md)
+
+**Critical:** Separate Compose projects (`name: fms-local` vs `name: fms-demo`). Host `DATABASE_URL` must match the DB port you started (9432 vs 9543). Never use 5433 for Orbit — native Windows Postgres often owns it.
 
 ## Decision tree (read first)
 
@@ -87,14 +89,20 @@ python -c "from app.config import get_settings; print(get_settings().database_ur
   ```
 - **Prevention:** `api` depends_on `db` (healthy) + `migrate` (completed).
 
-### D. Local uvicorn vs Docker API (port conflict)
+### E. Windows: port bind forbidden (8001–8100)
+
+- **Cause:** Hyper-V / WSL reserves TCP **8001–8100** on many Windows hosts.
+- **Fix:** Demo compose maps **9001** (API) and **9081** (web). Rebuild: `docker compose -f docker-compose-demo.yml up --build`.
+- **Verify:** `netsh interface ipv4 show excludedportrange protocol=tcp`
+
+### F. Local uvicorn vs Docker API (port conflict)
 
 - Docker API binds `localhost:8000`.
 - Local `uvicorn` also wants `8000`.
 - **Pick one:**
   1. **Docker only** — use http://localhost:8080 (web) or :8000 (api); stop local uvicorn.
   2. **Local API + Docker DB only** — stop `fms-api-1`, set `.env` to `fms_demo`, run uvicorn on 8000.
-  3. **Local API on alt port** — `uvicorn ... --port 8001` and point Vite proxy accordingly.
+  3. **Local API on alt port** — `uvicorn ... --port 9001` (demo) and point Vite proxy accordingly.
 
 ## Step 3 — Local backend + Docker demo DB
 

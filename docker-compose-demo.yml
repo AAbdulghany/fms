@@ -1,5 +1,10 @@
 # Demo stack — isolated database with pre-seeded users (sales/testing)
 # Usage: docker compose -f docker-compose-demo.yml up -d --build
+#
+# Project name MUST stay distinct from docker-compose-local.yml (fms-local)
+# or containers overwrite each other under the same symlink path.
+
+name: fms-demo
 
 services:
   db:
@@ -9,7 +14,8 @@ services:
       POSTGRES_PASSWORD: fms
       POSTGRES_DB: fms_demo
     ports:
-      - "5433:5432"
+      # 9543 avoids clash with native Windows Postgres often on 5432/5433
+      - "9543:5432"
     volumes:
       - fms_demo_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -41,15 +47,15 @@ services:
       DATABASE_URL: postgresql+psycopg2://fms:fms@db:5432/fms_demo
       SECRET_KEY: ${SECRET_KEY:-demo-secret}
       APP_ENV: demo
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
-      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:8080}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:9081}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:9081}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       FROM_EMAIL: ${FROM_EMAIL:-demo@fms.local}
     ports:
-      - "8001:8000"
+      - "9001:8000"
     depends_on:
       db:
         condition: service_healthy
@@ -62,11 +68,11 @@ services:
       context: .
       dockerfile: deploy/Dockerfile.web
     ports:
-      - "8081:8080"
+      - "9081:8080"
     depends_on:
       - api
     environment:
-      VITE_API_URL: http://localhost:8001
+      VITE_API_URL: http://localhost:9001
 
 volumes:
   fms_demo_pgdata:

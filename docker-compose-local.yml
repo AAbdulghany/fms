@@ -1,6 +1,11 @@
 # Local development — full stack (db, migrate, api, web)
 # Usage: docker compose -f docker-compose-local.yml up -d --build
 # Or hybrid (host API + Vite): docker compose -f docker-compose-local.yml -f docker-compose-hybrid.yml up -d
+#
+# Project name MUST stay distinct from docker-compose-demo.yml (fms-demo)
+# or containers overwrite each other under the same symlink path.
+
+name: fms-local
 
 services:
   db:

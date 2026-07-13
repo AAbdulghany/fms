@@ -529,8 +529,33 @@ export function WorkOrderDetailPage() {
     wo.status === "requested" &&
     (me?.role === "company_admin" || me?.role === "super_admin");
 
-  const fieldLabel = (field: TemplateField) =>
-    field.label ?? (field.label_key ? t(field.label_key) : field.id);
+  const fieldLabel = (field: TemplateField) => {
+    const byId = t(`report_field_${field.id}`);
+    if (byId !== `report_field_${field.id}`) return byId;
+    if (field.label_key) {
+      const byKey = t(field.label_key);
+      if (byKey !== field.label_key) return byKey;
+    }
+    return field.label ?? field.id;
+  };
+
+  const sectionTitle = (sec: TemplateSection) => {
+    if (sec.title_key) {
+      const byKey = t(sec.title_key);
+      if (byKey !== sec.title_key) return byKey;
+    }
+    if (sec.id) {
+      const byId = t(`report_section_${sec.id}`);
+      if (byId !== `report_section_${sec.id}`) return byId;
+    }
+    return sec.title ?? "";
+  };
+
+  const optionLabel = (value: string) => {
+    const byId = t(`report_option_${value.toLowerCase()}`);
+    if (byId !== `report_option_${value.toLowerCase()}`) return byId;
+    return value;
+  };
 
   const isTechnicianField = (field: TemplateField) =>
     !field.auto_fill && field.visible !== false && field.type !== "header";
@@ -996,9 +1021,9 @@ export function WorkOrderDetailPage() {
             )}
             {technicianSections.map((sec, si) => (
               <div key={sec.id ?? si} className="space-y-3">
-                {(sec.title || sec.title_key) && (
+                {(sec.title || sec.title_key || sec.id) && (
                   <h3 className="border-b border-neutral-200 pb-2 text-base font-semibold text-neutral-900">
-                    {sec.title ?? (sec.title_key ? t(sec.title_key) : "")}
+                    {sectionTitle(sec)}
                   </h3>
                 )}
                 {(sec.fields || []).filter(isTechnicianField).map((field) => {
@@ -1094,7 +1119,7 @@ export function WorkOrderDetailPage() {
                           <option value="">—</option>
                           {field.options.map((o) => (
                             <option key={o} value={o}>
-                              {o}
+                              {optionLabel(o)}
                             </option>
                           ))}
                         </select>
@@ -1107,7 +1132,9 @@ export function WorkOrderDetailPage() {
                       : Number(answers.labor_hours ?? 0);
                     return (
                       <div key={field.id}>
-                        <label className="mb-1 block text-sm text-neutral-700">Labor hours</label>
+                        <label className="mb-1 block text-sm text-neutral-700">
+                          {fieldLabel(field)}
+                        </label>
                         <input
                           type="number"
                           step="0.25"

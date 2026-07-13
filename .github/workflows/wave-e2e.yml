@@ -39,7 +39,7 @@ jobs:
         if: steps.check.outputs.exists == 'true'
         run: |
           docker compose -f docker-compose-demo.yml up -d --build
-          timeout 180 bash -c 'until curl -sf http://localhost:8001/health; do sleep 5; done'
+          timeout 180 bash -c 'until curl -sf http://localhost:9001/health; do sleep 5; done'
 
       - uses: actions/setup-node@v4
         if: steps.check.outputs.exists == 'true'
@@ -54,7 +54,7 @@ jobs:
         run: |
           npm ci
           npx playwright install --with-deps chromium
-          E2E_BASE_URL=http://localhost:8081 npx playwright test tests/e2e/domains/assets/wave3-assets.spec.ts
+          E2E_BASE_URL=http://localhost:9081 npx playwright test tests/e2e/domains/assets/wave3-assets.spec.ts
 
       - name: Teardown
         if: always() && steps.check.outputs.exists == 'true'

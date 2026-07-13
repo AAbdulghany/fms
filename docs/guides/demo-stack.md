@@ -1,182 +1,227 @@
-# Demo stack (Docker)
+# Demo stack (Docker) + Cloudflare tunnel
 
-Isolated **pitch demo** — database `fms_demo`, seed `pitch_seed`, `APP_ENV=demo`.  
-Use for sales demos, E2E tests, and smoke testing the full nginx + API stack.
+Isolated **pitch demo** — database `fms_demo`, seed `pitch_seed`, `APP_ENV=demo`.
 
-**Local feature dev** (Vite hot reload): [local-development.md](./local-development.md).
+Use for sales demos, E2E, and sharing a public URL via Cloudflare Tunnel.
+
+**Local coding** (Vite + host API): [local-development.md](./local-development.md).  
+**Seed profiles:** [docker-seed-profiles.md](./docker-seed-profiles.md).
 
 ---
 
-## Quick start
+## Ports (memorize this table)
 
-From the repository root:
+| Service | Host port | Notes |
+|---------|-----------|--------|
+| **Web (UI)** | **9081** | Open this in the browser |
+| **API** | **9001** | Also reached via nginx `/api` on 9081 |
+| **Postgres** | **9543** | Was 5433 — changed to avoid native Windows Postgres clashes |
+
+Windows often reserves **8001–8100**; demo intentionally uses **9001 / 9081**.
+
+---
+
+## Part 1 — Run the demo on your machine
+
+### Step 1 — Start from the **repo root**
 
 ```powershell
-docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build
+cd E:\03Workset\FMS
+docker compose -f docker-compose-demo.yml up -d --build
 ```
 
-Wait for:
+Wait for migrate:
 
 ```text
 migrate-1  | Migrate complete.
-api-1      | Application startup complete.
 ```
 
-Open **http://localhost:8080**
+Check:
 
-| Service | Host port | Role |
-|---------|-----------|------|
-| web | **8080** | React build + nginx (`/api` → api:8000) |
-| api | **8000** | FastAPI (`APP_ENV=demo`) |
-| db | 5432 | PostgreSQL `fms_demo` |
-| migrate | — | One-shot: Alembic + pitch seed + role migration |
+```powershell
+docker compose -f docker-compose-demo.yml ps
+curl http://localhost:9001/health
+```
 
----
+### Step 2 — Open the UI
 
-## Demo logins
+**http://localhost:9081**
 
-Local demo only — do not reuse in production.
+### Step 3 — Demo logins
+
+Password = `{email-local-part}123` (default suffix).
 
 | Email | Password | Role |
 |-------|----------|------|
-| **super@demo.com** | super123 | super_user — platform, packages, demo reset |
-| **swdev@demo.com** | swdev123 | sw_dev — platform support |
+| super@demo.com | super123 | super_user — platform + demo reset |
+| swdev@demo.com | swdev123 | sw_dev |
 | admin@demo.com | admin123 | company_admin |
 | client@demo.com | client123 | client_admin (Global Enterprises) |
-| client2@demo.com | client223 | client_admin (Riyadh Retail) |
+| client2@demo.com | client2123 | client_admin (Riyadh Retail) |
 | site@demo.com | site123 | site_manager |
 | tech@demo.com | tech123 | technician |
 
-**Pitch seed includes:** 1 maintenance tenant, 2 end clients, 4 assets, 3 work orders, 2 draft invoices.
+**Seeded data:** 2 clients, 3 sites, ~15 assets, ~50 work orders across statuses, 2 draft invoices.
 
----
-
-## Everyday commands
+### Everyday commands
 
 ```powershell
-# Start (after first build)
-docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up
+cd E:\03Workset\FMS
 
-# Detached
-docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up -d
+docker compose -f docker-compose-demo.yml up -d
+docker compose -f docker-compose-demo.yml logs -f api
+docker compose -f docker-compose-demo.yml down
 
-# Stop
-docker compose -f docker-compose-local.yml -f docker-compose-demo.yml down
-
-# Rebuild after code changes
-docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build
-
-# Logs
-docker compose -f docker-compose-local.yml -f docker-compose-demo.yml logs -f api
-docker compose -f docker-compose-local.yml -f docker-compose-demo.yml logs migrate
-
-# Full reset (wipe DB volume + re-seed)
-docker compose -f docker-compose-local.yml -f docker-compose-demo.yml down -v
-docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build
+# Full wipe + re-seed
+docker compose -f docker-compose-demo.yml down -v
+docker compose -f docker-compose-demo.yml up -d --build
 ```
 
----
-
-## Dev stack vs demo stack
-
-| Profile | Command | DB | Seed module |
-|---------|---------|-----|-------------|
-| **Development** | `docker compose up --build` | `fms` | `test_seed` |
-| **Demo** | `docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build` | `fms_demo` | `pitch_seed` |
-
-Dev stack URLs: same ports (**8080** web, **8000** API).
-
----
-
-## Hybrid: host API + Docker demo DB
-
-When editing Python on the host but Postgres runs in Docker demo:
+### Demo reset (API, no volume wipe)
 
 ```powershell
-docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up -d db
-# Stop docker api if port 8000 is needed: docker compose ... stop api
+# After login as super@demo.com, use access_token:
+curl -X POST http://localhost:9001/api/v1/platform/demo/reset `
+  -H "Authorization: Bearer <access_token>"
+```
 
+Only when `APP_ENV=demo`.
+
+---
+
+## Part 2 — Share the demo with Cloudflare Tunnel
+
+### What to tunnel
+
+Tunnel the **web** container (**9081**), not Vite preview and not API-only:
+
+```text
+Internet → trycloudflare.com → cloudflared → localhost:9081 (nginx)
+                                              ├─ /           → React
+                                              └─ /api/v1/... → FastAPI
+```
+
+Same-origin `/api` means login works through the public URL (no CORS fight).
+
+### Prerequisites
+
+1. Demo stack healthy on **9081** / **9001** (Part 1).
+2. [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/) installed (`cloudflared --version`).
+
+### Step-by-step (quick tunnel — no Cloudflare account required)
+
+```powershell
+# Terminal 1 — keep demo running
+cd E:\03Workset\FMS
+docker compose -f docker-compose-demo.yml up -d
+
+# Terminal 2 — public URL
+cloudflared tunnel --url http://localhost:9081
+```
+
+Cloudflare prints a URL like:
+
+```text
+https://something-random.trycloudflare.com
+```
+
+Share that link. Keep **both** terminals/processes running.
+
+### Verify
+
+1. Open the trycloudflare URL → Orbit login page.
+2. Sign in with `admin@demo.com` / `admin123`.
+3. Dashboard / work orders should show seeded demo data.
+
+### Caveats
+
+| Topic | Detail |
+|-------|--------|
+| URL changes | Quick tunnels get a **new** hostname every run |
+| Not production | No SLA; subject to Cloudflare ToS |
+| Credentials | Demo passwords are public knowledge — fine for pitch only |
+| Named tunnels | For a stable hostname, create a Cloudflare-account named tunnel |
+
+### Optional — named tunnel (stable URL)
+
+Requires a Cloudflare account + zone. High level:
+
+```powershell
+cloudflared tunnel login
+cloudflared tunnel create orbit-demo
+# Configure ingress: hostname → http://localhost:9081
+cloudflared tunnel run orbit-demo
+```
+
+See [Cloudflare Tunnel docs](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/).
+
+---
+
+## Part 3 — Dev vs demo (do not mix)
+
+| Profile | Command | UI | API | DB port | Seed |
+|---------|---------|-----|-----|---------|------|
+| **DEV hybrid** | `docker-compose-local.yml` + hybrid + host uvicorn | `:5173` | `:8000` | **9432** `fms_local` | `test_seed` |
+| **DEV Docker** | `docker-compose-local.yml` | `:9080` | `:9000` | **9432** | `test_seed` |
+| **DEMO Docker** | `docker-compose-demo.yml` | `:9081` | `:9001` | **9543** | `pitch_seed` |
+
+Host uvicorn against demo DB (uncommon):
+
+```powershell
+cd E:\03Workset\FMS
+docker compose -f docker-compose-demo.yml up -d
+copy backend\.env.demo.example backend\.env
+# DATABASE_URL ... localhost:9543/fms_demo
 cd backend
-copy .env.demo.example .env
 python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Frontend: `npm run dev` at http://localhost:5173 (proxy to :8000).
-
-| Mode | DATABASE_URL DB | API runner |
-|------|-----------------|------------|
-| Full Docker demo | `fms_demo` (in container) | `api` service |
-| Hybrid | `fms_demo` on localhost | host uvicorn |
-| Docker dev | `fms` | `api` service |
-
----
-
-## Reset demo data (no volume wipe)
-
-Log in as **super@demo.com**, then:
-
-```powershell
-curl -X POST http://localhost:8000/api/v1/platform/demo/reset `
-  -H "Authorization: Bearer <token>"
-```
-
-Session token is invalidated; log in again afterward. Returns **403** outside `APP_ENV=demo`.
-
----
-
-## Migrate pipeline
-
-`migrate` service runs `python -m app.docker_migrate`:
-
-1. Alembic `upgrade head`
-2. `schema_ensure` + platform bootstrap
-3. Seed: `pitch_seed` (demo) or `test_seed` (dev)
-4. `scripts/migrate_roles.py`
+Prefer **http://localhost:9081** instead.
 
 ---
 
 ## Troubleshooting
 
-### `migrate` exit 1 — missing tables
+### `password authentication failed for user "fms"`
 
-Old images may have seeded before Alembic. Rebuild:
-
-```powershell
-docker compose -f docker-compose-local.yml -f docker-compose-demo.yml build migrate
-docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build
-```
-
-### `database "fms" does not exist`
-
-Demo uses **`fms_demo`**. Use current `docker-compose-demo.yml` (healthcheck targets `fms_demo`).
-
-### API — `could not translate host name "db"`
-
-Network race after Ctrl+C. Full cycle:
+Host hit the wrong Postgres (often native Windows on **5432/5433**).
 
 ```powershell
-docker compose -f docker-compose-local.yml -f docker-compose-demo.yml down
-docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build
+# Confirm Docker demo port
+docker compose -f docker-compose-demo.yml port db 5432
+# Expect 0.0.0.0:9543
+
+# Inside container (always works if image is healthy):
+docker exec fms-db-1 psql -U fms -d fms_demo -c "SELECT 1"
 ```
 
-### Blank login / API down
+Fix host `.env` to use **9543** (`backend\.env.demo.example`) or switch to hybrid DEV **9432**.
 
-1. `docker compose ... logs api`
-2. Confirm migrate finished: `logs migrate`
-3. Full reset: `down -v` then `up --build`
+### Compose file not found from `backend/`
 
-### Platform menus missing
+```powershell
+cd E:\03Workset\FMS
+docker compose -f docker-compose-demo.yml up -d
+```
 
-Log in as **super@demo.com** (`is_platform_admin`). Tenant company_admin without platform flag won't see platform nav.
+### Tunnel up, blank / login `{}`
 
-### Local uvicorn + demo DB
+- Demo stack must be **up** on 9081 before cloudflared.
+- Tunnel **9081**, not 4173/4174 (Vite preview) and not 9001 alone.
 
-Copy `backend/.env.demo.example` → `.env` so `DATABASE_URL` ends with `/fms_demo`.
+### Port bind forbidden (8001–8100)
+
+Already avoided. Check reserved ranges if you change ports:
+
+```powershell
+netsh interface ipv4 show excludedportrange protocol=tcp
+```
 
 ---
 
 ## Related
 
-- [deployment.md](./deployment.md) — public demo on a VM
-- [testing.md](./testing.md) — Playwright against this stack
-- [ENV_MATRIX.md](../phase3-restructure/ENV_MATRIX.md) — `APP_ENV` behavior
+- [local-development.md](./local-development.md)
+- [docker-seed-profiles.md](./docker-seed-profiles.md)
+- [deployment.md](./deployment.md) — server deploy (not quick tunnel)
+- `.claude/skills/docker-debug/SKILL.md`
