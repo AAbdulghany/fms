@@ -54,12 +54,12 @@ Summary:
 1. Ensure tests pass locally (pytest, build, demo compose smoke)
 2. Maintain branch **`demo/live`** — demo-stable merges only
 3. Tag releases: `demo-live-vX.Y.Z`
-4. On server (recommended: Oracle Cloud free VM):
+4. On server (recommended: Oracle Cloud free VM + Cloudflare Tunnel → **https://demo.orbittech.co**):
 
 ```bash
 git clone -b demo/live <repo-url> /opt/fms
 cd /opt/fms
-cp deploy/demo/.env.example deploy/demo/.env   # edit SECRET_KEY, PUBLIC_APP_URL, CORS
+cp deploy/demo/.env.example deploy/demo/.env   # SECRET_KEY; PUBLIC_APP_URL/CORS = https://demo.orbittech.co
 docker compose -f docker-compose-local.yml \
   -f docker-compose-demo.yml \
   -f deploy/demo/docker-compose.live.yml \
@@ -67,6 +67,8 @@ docker compose -f docker-compose-local.yml \
 ```
 
 `docker-compose.live.yml` exposes web on `${WEB_PORT:-80}:8080` and requires secrets via env file.
+
+CI deploy on push to `demo/live`: [`.github/workflows/deploy-orbit-demo.yml`](../../.github/workflows/deploy-orbit-demo.yml).
 
 Manifest: [deploy/demo/BRANCH_MANIFEST.md](../../deploy/demo/BRANCH_MANIFEST.md)
 

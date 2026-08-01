@@ -144,14 +144,20 @@ Share that link. Keep **both** terminals/processes running.
 
 ### Optional — named tunnel (stable URL)
 
-Requires a Cloudflare account + zone. High level:
+Requires a Cloudflare account + zone (e.g. **`orbittech.co`**). Prefer a **subdomain** (`demo.orbittech.co`), not a path (`orbittech.co/demo`), so SPA routes and `/api` stay same-origin.
+
+**Live VM showcase** (Oracle Always Free + live compose on port **8080**): full steps in [DEMO_LIVE_DEPLOY.md](../phase3-restructure/DEMO_LIVE_DEPLOY.md) §2.6 — tunnel service `http://localhost:8080`, public hostname `demo.orbittech.co`.
+
+**Local laptop demo** (compose on **9081**):
 
 ```powershell
 cloudflared tunnel login
 cloudflared tunnel create orbit-demo
-# Configure ingress: hostname → http://localhost:9081
+# Configure ingress: demo.orbittech.co → http://localhost:9081
 cloudflared tunnel run orbit-demo
 ```
+
+Dashboard path: Zero Trust → Networks → Tunnels → create `orbit-demo` → Public Hostname `demo` + `orbittech.co` → service URL above.
 
 See [Cloudflare Tunnel docs](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/).
 
