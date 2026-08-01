@@ -12,9 +12,11 @@ npm run dev:css      # Tailwind CSS watch mode
 npm run build:css    # Tailwind CSS one-time build (minified)
 ```
 
+**Documentation:** [docs/README.md](docs/README.md) · [local dev](docs/guides/local-development.md) · [demo stack](docs/guides/demo-stack.md) · [testing](docs/guides/testing.md)
+
 ## Architecture Overview
 
-**Facility Management System (FMS)** — React 18 + TypeScript + Vite SPA with bilingual support (English/Arabic, RTL).
+**Facility Management System (Orbit)** — React 18 + TypeScript + Vite SPA with bilingual support (English/Arabic, RTL).
 
 ### Tech Stack
 - **Framework:** React 18 with TypeScript (JSX mode)

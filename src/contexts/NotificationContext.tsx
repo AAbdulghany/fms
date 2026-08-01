@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { apiFetch, getAccessToken } from "../lib/api";
+import { apiFetch, getAccessToken } from "@/lib/api";
 
 export type NotificationItem = {
   id: string;

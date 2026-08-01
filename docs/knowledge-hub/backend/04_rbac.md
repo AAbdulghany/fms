@@ -20,7 +20,7 @@
 ### Defining Roles
 
 ```python
-# backend/app/models.py
+# backend/app/models/users.py (UserRole enum)
 import enum
 
 class UserRole(str, enum.Enum):
@@ -174,7 +174,7 @@ def _access_work_order(
 ### UserSiteScope Model
 
 ```python
-# backend/app/models.py
+# backend/app/models/users.py (UserRole enum)
 class UserSiteScope(Base):
     """Sites a user can access (for site managers)."""
     __tablename__ = "user_site_scopes"
@@ -311,6 +311,6 @@ def test_client_admin_sees_only_own(client_admin):
 
 ## References
 
-- [FMS RBAC Matrix](docs/phase2/RBAC_Matrix.md)
+See [FMS RBAC (canonical)](../architecture/RBAC.md). Historical matrix: [archive/phase2/RBAC_Matrix.md](../archive/phase2/RBAC_Matrix.md).
 - [FMS RBAC Tests](backend/tests/test_rbac.py)
 - [FMS Isolation Tests](backend/tests/test_isolation.py)

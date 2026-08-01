@@ -1,0 +1,80 @@
+# Deploy Orbit Demo Showcase
+#
+# Pulls demo/live on the demo VM and rebuilds the live Docker Compose stack.
+# Cloudflare Tunnel (named) provides HTTPS at demo.orbittech.co — one-time host
+# setup. This workflow does not call Wrangler/Workers.
+#
+# Required secrets:
+#   DEMO_HOST              — VM hostname or IP
+#   DEMO_USER              — SSH user
+#   DEMO_SSH_PRIVATE_KEY   — private key for that user
+# Optional secrets:
+#   DEMO_PATH              — clone path on VM (default /opt/fms)
+# Optional variables:
+#   DEMO_URL               — public showcase URL (https://demo.orbittech.co)
+#                            used for a post-deploy health check through Cloudflare
+
+name: Deploy Orbit Demo Showcase
+
+on:
+  push:
+    branches:
+      - demo/live
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-orbit-demo
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEMO_HOST }}
+          username: ${{ secrets.DEMO_USER }}
+          key: ${{ secrets.DEMO_SSH_PRIVATE_KEY }}
+          script_stop: true
+          envs: DEMO_PATH
+          script: |
+            set -euo pipefail
+            DEMO_PATH="${DEMO_PATH:-/opt/fms}"
+            cd "$DEMO_PATH"
+
+            git fetch origin demo/live
+            git checkout demo/live
+            git pull --ff-only origin demo/live
+
+            docker compose \
+              -f docker-compose-local.yml \
+              -f docker-compose-demo.yml \
+              -f deploy/demo/docker-compose.live.yml \
+              --env-file deploy/demo/.env \
+              up -d --build
+
+            WEB_PORT=8080
+            if [ -f deploy/demo/.env ]; then
+              extracted=$(grep -E '^WEB_PORT=' deploy/demo/.env | cut -d= -f2- | tr -d "\"'" || true)
+              if [ -n "$extracted" ]; then
+                WEB_PORT="$extracted"
+              fi
+            fi
+
+            echo "Waiting for API health on 127.0.0.1:${WEB_PORT}…"
+            timeout 180 bash -c "until curl -sf http://127.0.0.1:${WEB_PORT}/api/v1/health; do sleep 5; done"
+            echo "Local health check OK"
+        env:
+          DEMO_PATH: ${{ secrets.DEMO_PATH }}
+
+      - name: Verify public demo URL
+        if: ${{ vars.DEMO_URL != '' }}
+        run: |
+          echo "Checking ${{ vars.DEMO_URL }}/api/v1/health"
+          timeout 60 bash -c 'until curl -fsS "${{ vars.DEMO_URL }}/api/v1/health"; do sleep 5; done'
+          echo "Public health check OK"

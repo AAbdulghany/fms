@@ -1,6 +1,7 @@
 # FMS User Guide — Local setup and seeding
 
-This guide describes how to run the Facility Management System (backend + frontend) with the **current toolchain** (`uv` for Python, `npm` for the web app) and how to create **only a super user** for development.
+> **Superseded by:** [guides/local-development.md](./guides/local-development.md)  
+> Content below is retained for reference; prefer the guide for up-to-date commands.
 
 ---
 
@@ -22,13 +23,13 @@ Install **uv**: see [https://docs.astral.sh/uv/](https://docs.astral.sh/uv/).
 From the **repository root**:
 
 ```powershell
-docker compose -f docker-compose.yml up -d
+docker compose -f docker-compose-local.yml up -d
 ```
 
 Default database (matches `backend/.env.example` when present):
 
-- Host: `localhost:5432`
-- User / password / database: `fms` / `fms` / `fms`
+- Host: `localhost:9432`
+- User / password / database: `fms` / `fms` / `fms_local`
 
 If you do not use Docker, create a PostgreSQL database and user that match your `DATABASE_URL`.
 
@@ -44,7 +45,7 @@ copy backend\.env.example backend\.env
 
 Ensure `DATABASE_URL` points at your database, for example:
 
-`postgresql+psycopg2://fms:fms@localhost:5432/fms`
+`postgresql+psycopg2://fms:fms@localhost:9432/fms_local`
 
 ---
 
@@ -198,5 +199,6 @@ uv run pytest backend/tests/ -q
 
 ## Related documentation
 
-- Original runbook (partially superseded by this guide): [`HOW_TO_RUN.md`](./HOW_TO_RUN.md)
-- Architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md) (if present)
+- **Canonical runbooks:** [docs/guides/local-development.md](./guides/local-development.md)
+- Original runbook (redirect): [HOW_TO_RUN.md](./HOW_TO_RUN.md)
+- Architecture: [ARCHITECTURE.md](./ARCHITECTURE.md)

@@ -1,0 +1,282 @@
+export type UserRole =
+  | "super_user"
+  | "sw_dev"
+  | "super_admin"
+  | "company_admin"
+  | "company_engineer"
+  | "client_admin"
+  | "site_manager"
+  | "technician"
+  | "manager";
+
+export interface User {
+  id: string;
+  tenant_id?: string;
+  email: string;
+  full_name: string;
+  role: UserRole;
+  locale?: string;
+  client_id?: string | null;
+  company_id?: string;
+  is_active: boolean;
+  is_platform_admin?: boolean;
+  features?: string[];
+  phone?: string | null;
+  job_title?: string | null;
+  accreditation?: string | null;
+}
+
+export type WorkOrderStatus =
+  | "requested"
+  | "declined"
+  | "created"
+  | "assigned"
+  | "in_progress"
+  | "on_hold"
+  | "completed"
+  | "verified"
+  | "cancelled"
+  | "closed";
+
+export interface WorkOrderUserBrief {
+  id: string;
+  email: string;
+  full_name: string;
+  role: UserRole;
+}
+
+export interface WorkOrder {
+  id: string;
+  tenant_id?: string;
+  client_id: string;
+  site_id: string;
+  asset_id: string | null;
+  source: string;
+  category: string;
+  urgency: string;
+  status: WorkOrderStatus;
+  title: string;
+  description: string;
+  template_id: string | null;
+  created_by_user_id?: string | null;
+  assignee_user_id: string | null;
+  creator?: WorkOrderUserBrief | null;
+  assignee?: WorkOrderUserBrief | null;
+  company_name?: string | null;
+  site_name?: string | null;
+  asset_name?: string | null;
+  asset_category?: string | null;
+  asset_serial?: string | null;
+  asset_label_code?: string | null;
+  asset_model?: string | null;
+  site_address?: string | null;
+  site_city?: string | null;
+  site_country?: string | null;
+  location_name?: string | null;
+  tags?: string[];
+  opened_at: string;
+  closed_at: string | null;
+}
+
+export interface PaginatedWorkOrders {
+  data: WorkOrder[];
+  meta: { page: number; page_size: number; total: number };
+}
+
+export interface MaintenanceReport {
+  id: string;
+  work_order_id: string;
+  template_id: string;
+  template_version: number;
+  template_snapshot_json?: Record<string, unknown>;
+  answers_json: Record<string, unknown>;
+  status: string;
+}
+
+export interface ReportTemplate {
+  id: string;
+  name: string;
+  schema_json: Record<string, unknown>;
+}
+
+export interface AuditLog {
+  id: string;
+  actor_user_id: string | null;
+  actor_name: string | null;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  before_json: Record<string, unknown> | null;
+  after_json: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface Comment {
+  id: string;
+  work_order_id: string;
+  user_id: string;
+  user_name: string | null;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkOrderDocument {
+  id: string;
+  work_order_id: string;
+  uploaded_by_user_id: string;
+  uploaded_by_name: string | null;
+  file_name: string;
+  file_size: number;
+  file_type: string;
+  file_url: string;
+  description: string | null;
+  created_at: string;
+}
+
+export interface Invoice {
+  id: string;
+  client_id: string;
+  work_order_id: string;
+  number: string;
+  status: string;
+  subtotal_sar: string;
+  tax_sar: string;
+  total_sar: string;
+  currency: string;
+  due_date?: string | null;
+  issued_at?: string | null;
+  billing_email?: string | null;
+  notes?: string;
+  work_order_title?: string;
+  client_name?: string | null;
+  labor_hours?: string;
+  labor_rate_sar?: string;
+  labor_amount_sar?: string;
+  service_fee_sar?: string;
+  line_items: Array<{
+    line_type: string;
+    description: string;
+    quantity: string;
+    unit_price_sar: string;
+    amount_sar: string;
+  }>;
+}
+
+export interface Company {
+  id: string;
+  name: string;
+  code: string;
+  contact_email: string;
+  contact_phone?: string;
+  status: "active" | "inactive" | "suspended" | "archived";
+  sites_count?: number;
+  active_wo_count?: number;
+  created_at: string;
+}
+
+export interface Site {
+  id: string;
+  company_id: string;
+  company_name?: string;
+  name: string;
+  address: string;
+  city: string;
+  country: string;
+  timezone: string;
+  status: "active" | "inactive";
+  asset_count?: number;
+  active_wo_count?: number;
+  qr_code?: string;
+}
+
+export type AssetLifecycleStatus = "active" | "warning" | "end_of_life" | "replaced" | "retired";
+
+export type AssetCriticality = "low" | "medium" | "high" | "critical";
+
+export interface Asset {
+  id: string;
+  asset_id: string;
+  name?: string;
+  site_id: string;
+  site_name?: string;
+  company_id: string;
+  company_name?: string;
+  type: string;
+  category: string;
+  manufacturer?: string;
+  model?: string;
+  serial_number?: string;
+  floor?: string;
+  room?: string;
+  smart_labels?: string[];
+  criticality?: AssetCriticality;
+  warranty_until?: string;
+  installation_date: string;
+  expected_lifespan_years: number;
+  lifecycle_status: AssetLifecycleStatus;
+  age_years: number;
+  lifespan_percentage: number;
+  repair_count: number;
+  last_maintenance_date?: string;
+  location_path?: string;
+  replacement_wo_id?: string;
+  /** EOL date computed from installed_on + max_age_years (may come from backend or computed client-side) */
+  expected_eol_date?: string;
+  /** Spare device flag — stored in metadata_json.is_spare */
+  is_spare?: boolean;
+  /** Photo URL from metadata_json.photo_url */
+  photo_url?: string;
+}
+
+export interface AssetLifecycleEvent {
+  id: string;
+  asset_id: string;
+  event_type: "installation" | "maintenance" | "repair" | "major_repair" | "replacement";
+  date: string;
+  work_order_id?: string;
+  cost_sar?: string;
+  description?: string;
+}
+
+export interface Employee {
+  id: string;
+  email: string;
+  full_name: string;
+  phone?: string;
+  role: UserRole;
+  company_id?: string;
+  assigned_sites?: string[];
+  status: "active" | "inactive";
+  last_login?: string;
+  created_at: string;
+}
+
+export interface DashboardStats {
+  companies_count?: number;
+  active_wo_count: number;
+  pending_invoices_amount?: string;
+  /** Draft invoices count (from /dashboard/summary) */
+  pending_invoices_draft?: number;
+  my_tasks_count?: number;
+  in_progress_count?: number;
+  completed_week_count?: number;
+  sites_count?: number;
+  assets_count?: number;
+  overdue_maintenance_count?: number;
+  assets_at_eol_count?: number;
+}
+
+/** GET /dashboard/summary */
+export interface DashboardSummary {
+  role: string;
+  clients_count?: number | null;
+  sites_count?: number | null;
+  assets_count?: number | null;
+  open_work_orders: number;
+  pending_invoices_draft?: number | null;
+  my_assigned_open?: number | null;
+  my_in_progress?: number | null;
+  completed_this_week: number;
+  assets_at_eol?: number | null;
+}

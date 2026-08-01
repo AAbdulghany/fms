@@ -1,4 +1,4 @@
-from typing import Any
+import re
 
 try:
     import arabic_reshaper
@@ -7,18 +7,20 @@ try:
 except ImportError:
     HAS_ARABIC_LIBS = False
 
+_ARABIC_RE = re.compile(r"[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]")
+
+
+def _contains_arabic(text: str) -> bool:
+    return bool(_ARABIC_RE.search(text))
+
+
 def reshape_text(text: str) -> str:
     """
     Reshapes Arabic text for correct rendering in PDF engines.
-    If libraries are missing, returns the original text.
+    Latin-only strings are returned unchanged.
     """
-    if not text or not HAS_ARABIC_LIBS:
+    if not text or not HAS_ARABIC_LIBS or not _contains_arabic(text):
         return text
-    
-    # 1. Reshape characters (connects the letters)
+
     reshaped_text = arabic_reshaper.reshape(text)
-    
-    # 2. Apply Bidi algorithm (fixes the Right-to-Left direction)
-    bidi_text = get_display(reshaped_text)
-    
-    return bidi_text
+    return get_display(reshaped_text)

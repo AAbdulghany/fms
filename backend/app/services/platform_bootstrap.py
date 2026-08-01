@@ -44,8 +44,8 @@ DEFAULT_PACKAGES: list[dict[str, Any]] = [
 ]
 
 DEFAULT_BRANDING = {
-    "company_name": "NexTask Software",
-    "copyright_watermark": "© NexTask Software. All rights reserved.",
+    "company_name": "Orbit Software",
+    "copyright_watermark": "© Orbit Software. All rights reserved.",
 }
 
 

@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import (
@@ -24,9 +24,12 @@ from app.api.routes import (
     work_orders,
 )
 from app.config import get_settings
+from app.core.errors import http_exception_handler
 from app.database import SessionLocal, engine
 from app.schema_ensure import ensure_schema
 from app.services.platform_bootstrap import run_wave0_platform_bootstrap
+from app.services.billing_setup import ensure_all_clients_have_contracts
+from app.services.report_template_sync import sync_std_insp_all_tenants
 
 
 @asynccontextmanager
@@ -34,11 +37,14 @@ async def lifespan(_: FastAPI):
     ensure_schema(engine)
     with SessionLocal() as db:
         run_wave0_platform_bootstrap(db)
+        sync_std_insp_all_tenants(db)
+        ensure_all_clients_have_contracts(db)
         db.commit()
     yield
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
+app.add_exception_handler(HTTPException, http_exception_handler)
 
 app.add_middleware(
     CORSMiddleware,

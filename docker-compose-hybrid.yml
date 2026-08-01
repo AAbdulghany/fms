@@ -1,0 +1,13 @@
+# Hybrid dev — skip containerized API + web, run them locally
+# Usage:
+#   docker compose -f docker-compose-local.yml -f docker-compose-hybrid.yml up -d
+#   # Then in separate terminals:
+#   cd backend && uvicorn app.main:app --reload
+#   npm run dev
+
+services:
+  api:
+    profiles: ["never"]
+
+  web:
+    profiles: ["never"]

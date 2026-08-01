@@ -32,7 +32,7 @@ Wave 1 (platform licensing) and Wave 2 (demo environment) ran in parallel. All a
 
 | #   | Criterion                                               | Evidence                       |
 | --- | ------------------------------------------------------- | ------------------------------ |
-| 1   | Demo compose profile (`fms_demo`)                       | `docker-compose.demo.yml`      |
+| 1   | Demo compose profile (`fms_demo`)                       | `docker-compose-demo.yml`      |
 | 2   | Pitch seed (1 tenant, 2 clients, assets, WOs, invoices) | `pitch_seed.py`                |
 | 3   | Demo reset endpoint (demo env only)                     | POST `/platform/demo/reset`    |
 | 4   | Deploy documentation                                    | `DEMO_DEPLOY.md`               |

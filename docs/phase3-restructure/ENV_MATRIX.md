@@ -17,7 +17,7 @@
 
 ```env
 APP_ENV=development
-DATABASE_URL=postgresql+psycopg2://fms:fms@localhost:5432/fms
+DATABASE_URL=postgresql+psycopg2://fms:fms@localhost:9432/fms_local
 ```
 
 ## Docker Compose
@@ -38,4 +38,4 @@ uv run pytest tests/test_wave0_app_env.py -q
 
 ## Wave 2 follow-up
 
-- `docker-compose.demo.yml` with `APP_ENV=demo` + `fms_demo` URL (NT-112)
+- `docker-compose-demo.yml` with `APP_ENV=demo` + `fms_demo` URL (NT-112)

@@ -105,7 +105,7 @@ A model is like a **blueprint** for a database table:
 
 ### Real Model: The User Model
 
-Look at `backend/app/models.py`:
+Look at `backend/app/models/` (domain package; start with `users.py` for `UserRole`):
 
 ```python
 import enum
@@ -569,5 +569,5 @@ client.external_ids = {
 ## References
 
 - [SQLAlchemy ORM Docs](https://docs.sqlalchemy.org/)
-- [FMS Models](backend/app/models.py)
+- [FMS Models package](backend/app/models/)
 - [FMS Database](backend/app/database.py)

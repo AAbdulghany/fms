@@ -1,5 +1,7 @@
 # Demo Deployment — Wave 2 (NT-112, NT-115)
 
+> **Canonical guide:** [guides/deployment.md](../guides/deployment.md) · **Local demo:** [guides/demo-stack.md](../guides/demo-stack.md)
+
 > **Quick reference:** [DEMO_QUICKSTART.md](DEMO_QUICKSTART.md) — Docker commands, logins, troubleshooting.
 
 **Profile:** `demo` — isolated pitch database, resettable seed  
@@ -10,7 +12,7 @@
 ## Local demo stack
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build
 ```
 
 Open http://localhost:8080 — logins in [DEMO_QUICKSTART.md](DEMO_QUICKSTART.md).
@@ -26,7 +28,7 @@ Open http://localhost:8080 — logins in [DEMO_QUICKSTART.md](DEMO_QUICKSTART.md
 | Profile | Command | DB | Seed |
 |---------|---------|-----|------|
 | Development | `docker compose up` | `fms` | `app.test_seed` |
-| Demo | `docker compose -f docker-compose.yml -f docker-compose.demo.yml up` | `fms_demo` | `app.pitch_seed` |
+| Demo | `docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up` | `fms_demo` | `app.pitch_seed` |
 
 ---
 
@@ -71,7 +73,7 @@ Returns `403` in `development` or `production`.
 5. Optional cron/one-off for nightly reset via `POST /platform/demo/reset`
 
 See also [DEMO_LIVE_DEPLOY.md](DEMO_LIVE_DEPLOY.md) for **public demo on a free VM** (step-by-step).
-See also [docs/phase3.1/DEMO_DEPLOY.md](../phase3.1/DEMO_DEPLOY.md) for general hosting notes.
+See also [archive/phase3.1/DEMO_DEPLOY.md](../archive/phase3.1/DEMO_DEPLOY.md) for general hosting notes (historical).
 
 ---
 

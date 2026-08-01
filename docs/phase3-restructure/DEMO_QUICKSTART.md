@@ -1,5 +1,8 @@
 # Demo Quickstart — Docker commands & logins
 
+> **Canonical guide:** [guides/demo-stack.md](../guides/demo-stack.md)  
+> This file is kept for wave-doc cross-links; prefer the guide above.
+
 **Keep this file.** Single reference for running the pitch demo locally.
 
 | Item | Value |
@@ -7,7 +10,7 @@
 | App URL | http://localhost:8080 |
 | API (direct) | http://localhost:8000 |
 | Database | `fms_demo` on port 5432 |
-| Compose files | `docker-compose.yml` + `docker-compose.demo.yml` |
+| Compose files | `docker-compose-local.yml` + `docker-compose-demo.yml` |
 
 ---
 
@@ -16,7 +19,7 @@
 From the repo root (`FMS/`):
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build
 ```
 
 Wait until you see:
@@ -53,38 +56,38 @@ All passwords are for **local demo only**.
 ### Start (after first build)
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up
 ```
 
 ### Start detached (background)
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up -d
 ```
 
 ### Stop
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.demo.yml down
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml down
 ```
 
 ### Rebuild after code changes
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build
 ```
 
 ### View logs
 
 ```powershell
 # All services
-docker compose -f docker-compose.yml -f docker-compose.demo.yml logs -f
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml logs -f
 
 # Migrate only
-docker compose -f docker-compose.yml -f docker-compose.demo.yml logs migrate
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml logs migrate
 
 # API only
-docker compose -f docker-compose.yml -f docker-compose.demo.yml logs api
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml logs api
 ```
 
 ### Full reset (wipe DB volume + re-seed)
@@ -92,8 +95,8 @@ docker compose -f docker-compose.yml -f docker-compose.demo.yml logs api
 Use when migrate/schema is stuck or you want a clean pitch database:
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.demo.yml down -v
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml down -v
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build
 ```
 
 ---
@@ -118,8 +121,8 @@ Use when editing Python on the host but Postgres runs in Docker demo.
 
 ```powershell
 # 1. Start demo DB (and optionally web); stop docker API if you want port 8000 locally
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d db
-# optional: docker compose -f docker-compose.yml -f docker-compose.demo.yml stop api
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up -d db
+# optional: docker compose -f docker-compose-local.yml -f docker-compose-demo.yml stop api
 
 # 2. Point backend at fms_demo
 cd backend
@@ -163,8 +166,8 @@ Your session token is invalidated after reset; log in again as `super@demo.com`.
 **Fix:**
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.demo.yml build migrate
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml build migrate
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build
 ```
 
 Migrate must run `python -m app.docker_migrate` (schema → seed).
@@ -175,7 +178,7 @@ Migrate must run `python -m app.docker_migrate` (schema → seed).
 
 **Cause:** Postgres healthcheck probed default DB `fms` while demo uses `fms_demo`.
 
-**Fix:** Use current `docker-compose.demo.yml` (healthcheck uses `-d fms_demo`). Harmless if migrate already succeeded.
+**Fix:** Use current `docker-compose-demo.yml` (healthcheck uses `-d fms_demo`). Harmless if migrate already succeeded.
 
 ---
 
@@ -186,8 +189,8 @@ Migrate must run `python -m app.docker_migrate` (schema → seed).
 **Fix:**
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.demo.yml down
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml down
+docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up
 ```
 
 API now waits for `db` healthy + `migrate` complete. If it still fails, `docker compose ... up --build`.
@@ -196,8 +199,8 @@ API now waits for `db` healthy + `migrate` complete. If it still fails, `docker 
 
 ### API exits immediately / blank login page
 
-1. Check API: `docker compose -f docker-compose.yml -f docker-compose.demo.yml logs api`
-2. Confirm migrate finished: `docker compose -f docker-compose.yml -f docker-compose.demo.yml logs migrate`
+1. Check API: `docker compose -f docker-compose-local.yml -f docker-compose-demo.yml logs api`
+2. Confirm migrate finished: `docker compose -f docker-compose-local.yml -f docker-compose-demo.yml logs migrate`
 3. Full reset: `down -v` then `up --build`
 
 ---
@@ -237,6 +240,7 @@ Or stop local uvicorn and use Docker API at http://localhost:8000.
 
 ## Related docs
 
-- [DEMO_DEPLOY.md](DEMO_DEPLOY.md) — Railway / hosting
+- **Canonical guide:** [guides/demo-stack.md](../guides/demo-stack.md)
+- [guides/deployment.md](../guides/deployment.md) — Railway / hosting
 - [ENV_MATRIX.md](ENV_MATRIX.md) — `APP_ENV` behavior
 - [WAVE1_WAVE2_SIGNOFF.md](WAVE1_WAVE2_SIGNOFF.md) — delivery sign-off

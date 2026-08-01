@@ -1,4 +1,8 @@
-"""Apply lightweight DDL so existing DB volumes match current models (no Alembic required)."""
+"""Apply lightweight DDL for legacy volumes — see docs/decisions/AgDR-SCHEMA-ENSURE.md.
+
+Alembic is the source of truth for new schema changes. This module is a frozen
+safety net for columns/tables added before strict migration discipline.
+"""
 
 from __future__ import annotations
 
@@ -59,6 +63,19 @@ def ensure_schema(engine: Engine) -> None:
                         text(
                             "ALTER TABLE clients ADD COLUMN IF NOT EXISTS status VARCHAR(32) "
                             "NOT NULL DEFAULT 'active'"
+                        )
+                    )
+
+        if insp.has_table("maintenance_schedules"):
+            cols = {c["name"] for c in insp.get_columns("maintenance_schedules")}
+            if "ai_meta_json" not in cols:
+                if dialect == "sqlite":
+                    conn.execute(text("ALTER TABLE maintenance_schedules ADD COLUMN ai_meta_json JSON DEFAULT '{}'"))
+                else:
+                    conn.execute(
+                        text(
+                            "ALTER TABLE maintenance_schedules "
+                            "ADD COLUMN IF NOT EXISTS ai_meta_json JSONB NOT NULL DEFAULT '{}'::jsonb"
                         )
                     )
 
