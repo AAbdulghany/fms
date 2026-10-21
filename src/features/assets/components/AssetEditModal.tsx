@@ -1,13 +1,17 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "@/lib/api";
-import type { AssetCriticality, AssetLifecycleStatus } from "@/lib/types";
+import type { AssetCriticality, AssetLifecycleStatus, AssetType, AssetTypeRef, User } from "@/lib/types";
+import { AssetTypePicker } from "@/features/assets/components/AssetTypePicker";
 
 type AssetOutApi = {
   id: string;
   site_id: string;
+  client_id?: string;
   name: string;
   category: string;
+  asset_type_id?: string | null;
+  asset_type?: AssetTypeRef | null;
   model?: string | null;
   serial?: string | null;
   floor?: string | null;
@@ -31,8 +35,13 @@ type Props = {
 
 export function AssetEditModal({ open, assetId, onClose, onSaved }: Props) {
   const { t } = useTranslation();
+
+  const [me, setMe] = useState<User | null>(null);
+  const [assetTypes, setAssetTypes] = useState<AssetType[]>([]);
+  const [assetTypesLoading, setAssetTypesLoading] = useState(false);
+
+  const [assetTypeId, setAssetTypeId] = useState("");
   const [name, setName] = useState("");
-  const [category, setCategory] = useState("general");
   const [model, setModel] = useState("");
   const [serial, setSerial] = useState("");
   const [floor, setFloor] = useState("");
@@ -48,14 +57,39 @@ export function AssetEditModal({ open, assetId, onClose, onSaved }: Props) {
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [originalTypeId, setOriginalTypeId] = useState<string | null>(null);
+  const [clientId, setClientId] = useState<string | null>(null);
 
+  const touched = useRef<Set<string>>(new Set());
+
+  // ── Load current user ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!open) return;
+    void apiFetch<User>("/users/me").then(setMe).catch(() => null);
+  }, [open]);
+
+  // ── Load asset types ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!open) return;
+    setAssetTypesLoading(true);
+    const url = clientId ? `/asset-types?client_id=${encodeURIComponent(clientId)}` : "/asset-types";
+    void apiFetch<AssetType[]>(url)
+      .then(setAssetTypes)
+      .catch(() => setAssetTypes([]))
+      .finally(() => setAssetTypesLoading(false));
+  }, [open, clientId]);
+
+  // ── Load asset ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!open || !assetId) return;
     setFetchLoading(true);
+    touched.current = new Set();
     void apiFetch<AssetOutApi>(`/assets/${assetId}`)
       .then((a) => {
         setName(a.name || "");
-        setCategory(a.category || "general");
+        setAssetTypeId(a.asset_type_id || "");
+        setOriginalTypeId(a.asset_type_id || null);
+        setClientId(a.client_id || null);
         setModel(a.model || "");
         setSerial(a.serial || "");
         setFloor(a.floor || "");
@@ -75,6 +109,19 @@ export function AssetEditModal({ open, assetId, onClose, onSaved }: Props) {
       .finally(() => setFetchLoading(false));
   }, [open, assetId, t]);
 
+  // ── Prefill when type changes (only untouched fields) ────────────────────
+  useEffect(() => {
+    if (!assetTypeId || assetTypeId === originalTypeId) return;
+    const ty = assetTypes.find((t) => t.id === assetTypeId);
+    if (!ty) return;
+    if (!touched.current.has("maxAgeYears") && ty.default_max_age_years != null) {
+      setMaxAgeYears(ty.default_max_age_years);
+    }
+    if (!touched.current.has("criticality") && ty.default_criticality != null) {
+      setCriticality(ty.default_criticality as AssetCriticality);
+    }
+  }, [assetTypeId, assetTypes, originalTypeId]);
+
   if (!open) return null;
 
   async function onSubmit(e: FormEvent) {
@@ -86,25 +133,29 @@ export function AssetEditModal({ open, assetId, onClose, onSaved }: Props) {
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean);
-      await apiFetch(`/assets/${assetId}`, {
-        method: "PATCH",
-        json: {
-          name: name.trim(),
-          category: category.trim() || "general",
-          model: model.trim() || null,
-          serial: serial.trim() || null,
-          floor: floor.trim() || null,
-          room: room.trim() || null,
-          smart_labels: smartLabelsArr.length ? smartLabelsArr : null,
-          criticality: criticality || null,
-          warranty_until: warrantyUntil || null,
-          last_maintenance_date: lastMaintenanceDate || null,
-          installed_on: installedOn || null,
-          max_age_years: maxAgeYears,
-          lifecycle_status: lifecycleStatus || null,
-          is_spare: isSpare,
-        },
-      });
+
+      const body: Record<string, unknown> = {
+        name: name.trim(),
+        model: model.trim() || null,
+        serial: serial.trim() || null,
+        floor: floor.trim() || null,
+        room: room.trim() || null,
+        smart_labels: smartLabelsArr.length ? smartLabelsArr : null,
+        criticality: criticality || null,
+        warranty_until: warrantyUntil || null,
+        last_maintenance_date: lastMaintenanceDate || null,
+        installed_on: installedOn || null,
+        max_age_years: maxAgeYears,
+        lifecycle_status: lifecycleStatus || null,
+        is_spare: isSpare,
+      };
+
+      // A1: send asset_type_id when it exists/changed
+      if (assetTypeId) {
+        body.asset_type_id = assetTypeId;
+      }
+
+      await apiFetch(`/assets/${assetId}`, { method: "PATCH", json: body });
       onSaved();
       onClose();
     } catch (err) {
@@ -113,6 +164,8 @@ export function AssetEditModal({ open, assetId, onClose, onSaved }: Props) {
       setLoading(false);
     }
   }
+
+  const typeChanged = assetTypeId !== originalTypeId;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -133,14 +186,24 @@ export function AssetEditModal({ open, assetId, onClose, onSaved }: Props) {
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
+
+            {/* ── A1: Asset Type Picker ──────────────────────────────────── */}
             <div>
-              <label className="mb-1 block text-sm font-medium">{t("category")}</label>
-              <input
-                className="w-full rounded-md border px-3 py-2 text-sm"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
+              <label className="mb-1 block text-sm font-medium">{t("asset_type")}</label>
+              <AssetTypePicker
+                types={assetTypes}
+                value={assetTypeId}
+                onChange={(id) => setAssetTypeId(id)}
+                loading={assetTypesLoading}
+                userRole={me?.role}
               />
+              {typeChanged && (
+                <p className="mt-1 rounded bg-amber-50 px-2 py-1 text-xs text-amber-700">
+                  {t("type_change_label_warning")}
+                </p>
+              )}
             </div>
+
             <div>
               <label className="mb-1 block text-sm font-medium">{t("serial_number")}</label>
               <input
@@ -184,7 +247,10 @@ export function AssetEditModal({ open, assetId, onClose, onSaved }: Props) {
               <select
                 className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
                 value={criticality}
-                onChange={(e) => setCriticality(e.target.value as AssetCriticality | "")}
+                onChange={(e) => {
+                  touched.current.add("criticality");
+                  setCriticality(e.target.value as AssetCriticality | "");
+                }}
               >
                 <option value="">{t("optional")}</option>
                 <option value="low">{t("criticality_low")}</option>
@@ -209,7 +275,9 @@ export function AssetEditModal({ open, assetId, onClose, onSaved }: Props) {
                 <option value="replaced" disabled>{t("lifecycle_replaced")}</option>
               </select>
               {lifecycleStatus === "replaced" && (
-                <p className="mt-0.5 text-xs text-neutral-500">{t("lifecycle_replaced_locked") || "Status locked — asset is retired / out of service."}</p>
+                <p className="mt-0.5 text-xs text-neutral-500">
+                  {t("lifecycle_replaced_locked")}
+                </p>
               )}
             </div>
             <label className="flex items-center gap-2 text-sm">
@@ -219,7 +287,7 @@ export function AssetEditModal({ open, assetId, onClose, onSaved }: Props) {
                 onChange={(e) => setIsSpare(e.target.checked)}
                 className="h-4 w-4 rounded border-neutral-300 text-primary-600"
               />
-              {t("spare_device") || "Spare device (swap-out maintenance)"}
+              {t("spare_device")}
             </label>
             <div>
               <label className="mb-1 block text-sm font-medium">{t("smart_labels")}</label>
@@ -270,7 +338,10 @@ export function AssetEditModal({ open, assetId, onClose, onSaved }: Props) {
                   max={50}
                   className="w-full rounded-md border px-3 py-2 text-sm"
                   value={maxAgeYears}
-                  onChange={(e) => setMaxAgeYears(Math.max(1, Number(e.target.value)))}
+                  onChange={(e) => {
+                    touched.current.add("maxAgeYears");
+                    setMaxAgeYears(Math.max(1, Number(e.target.value)));
+                  }}
                 />
               </div>
             </div>

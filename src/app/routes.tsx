@@ -22,6 +22,7 @@ import { PlatformPackagesPage } from "@/features/platform/pages/PlatformPackages
 import { MaintenanceCompaniesPage } from "@/features/platform/pages/MaintenanceCompaniesPage";
 import { ProfilePage } from "@/features/users/pages/ProfilePage";
 import ReportTemplatesPage from "@/features/reports/pages/ReportTemplatesPage";
+import AssetTypesPage from "@/features/assets/pages/AssetTypesPage";
 
 /** Application route table — pages live under src/features/…/pages/. */
 export function AppRoutes() {
@@ -241,6 +242,20 @@ export function AppRoutes() {
           <ProtectedRoute allowedRoles={["super_admin", "company_admin"]}>
             <Layout>
               <ReportTemplatesPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* A1: Asset Types Library — company_admin / super_admin only */}
+      <Route
+        path="/asset-types"
+        element={
+          <ProtectedRoute allowedRoles={["super_admin", "company_admin"]}>
+            <Layout>
+              <FeatureRoute feature="assets">
+                <AssetTypesPage />
+              </FeatureRoute>
             </Layout>
           </ProtectedRoute>
         }

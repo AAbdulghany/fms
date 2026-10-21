@@ -194,6 +194,64 @@ export type AssetLifecycleStatus = "active" | "warning" | "end_of_life" | "repla
 
 export type AssetCriticality = "low" | "medium" | "high" | "critical";
 
+// ─── A1: Verticals & Asset Types ────────────────────────────────────────────
+
+/** Platform-owned vertical (hospital, hotel, office, …). */
+export interface Vertical {
+  id: string;
+  code: string;
+  name_en: string;
+  name_ar: string;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+/** Lightweight type reference embedded in AssetOut. */
+export interface AssetTypeRef {
+  id: string;
+  code: string;
+  name_en: string;
+  name_ar: string;
+}
+
+/** Tenant-owned asset type (adopted from catalog or custom). */
+export interface AssetType {
+  id: string;
+  code: string;
+  name_en: string;
+  name_ar: string;
+  origin: "catalog" | "custom" | "legacy";
+  vertical_codes: string[];
+  default_max_age_years: number | null;
+  default_max_repair_count: number | null;
+  default_criticality: AssetCriticality | null;
+  default_frequency: "daily" | "weekly" | "monthly" | "quarterly" | "yearly" | null;
+  default_report_template_id: string | null;
+  source_template_id: string | null;
+  source_version: number | null;
+  is_active: boolean;
+  recommended?: boolean;
+  asset_count?: number;
+}
+
+/** Platform catalog entry (asset_type_templates). */
+export interface AssetTypeTemplate {
+  id: string;
+  code: string;
+  name_en: string;
+  name_ar: string;
+  vertical_codes: string[];
+  default_max_age_years: number | null;
+  default_max_repair_count: number | null;
+  default_criticality: AssetCriticality | null;
+  default_frequency: "daily" | "weekly" | "monthly" | "quarterly" | "yearly" | null;
+  version: number;
+  adopted?: boolean;
+  asset_type_id?: string | null;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+
 export interface Asset {
   id: string;
   asset_id: string;
@@ -204,6 +262,9 @@ export interface Asset {
   company_name?: string;
   type: string;
   category: string;
+  /** A1: linked asset type — present when asset_type_id is set. */
+  asset_type_id?: string | null;
+  asset_type?: AssetTypeRef | null;
   manufacturer?: string;
   model?: string;
   serial_number?: string;

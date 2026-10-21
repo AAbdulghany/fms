@@ -1,11 +1,22 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "@/lib/api";
-import type { AssetCriticality, User, UserRole } from "@/lib/types";
+import type { AssetCriticality, AssetType, User, UserRole } from "@/lib/types";
+import { AssetTypePicker } from "@/features/assets/components/AssetTypePicker";
+import { localizedName } from "@/features/assets/hooks/useAssetTypes";
+import { useVerticals, verticalName } from "@/shared/hooks/useVerticals";
+
+function hasTypeDefaults(ty: AssetType): boolean {
+  return (
+    ty.default_max_age_years != null ||
+    ty.default_criticality != null ||
+    ty.default_frequency != null
+  );
+}
 
 type SiteRow = { id: string; name: string; client_id: string; company_name?: string | null };
 type TemplateRow = { id: string; name: string };
-type ClientRow = { id: string; legal_name: string };
+type ClientRow = { id: string; legal_name: string; vertical_code?: string | null };
 
 const PICK_CLIENT_ROLES = new Set<UserRole>([
   "company_admin",
@@ -30,15 +41,25 @@ export function AssetRegisterModal({
   initialSiteId,
   initialClientId,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
+
   const [me, setMe] = useState<User | null>(null);
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [sites, setSites] = useState<SiteRow[]>([]);
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
+  const [assetTypes, setAssetTypes] = useState<AssetType[]>([]);
+  const [assetTypesLoading, setAssetTypesLoading] = useState(false);
+  const { verticals } = useVerticals(open);
+
   const [clientId, setClientId] = useState(initialClientId || "");
   const [siteId, setSiteId] = useState(initialSiteId || "");
   const [name, setName] = useState("");
-  const [category, setCategory] = useState("general");
+
+  // A1: type picker state
+  const [assetTypeId, setAssetTypeId] = useState("");
+  const [freeTextCategory, setFreeTextCategory] = useState("general");
+
   const [model, setModel] = useState("");
   const [serial, setSerial] = useState("");
   const [floor, setFloor] = useState("");
@@ -55,6 +76,9 @@ export function AssetRegisterModal({
   const [templateId, setTemplateId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // A1: track which lifecycle fields the user has explicitly touched
+  const touched = useRef<Set<string>>(new Set());
 
   const currentAgeYears = installedOn
     ? Math.max(0, (Date.now() - new Date(installedOn).getTime()) / (365.25 * 24 * 3600 * 1000))
@@ -87,6 +111,60 @@ export function AssetRegisterModal({
   const showLockedClient = !canPickClient || clients.length === 1;
   const showSitePicker = siteOptions.length !== 1;
 
+  // Effective client for vertical lookups
+  const effectiveClientId =
+    lockedClientId ||
+    clientId ||
+    lockedClient?.id ||
+    (clients.length === 1 ? clients[0].id : "");
+  const effectiveClient = clients.find((c) => c.id === effectiveClientId);
+
+  // ── Load asset types whenever effective client changes ──────────────────
+  useEffect(() => {
+    if (!open) return;
+    setAssetTypesLoading(true);
+    const url = effectiveClientId
+      ? `/asset-types?client_id=${encodeURIComponent(effectiveClientId)}`
+      : "/asset-types";
+    void apiFetch<AssetType[]>(url)
+      .then(setAssetTypes)
+      .catch(() => setAssetTypes([]))
+      .finally(() => setAssetTypesLoading(false));
+  }, [open, effectiveClientId]);
+
+  // ── Prefill lifecycle defaults when asset type changes ──────────────────
+  useEffect(() => {
+    if (!assetTypeId) return;
+    const ty = assetTypes.find((t) => t.id === assetTypeId);
+    if (!ty) return;
+
+    if (!touched.current.has("maxAgeYears") && ty.default_max_age_years != null) {
+      setMaxAgeYears(ty.default_max_age_years);
+    }
+    if (!touched.current.has("criticality") && ty.default_criticality != null) {
+      setCriticality(ty.default_criticality as AssetCriticality);
+    }
+    if (!touched.current.has("frequency") && ty.default_frequency != null) {
+      setFrequency(ty.default_frequency);
+    }
+    const tplKnown =
+      ty.default_report_template_id != null &&
+      templates.some((tm) => tm.id === ty.default_report_template_id);
+    if (!touched.current.has("templateId") && tplKnown) {
+      setTemplateId(ty.default_report_template_id as string);
+    }
+    // Schedule section is pre-filled only when the type supplies both values.
+    // The client still sends `schedule` explicitly; the user can switch it off.
+    if (
+      !touched.current.has("scheduleEnabled") &&
+      ty.default_frequency != null &&
+      tplKnown
+    ) {
+      setScheduleEnabled(true);
+    }
+  }, [assetTypeId, assetTypes, templates]);
+
+  // ── Initial load (me, templates, clients, sites) ────────────────────────
   useEffect(() => {
     if (!open) return;
     setSiteId(initialSiteId || "");
@@ -153,17 +231,37 @@ export function AssetRegisterModal({
 
   if (!open) return null;
 
+  function resetForm() {
+    setName("");
+    setAssetTypeId("");
+    setFreeTextCategory("general");
+    touched.current = new Set();
+    setModel("");
+    setSerial("");
+    setFloor("");
+    setRoom("");
+    setSmartLabels("");
+    setCriticality("");
+    setWarrantyUntil("");
+    setLastMaintenanceDate("");
+    setInstalledOn("");
+    setMaxAgeYears(5);
+    setIsSpare(false);
+    setScheduleEnabled(false);
+    setFrequency("monthly");
+    setTemplateId("");
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    const effectiveClientId = lockedClientId || clientId || lockedClient?.id;
-    const effectiveSiteId =
-      siteId || (siteOptions.length === 1 ? siteOptions[0].id : "");
+    const eff = lockedClientId || clientId || lockedClient?.id;
+    const effSiteId = siteId || (siteOptions.length === 1 ? siteOptions[0].id : "");
 
-    if (!effectiveSiteId) {
+    if (!effSiteId) {
       setError(t("select_site"));
       return;
     }
-    if (canPickClient && !effectiveClientId) {
+    if (canPickClient && !eff) {
       setError(t("select_company"));
       return;
     }
@@ -171,6 +269,12 @@ export function AssetRegisterModal({
       setError(t("template_required"));
       return;
     }
+    // Require asset type when library is non-empty
+    if (assetTypes.length > 0 && !assetTypeId) {
+      setError(t("select_asset_type"));
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -178,41 +282,33 @@ export function AssetRegisterModal({
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean);
-      await apiFetch("/assets", {
-        method: "POST",
-        json: {
-          site_id: effectiveSiteId,
-          name: name.trim(),
-          category: category.trim() || "general",
-          model: model.trim() || undefined,
-          serial: serial.trim() || undefined,
-          floor: floor.trim() || undefined,
-          room: room.trim() || undefined,
-          smart_labels: smartLabelsArr.length ? smartLabelsArr : undefined,
-          criticality: criticality || undefined,
-          warranty_until: warrantyUntil || undefined,
-          last_maintenance_date: lastMaintenanceDate || undefined,
-          installed_on: installedOn || undefined,
-          max_age_years: maxAgeYears,
-          is_spare: isSpare,
-          schedule: scheduleEnabled
-            ? { template_id: templateId, frequency }
-            : undefined,
-        },
-      });
-      setName("");
-      setModel("");
-      setSerial("");
-      setFloor("");
-      setRoom("");
-      setSmartLabels("");
-      setCriticality("");
-      setWarrantyUntil("");
-      setLastMaintenanceDate("");
-      setInstalledOn("");
-      setMaxAgeYears(5);
-      setIsSpare(false);
-      setScheduleEnabled(false);
+
+      const body: Record<string, unknown> = {
+        site_id: effSiteId,
+        name: name.trim(),
+        model: model.trim() || undefined,
+        serial: serial.trim() || undefined,
+        floor: floor.trim() || undefined,
+        room: room.trim() || undefined,
+        smart_labels: smartLabelsArr.length ? smartLabelsArr : undefined,
+        criticality: criticality || undefined,
+        warranty_until: warrantyUntil || undefined,
+        last_maintenance_date: lastMaintenanceDate || undefined,
+        installed_on: installedOn || undefined,
+        max_age_years: maxAgeYears,
+        is_spare: isSpare,
+        schedule: scheduleEnabled ? { template_id: templateId, frequency } : undefined,
+      };
+
+      // A1: prefer asset_type_id; fall back to free-text category for pre-backfill tenants
+      if (assetTypeId) {
+        body.asset_type_id = assetTypeId;
+      } else {
+        body.category = freeTextCategory.trim() || "general";
+      }
+
+      await apiFetch("/assets", { method: "POST", json: body });
+      resetForm();
       onCreated();
       onClose();
     } catch (err) {
@@ -226,6 +322,13 @@ export function AssetRegisterModal({
     lockedClient ||
     (clients.length === 1 ? clients[0] : null) ||
     (clientId ? clients.find((c) => c.id === clientId) : null);
+
+  // Vertical label for the "Recommended for …" optgroup
+  const vertical = verticals.find((v) => v.code === effectiveClient?.vertical_code);
+  const verticalLabel = vertical
+    ? verticalName(vertical, lang)
+    : (effectiveClient?.vertical_code ?? undefined);
+  const selectedType = assetTypes.find((ty) => ty.id === assetTypeId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -302,14 +405,30 @@ export function AssetRegisterModal({
               onChange={(e) => setName(e.target.value)}
             />
           </div>
+
+          {/* ── A1: Asset Type Picker ──────────────────────────────────── */}
           <div>
-            <label className="mb-1 block text-sm font-medium">{t("category")}</label>
-            <input
-              className="w-full rounded-md border px-3 py-2 text-sm"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
+            <label className="mb-1 block text-sm font-medium">{t("asset_type")} *</label>
+            <AssetTypePicker
+              types={assetTypes}
+              value={assetTypeId}
+              onChange={(id) => {
+                setAssetTypeId(id);
+              }}
+              loading={assetTypesLoading}
+              userRole={me?.role}
+              verticalLabel={verticalLabel}
+              freeTextCategory={freeTextCategory}
+              onFreeTextChange={setFreeTextCategory}
+              required
             />
+            {selectedType && hasTypeDefaults(selectedType) && (
+              <p className="mt-1 text-xs text-neutral-500">
+                {t("type_defaults_applied", { name: localizedName(selectedType, lang) })}
+              </p>
+            )}
           </div>
+
           <div>
             <label className="mb-1 block text-sm font-medium">{t("serial_number")}</label>
             <input
@@ -344,7 +463,10 @@ export function AssetRegisterModal({
             <select
               className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
               value={criticality}
-              onChange={(e) => setCriticality(e.target.value as AssetCriticality | "")}
+              onChange={(e) => {
+                touched.current.add("criticality");
+                setCriticality(e.target.value as AssetCriticality | "");
+              }}
             >
               <option value="">{t("optional")}</option>
               <option value="low">{t("criticality_low")}</option>
@@ -403,13 +525,18 @@ export function AssetRegisterModal({
                 max={50}
                 className="w-full rounded-md border px-3 py-2 text-sm"
                 value={maxAgeYears}
-                onChange={(e) => setMaxAgeYears(Math.max(1, Number(e.target.value)))}
+                onChange={(e) => {
+                  touched.current.add("maxAgeYears");
+                  setMaxAgeYears(Math.max(1, Number(e.target.value)));
+                }}
               />
             </div>
           </div>
           {currentAgeYears !== null && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-neutral-500">{t("current_age")}</label>
+              <label className="mb-1 block text-sm font-medium text-neutral-500">
+                {t("current_age")}
+              </label>
               <input
                 readOnly
                 className="w-full rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-700"
@@ -424,13 +551,16 @@ export function AssetRegisterModal({
               onChange={(e) => setIsSpare(e.target.checked)}
               className="h-4 w-4 rounded border-neutral-300 text-primary-600"
             />
-            {t("spare_device") || "Spare device (swap-out maintenance)"}
+            {t("spare_device")}
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
               checked={scheduleEnabled}
-              onChange={(e) => setScheduleEnabled(e.target.checked)}
+              onChange={(e) => {
+                touched.current.add("scheduleEnabled");
+                setScheduleEnabled(e.target.checked);
+              }}
             />
             {t("enable_maintenance_schedule")}
           </label>
@@ -441,8 +571,13 @@ export function AssetRegisterModal({
                 <select
                   className="w-full rounded-md border px-3 py-2 text-sm"
                   value={frequency}
-                  onChange={(e) => setFrequency(e.target.value)}
+                  onChange={(e) => {
+                    touched.current.add("frequency");
+                    setFrequency(e.target.value);
+                  }}
                 >
+                  <option value="daily">{t("frequency_daily")}</option>
+                  <option value="weekly">{t("frequency_weekly")}</option>
                   <option value="monthly">{t("frequency_monthly")}</option>
                   <option value="quarterly">{t("frequency_quarterly")}</option>
                   <option value="yearly">{t("frequency_yearly")}</option>
@@ -454,7 +589,10 @@ export function AssetRegisterModal({
                   required
                   className="w-full rounded-md border px-3 py-2 text-sm"
                   value={templateId}
-                  onChange={(e) => setTemplateId(e.target.value)}
+                  onChange={(e) => {
+                    touched.current.add("templateId");
+                    setTemplateId(e.target.value);
+                  }}
                 >
                   <option value="">{t("select_template")}</option>
                   {templates.map((tm) => (
@@ -480,7 +618,7 @@ export function AssetRegisterModal({
               disabled={loading}
               className="rounded-md bg-primary-600 px-4 py-2 text-sm text-white disabled:opacity-50"
             >
-              {t("create")}
+              {loading ? t("loading") : t("create")}
             </button>
           </div>
         </form>
