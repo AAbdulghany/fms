@@ -1,12 +1,15 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { clearTokens } from "@/lib/api";
+import { apiFetch, clearTokens } from "@/lib/api";
 import { applyLanguage, getStoredLanguage } from "@/lib/language";
+import type { User } from "@/lib/types";
 import { Sidebar } from "@/shared/components/Sidebar";
+import { MobileBottomNav } from "@/shared/components/MobileBottomNav";
 import ClockWidget from "@/shared/components/ClockWidget";
 import NotificationBell from "@/shared/components/NotificationBell";
 import { OrbitLogo } from "@/shared/components/OrbitLogo";
+import { InstallOrbitBanner } from "@/features/pwa/InstallOrbitBanner";
 
 interface LayoutProps {
   children: ReactNode;
@@ -16,7 +19,24 @@ export function Layout({ children }: LayoutProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   const isRTL = i18n.dir() === "rtl";
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadUser() {
+      try {
+        const data = await apiFetch<User>("/users/me");
+        if (!cancelled) setUser(data);
+      } catch {
+        if (!cancelled) setUser(null);
+      }
+    }
+    void loadUser();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const toggleLang = () => {
     const next = i18n.language === "ar" ? "en" : "ar";
@@ -92,7 +112,7 @@ export function Layout({ children }: LayoutProps) {
             sidebarOpen ? (isRTL ? "max-lg:mr-64" : "max-lg:ml-64") : ""
           }`}
         >
-          <main className="flex-1 min-w-0 overflow-x-hidden px-4 py-6 lg:px-8">
+          <main className="flex-1 min-w-0 overflow-x-hidden px-4 py-6 pb-24 lg:px-8 lg:pb-6">
             <div className="mx-auto w-full max-w-[min(100%,88rem)]">{children}</div>
           </main>
         </div>
@@ -105,6 +125,9 @@ export function Layout({ children }: LayoutProps) {
           aria-hidden="true"
         />
       )}
+
+      <MobileBottomNav user={user} onMore={() => setSidebarOpen(true)} />
+      <InstallOrbitBanner />
     </div>
   );
 }

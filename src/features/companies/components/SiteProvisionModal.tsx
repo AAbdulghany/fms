@@ -1,7 +1,7 @@
-import { FormEvent, useEffect, useState } from "react";
+﻿import { FormEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "@/lib/api";
-import { ProvisionCredentialsModal } from "@/components/ProvisionCredentialsModal";
+import { ProvisionCredentialsModal } from "@/features/companies/components/ProvisionCredentialsModal";
 
 type ProvisionCreds = { username: string; email: string; initialPassword: string };
 

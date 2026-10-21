@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+﻿import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -6,7 +6,7 @@ import { apiFetch, apiFetchBlob, downloadAuthenticatedFile, resolveApiError } fr
 import { resolveEffectiveReportSchema } from "@/lib/reportSchema";
 import type { AuditLog, Comment, MaintenanceReport, ReportTemplate, WorkOrder, WorkOrderDocument, WorkOrderStatus, WorkOrderUserBrief } from "@/lib/types";
 import { workOrderStatusPillClass } from "@/lib/workOrderDisplay";
-import { WorkOrderRequestReviewModal } from "@/components/WorkOrderRequestReviewModal";
+import { WorkOrderRequestReviewModal } from "@/features/work-orders/components/WorkOrderRequestReviewModal";
 
 interface UserMe {
   id: string;
@@ -153,7 +153,7 @@ export function WorkOrderDetailPage() {
         setAssignableUsers(assignable);
         setDocuments(docs);
       }).catch(() => {
-        /* secondary data — page remains usable */
+        /* secondary data â€” page remains usable */
       });
 
       void loadReportData(w, id);
@@ -579,7 +579,7 @@ export function WorkOrderDetailPage() {
         <p className="flex flex-wrap items-center gap-2 text-sm text-neutral-500">
           <span>{t("status")}:</span>
           <span className={workOrderStatusPillClass(wo.status)}>{wo.status}</span>
-          <span className="font-mono text-xs text-neutral-400">· {wo.id}</span>
+          <span className="font-mono text-xs text-neutral-400">Â· {wo.id}</span>
         </p>
       </div>
 
@@ -588,7 +588,7 @@ export function WorkOrderDetailPage() {
         <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-xs font-medium text-neutral-500">{t("company")}</dt>
-            <dd className="mt-0.5 text-neutral-900">{wo.company_name || "—"}</dd>
+            <dd className="mt-0.5 text-neutral-900">{wo.company_name || "â€”"}</dd>
           </div>
           <div>
             <dt className="text-xs font-medium text-neutral-500">{t("site")}</dt>
@@ -598,7 +598,7 @@ export function WorkOrderDetailPage() {
                   {wo.site_name}
                 </Link>
               ) : (
-                "—"
+                "â€”"
               )}
             </dd>
           </div>
@@ -622,7 +622,7 @@ export function WorkOrderDetailPage() {
                   {wo.asset_name || wo.asset_label_code || wo.asset_id}
                 </Link>
               ) : (
-                "—"
+                "â€”"
               )}
             </dd>
           </div>
@@ -704,7 +704,7 @@ export function WorkOrderDetailPage() {
                 </div>
               </div>
             ) : (
-              <p className="mt-1 text-sm text-neutral-400">—</p>
+              <p className="mt-1 text-sm text-neutral-400">â€”</p>
             )}
             <p className="mt-2 text-xs text-neutral-500">
               {t("created_at")}: {new Date(wo.opened_at).toLocaleString()}
@@ -815,7 +815,7 @@ export function WorkOrderDetailPage() {
                   id="wo-assignee-search"
                   type="search"
                   className="min-w-0 flex-1 rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  placeholder={t("search_assignee") || "Search users…"}
+                  placeholder={t("search_assignee") || "Search usersâ€¦"}
                   value={assigneeSearch}
                   onChange={(e) => {
                     setAssigneeSearch(e.target.value);
@@ -1116,7 +1116,7 @@ export function WorkOrderDetailPage() {
                             setAnswers((a) => ({ ...a, [field.id]: e.target.value }))
                           }
                         >
-                          <option value="">—</option>
+                          <option value="">â€”</option>
                           {field.options.map((o) => (
                             <option key={o} value={o}>
                               {optionLabel(o)}
@@ -1187,7 +1187,7 @@ export function WorkOrderDetailPage() {
                                 disabled={!canEditReport || report?.status !== "draft"}
                                 onClick={() => setParts(parts.filter((_, i) => i !== idx))}
                               >
-                                ✕
+                                âœ•
                               </button>
                             </div>
                           ))}
@@ -1333,7 +1333,7 @@ export function WorkOrderDetailPage() {
               title={t("attach_document") || "Attach document"}
             >
               <span className="text-xl leading-none" aria-hidden>
-                🔗
+                ðŸ”—
               </span>
               <input
                 type="file"
@@ -1362,7 +1362,7 @@ export function WorkOrderDetailPage() {
               rows={4}
               value={holdReason}
               onChange={(e) => setHoldReason(e.target.value)}
-              placeholder={t("hold_reason_placeholder") || "Enter hold reason…"}
+              placeholder={t("hold_reason_placeholder") || "Enter hold reasonâ€¦"}
               autoFocus
             />
             <div className="mt-4 flex justify-end gap-3">
@@ -1401,7 +1401,7 @@ export function WorkOrderDetailPage() {
               rows={4}
               value={cancelReason}
               onChange={(e) => setCancelReason(e.target.value)}
-              placeholder={t("cancel_reason_placeholder") || "Enter cancellation reason…"}
+              placeholder={t("cancel_reason_placeholder") || "Enter cancellation reasonâ€¦"}
               autoFocus
             />
             <div className="mt-4 flex justify-end gap-3">
@@ -1464,9 +1464,9 @@ export function WorkOrderDetailPage() {
                     {item.action === "create" ? t("history_created_wo") : null}
                     {item.action === "request" ? t("history_submitted_request") : null}
                     {item.action === "update" && item.before_json?.status && item.after_json?.status
-                      ? `${t("history_status_changed")}: ${String(item.before_json.status)} → ${String(item.after_json.status)}${
+                      ? `${t("history_status_changed")}: ${String(item.before_json.status)} â†’ ${String(item.after_json.status)}${
                           item.after_json.decline_reason
-                            ? ` — ${t("decline_reason")}: ${String(item.after_json.decline_reason)}`
+                            ? ` â€” ${t("decline_reason")}: ${String(item.after_json.decline_reason)}`
                             : ""
                         }`
                       : null}
@@ -1498,7 +1498,7 @@ export function WorkOrderDetailPage() {
                         {item.before_json?.status &&
                         item.after_json?.status &&
                         String(item.before_json.status) !== String(item.after_json.status)
-                          ? ` · ${t("status")}: ${String(item.before_json.status)} → ${String(item.after_json.status)}`
+                          ? ` Â· ${t("status")}: ${String(item.before_json.status)} â†’ ${String(item.after_json.status)}`
                           : ""}
                       </span>
                     ) : null}
@@ -1509,7 +1509,7 @@ export function WorkOrderDetailPage() {
                     ) : null}
                     {item.action === "document" ? (
                       <span className="flex flex-wrap items-center gap-2">
-                        🔗{" "}
+                        ðŸ”—{" "}
                         {item.description === REPORT_PDF_DOC ? (
                           <>
                             {t("report_pdf_saved") || "Report PDF"}:{" "}

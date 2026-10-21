@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
@@ -12,9 +12,9 @@ import type { PaginatedWorkOrders, WorkOrder } from "@/lib/types";
 
 import { urgencyBadgeClass, workOrderStatusPillClass } from "@/lib/workOrderDisplay";
 
-import { FilterBar } from "@/components/FilterBar";
+import { FilterBar } from "@/shared/components/FilterBar";
 
-import { WorkOrderRequestReviewModal } from "@/components/WorkOrderRequestReviewModal";
+import { WorkOrderRequestReviewModal } from "@/features/work-orders/components/WorkOrderRequestReviewModal";
 
 
 
@@ -1415,7 +1415,7 @@ export function WorkOrdersPage() {
 
                 >
 
-                  {w.company_name || "—"}
+                  {w.company_name || "â€”"}
 
                 </td>
 
@@ -1427,7 +1427,7 @@ export function WorkOrdersPage() {
 
                 >
 
-                  {w.site_name || "—"}
+                  {w.site_name || "â€”"}
 
                 </td>
 
@@ -1439,7 +1439,7 @@ export function WorkOrdersPage() {
 
                 >
 
-                  {w.creator?.full_name || w.creator?.email || "—"}
+                  {w.creator?.full_name || w.creator?.email || "â€”"}
 
                 </td>
 
@@ -1451,7 +1451,7 @@ export function WorkOrdersPage() {
 
                 >
 
-                  {w.assignee?.full_name || w.assignee?.email || "—"}
+                  {w.assignee?.full_name || w.assignee?.email || "â€”"}
 
                 </td>
 
@@ -1493,7 +1493,7 @@ export function WorkOrdersPage() {
 
                     ) : (
 
-                      "—"
+                      "â€”"
 
                     )}
 

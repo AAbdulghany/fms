@@ -1,14 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { apiFetch } from "@/lib/api";
 import { urgencyBadgeClass, workOrderStatusPillClass } from "@/lib/workOrderDisplay";
 import type { Site, Asset, AssetLifecycleStatus, WorkOrder, PaginatedWorkOrders } from "@/lib/types";
-import { EmptyState } from "@/components/EmptyState";
-import { AssetLifecycleBadge } from "@/components/AssetLifecycleBadge";
-import { AssetRegisterModal } from "@/components/AssetRegisterModal";
-import { SiteEditModal } from "@/components/SiteEditModal";
-import { SiteQRModal } from "@/components/SiteQrModal";
+import { EmptyState } from "@/shared/components/EmptyState";
+import { AssetLifecycleBadge } from "@/features/assets/components/AssetLifecycleBadge";
+import { AssetRegisterModal } from "@/features/assets/components/AssetRegisterModal";
+import { SiteEditModal } from "@/features/companies/components/SiteEditModal";
+import { SiteQRModal } from "@/features/companies/components/SiteQrModal";
 
 type AssetOutApi = {
   id: string;
@@ -29,7 +29,7 @@ function mapToDisplayAsset(a: AssetOutApi): Asset {
   }
   return {
     id: a.id,
-    asset_id: a.name || `${a.id.slice(0, 8)}…`,
+    asset_id: a.name || `${a.id.slice(0, 8)}â€¦`,
     site_id: a.site_id,
     company_id: "",
     type: a.name || a.category,
@@ -129,13 +129,13 @@ export default function SiteDetailPage() {
         <Link to="/dashboard" className="hover:text-primary-600">
           {t("dashboard")}
         </Link>
-        <span>›</span>
+        <span>â€º</span>
         {site.company_name && (
           <>
             <Link to={`/companies/${site.company_id}`} className="hover:text-primary-600">
               {site.company_name}
             </Link>
-            <span>›</span>
+            <span>â€º</span>
           </>
         )}
         <span className="font-medium text-neutral-900">{site.name}</span>

@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "@/lib/api";
-import { CategoryObservationsEditor } from "@/components/CategoryObservationsEditor";
+import { CategoryObservationsEditor } from "@/shared/components/CategoryObservationsEditor";
 
 type TemplateRow = {
   id: string;
@@ -49,7 +49,7 @@ export default function ReportTemplatesPage() {
           updated: result.updated,
           unchanged: result.unchanged,
         }) ||
-          `Sync complete — created: ${result.created}, updated: ${result.updated}, unchanged: ${result.unchanged}`
+          `Sync complete â€” created: ${result.created}, updated: ${result.updated}, unchanged: ${result.unchanged}`
       );
       await load();
     } catch (err) {
@@ -132,7 +132,7 @@ export default function ReportTemplatesPage() {
                       {tpl.code ? (
                         <span className="font-mono text-sm text-neutral-700">{tpl.code}</span>
                       ) : (
-                        <span className="text-sm text-neutral-400">—</span>
+                        <span className="text-sm text-neutral-400">â€”</span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-sm text-neutral-600">v{tpl.version ?? 1}</td>

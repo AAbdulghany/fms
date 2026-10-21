@@ -1,0 +1,1711 @@
+{
+  "version": "2.21",
+  "children": [
+    {
+      "type": "frame",
+      "id": "bi8Au",
+      "x": 0,
+      "y": 0,
+      "name": "Frame",
+      "clip": true,
+      "width": 800,
+      "height": 600,
+      "fill": "#FFFFFF",
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "XszEw",
+      "x": 880,
+      "y": 0,
+      "name": "Orbit mobile-first concepts",
+      "clip": true,
+      "width": 980,
+      "fill": "$bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": 32,
+      "children": [
+        {
+          "type": "text",
+          "id": "Z2PEO",
+          "name": "Board title",
+          "fill": "$ink",
+          "content": "Orbit AM — mobile-first layouts",
+          "fontFamily": "$font",
+          "fontSize": 28,
+          "fontWeight": "600"
+        },
+        {
+          "type": "text",
+          "id": "PH4Aa",
+          "name": "Board subtitle",
+          "fill": "$muted",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Pilot pick: Concept C · Field tabs. Desktop sidebar stays. Native deferred (1C).",
+          "fontFamily": "$font",
+          "fontSize": 14,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "C4tRZd",
+          "name": "Concept C row",
+          "width": "fill_container",
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "kvN2g",
+              "name": "Concept C label col",
+              "width": 220,
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "LF0Gk",
+                  "name": "C tag",
+                  "fill": "$teal",
+                  "content": "C · RECOMMENDED",
+                  "fontFamily": "$font",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "R69ryX",
+                  "name": "C title",
+                  "fill": "$ink",
+                  "content": "Field tabs",
+                  "fontFamily": "$font",
+                  "fontSize": 20,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "sSmCI",
+                  "name": "C blurb",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Bottom tabs: Home · Work · Assets · More. One-handed field use. Sidebar unchanged on lg+.",
+                  "fontFamily": "$font",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "l5vyKj",
+              "name": "C Phone",
+              "clip": true,
+              "width": 280,
+              "height": 560,
+              "fill": "$surface",
+              "cornerRadius": 28,
+              "stroke": "$ink",
+              "strokeWidth": 2,
+              "strokeAlignment": "inner",
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "rlywm",
+                  "name": "C notch",
+                  "width": 90,
+                  "height": 18,
+                  "fill": "$ink",
+                  "cornerRadius": 10
+                },
+                {
+                  "type": "frame",
+                  "id": "pafC8",
+                  "name": "C header",
+                  "width": "fill_container",
+                  "stroke": "$line",
+                  "strokeWidth": {
+                    "bottom": 1
+                  },
+                  "strokeAlignment": "inner",
+                  "gap": 10,
+                  "padding": [
+                    10,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "v9QKk",
+                      "name": "C menu icon",
+                      "width": 18,
+                      "height": 18,
+                      "icon": "menu",
+                      "library": "lucide",
+                      "fill": "$ink"
+                    },
+                    {
+                      "type": "text",
+                      "id": "PLNi7",
+                      "name": "C brand",
+                      "fill": "$ink",
+                      "content": "Orbit",
+                      "fontFamily": "$font",
+                      "fontSize": 15,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Fti1D",
+                  "name": "C body",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$bg",
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 14,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Q2gMun",
+                      "name": "My queue",
+                      "width": "fill_container",
+                      "fill": "$white",
+                      "cornerRadius": 12,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "strokeAlignment": "inner",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "K4mfv",
+                          "name": "My queue t",
+                          "fill": "$ink",
+                          "content": "My queue",
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "m8D7ax",
+                          "name": "My queue s",
+                          "fill": "$muted",
+                          "content": "Tap a work order to start",
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "OSvXP",
+                      "name": "WO-1042",
+                      "width": "fill_container",
+                      "fill": "$white",
+                      "cornerRadius": 12,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "strokeAlignment": "inner",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "JnkJZ",
+                          "name": "WO-1042 t",
+                          "fill": "$ink",
+                          "content": "WO-1042",
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "J1gZp2",
+                          "name": "WO-1042 s",
+                          "fill": "$muted",
+                          "content": "HVAC · Floor 3 · In progress",
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "uacXk",
+                      "name": "WO-1038",
+                      "width": "fill_container",
+                      "fill": "$white",
+                      "cornerRadius": 12,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "strokeAlignment": "inner",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "em9LL",
+                          "name": "WO-1038 t",
+                          "fill": "$ink",
+                          "content": "WO-1038",
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "U1S3g",
+                          "name": "WO-1038 s",
+                          "fill": "$muted",
+                          "content": "Electrical · Assigned",
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "LNFZd",
+                  "name": "C tabs",
+                  "width": "fill_container",
+                  "height": 56,
+                  "fill": "$white",
+                  "stroke": "$line",
+                  "strokeWidth": {
+                    "top": 1
+                  },
+                  "strokeAlignment": "inner",
+                  "padding": [
+                    6,
+                    4,
+                    8,
+                    4
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "UYPtn",
+                      "name": "Tab Home",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "xK3G6",
+                          "name": "Home ic",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "layout-dashboard",
+                          "library": "lucide",
+                          "fill": "$muted"
+                        },
+                        {
+                          "type": "text",
+                          "id": "P35U3",
+                          "name": "Home lb",
+                          "fill": "$muted",
+                          "content": "Home",
+                          "fontFamily": "$font",
+                          "fontSize": 10,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "s3Iqy",
+                      "name": "Tab Work",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "geN9f",
+                          "name": "Work ic",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "clipboard-list",
+                          "library": "lucide",
+                          "fill": "$teal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "bgu3I",
+                          "name": "Work lb",
+                          "fill": "$teal",
+                          "content": "Work",
+                          "fontFamily": "$font",
+                          "fontSize": 10,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "SWOvx",
+                      "name": "Tab Assets",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "N7RVl",
+                          "name": "Assets ic",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "boxes",
+                          "library": "lucide",
+                          "fill": "$muted"
+                        },
+                        {
+                          "type": "text",
+                          "id": "v1qH0",
+                          "name": "Assets lb",
+                          "fill": "$muted",
+                          "content": "Assets",
+                          "fontFamily": "$font",
+                          "fontSize": 10,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "hLGv8",
+                      "name": "Tab More",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "dzEAj",
+                          "name": "More ic",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "menu",
+                          "library": "lucide",
+                          "fill": "$muted"
+                        },
+                        {
+                          "type": "text",
+                          "id": "HlKQz",
+                          "name": "More lb",
+                          "fill": "$muted",
+                          "content": "More",
+                          "fontFamily": "$font",
+                          "fontSize": 10,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "JWmvT",
+              "name": "C Desktop",
+              "clip": true,
+              "width": 420,
+              "height": 280,
+              "fill": "$white",
+              "cornerRadius": 12,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "strokeAlignment": "inner",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "i0U00V",
+                  "name": "C sidebar",
+                  "width": 120,
+                  "height": "fill_container",
+                  "fill": "$bg",
+                  "stroke": "$line",
+                  "strokeWidth": {
+                    "right": 1
+                  },
+                  "strokeAlignment": "inner",
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "oAUBW",
+                      "name": "nav Dashboard",
+                      "fill": "$teal",
+                      "content": "Dashboard",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "x6nq3l",
+                      "name": "nav Companies",
+                      "fill": "$muted",
+                      "content": "Companies",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "500"
+                    },
+                    {
+                      "type": "text",
+                      "id": "pFt7I",
+                      "name": "nav Assets",
+                      "fill": "$muted",
+                      "content": "Assets",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "500"
+                    },
+                    {
+                      "type": "text",
+                      "id": "acUBE",
+                      "name": "nav Work orders",
+                      "fill": "$muted",
+                      "content": "Work orders",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "500"
+                    },
+                    {
+                      "type": "text",
+                      "id": "bisGL",
+                      "name": "nav Invoices",
+                      "fill": "$muted",
+                      "content": "Invoices",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "500"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "OpS7t",
+                  "name": "C main",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "wuuVr",
+                      "name": "C desk title",
+                      "fill": "$ink",
+                      "content": "Dashboard",
+                      "fontFamily": "$font",
+                      "fontSize": 16,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Y9z0D",
+                      "name": "bar0",
+                      "width": 240,
+                      "height": 14,
+                      "fill": "$bg",
+                      "cornerRadius": 6
+                    },
+                    {
+                      "type": "frame",
+                      "id": "gBXQ4",
+                      "name": "bar1",
+                      "width": 180,
+                      "height": 14,
+                      "fill": "$bg",
+                      "cornerRadius": 6
+                    },
+                    {
+                      "type": "frame",
+                      "id": "lPcpv",
+                      "name": "bar2",
+                      "width": 240,
+                      "height": 14,
+                      "fill": "$bg",
+                      "cornerRadius": 6
+                    },
+                    {
+                      "type": "frame",
+                      "id": "f6Hm2L",
+                      "name": "bar3",
+                      "width": 180,
+                      "height": 14,
+                      "fill": "$bg",
+                      "cornerRadius": 6
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "LBBEw",
+          "name": "Overlay drawer row",
+          "width": "fill_container",
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "LOCLl",
+              "name": "Overlay drawer col",
+              "width": 220,
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "uMOFq",
+                  "name": "Overlay drawer tag",
+                  "fill": "$teal",
+                  "content": "A",
+                  "fontFamily": "$font",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "UoO6R",
+                  "name": "Overlay drawer title",
+                  "fill": "$ink",
+                  "content": "Overlay drawer",
+                  "fontFamily": "$font",
+                  "fontSize": 20,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "UysZJ",
+                  "name": "Overlay drawer blurb",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Hamburger opens full sidebar. Minimal change; weak thumb reach for primary destinations.",
+                  "fontFamily": "$font",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "VA4vp",
+              "name": "A Phone",
+              "clip": true,
+              "width": 280,
+              "height": 560,
+              "fill": "$surface",
+              "cornerRadius": 28,
+              "stroke": "$ink",
+              "strokeWidth": 2,
+              "strokeAlignment": "inner",
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Nr234",
+                  "name": "A Phone notch",
+                  "width": 90,
+                  "height": 18,
+                  "fill": "$ink",
+                  "cornerRadius": 10
+                },
+                {
+                  "type": "frame",
+                  "id": "h6j2s",
+                  "name": "A Phone header",
+                  "width": "fill_container",
+                  "stroke": "$line",
+                  "strokeWidth": {
+                    "bottom": 1
+                  },
+                  "strokeAlignment": "inner",
+                  "gap": 10,
+                  "padding": [
+                    10,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "iPLsX",
+                      "name": "A Phone menu",
+                      "width": 18,
+                      "height": 18,
+                      "icon": "menu",
+                      "library": "lucide",
+                      "fill": "$ink"
+                    },
+                    {
+                      "type": "text",
+                      "id": "u4ziCR",
+                      "name": "A Phone brand",
+                      "fill": "$ink",
+                      "content": "Orbit",
+                      "fontFamily": "$font",
+                      "fontSize": 15,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "zyv9m",
+                  "name": "A Phone body",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$bg",
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 14,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "GTi7C",
+                      "name": "A card",
+                      "width": "fill_container",
+                      "fill": "$white",
+                      "cornerRadius": 12,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 4,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "E2DR53",
+                          "name": "A t",
+                          "fill": "$ink",
+                          "content": "Open work orders",
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "gPzg8",
+                          "name": "A s",
+                          "fill": "$muted",
+                          "content": "12 assigned today",
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "JUKNz",
+              "name": "A Desktop",
+              "clip": true,
+              "width": 420,
+              "height": 240,
+              "fill": "$white",
+              "cornerRadius": 12,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "strokeAlignment": "inner",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "hYNXg",
+                  "name": "A Desktop side",
+                  "width": 120,
+                  "height": "fill_container",
+                  "fill": "$bg",
+                  "stroke": "$line",
+                  "strokeWidth": {
+                    "right": 1
+                  },
+                  "strokeAlignment": "inner",
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "syrrp",
+                      "name": "A Desktop Dashboard",
+                      "fill": "$teal",
+                      "content": "Dashboard",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Z6xtP",
+                      "name": "A Desktop Companies",
+                      "fill": "$muted",
+                      "content": "Companies",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "500"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Hh1s3",
+                      "name": "A Desktop Assets",
+                      "fill": "$muted",
+                      "content": "Assets",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "500"
+                    },
+                    {
+                      "type": "text",
+                      "id": "H18fY",
+                      "name": "A Desktop Work orders",
+                      "fill": "$muted",
+                      "content": "Work orders",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "500"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "XqKMj",
+                  "name": "A Desktop main",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "wyNfm",
+                      "name": "A Desktop title",
+                      "fill": "$ink",
+                      "content": "Dashboard",
+                      "fontFamily": "$font",
+                      "fontSize": 15,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "XThu5",
+                      "name": "A Desktop bar0",
+                      "width": 220,
+                      "height": 12,
+                      "fill": "$bg",
+                      "cornerRadius": 6
+                    },
+                    {
+                      "type": "frame",
+                      "id": "hnszv",
+                      "name": "A Desktop bar1",
+                      "width": 160,
+                      "height": 12,
+                      "fill": "$bg",
+                      "cornerRadius": 6
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Iqo87",
+                      "name": "A Desktop bar2",
+                      "width": 220,
+                      "height": 12,
+                      "fill": "$bg",
+                      "cornerRadius": 6
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "vfhVC",
+          "name": "Top segmented row",
+          "width": "fill_container",
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "XoUgn",
+              "name": "Top segmented col",
+              "width": 220,
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "tGjr9",
+                  "name": "Top segmented tag",
+                  "fill": "$teal",
+                  "content": "B",
+                  "fontFamily": "$font",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "i9hPr",
+                  "name": "Top segmented title",
+                  "fill": "$ink",
+                  "content": "Top segmented",
+                  "fontFamily": "$font",
+                  "fontSize": 20,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "ZE2HK",
+                  "name": "Top segmented blurb",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Home / Work / Assets under the header. Glanceable, but eats vertical space with Arabic labels.",
+                  "fontFamily": "$font",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "rHI4o",
+              "name": "B Phone",
+              "clip": true,
+              "width": 280,
+              "height": 560,
+              "fill": "$surface",
+              "cornerRadius": 28,
+              "stroke": "$ink",
+              "strokeWidth": 2,
+              "strokeAlignment": "inner",
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "LwPOE",
+                  "name": "B Phone notch",
+                  "width": 90,
+                  "height": 18,
+                  "fill": "$ink",
+                  "cornerRadius": 10
+                },
+                {
+                  "type": "frame",
+                  "id": "g4zZu",
+                  "name": "B Phone header",
+                  "width": "fill_container",
+                  "stroke": "$line",
+                  "strokeWidth": {
+                    "bottom": 1
+                  },
+                  "strokeAlignment": "inner",
+                  "gap": 10,
+                  "padding": [
+                    10,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "LyPEa",
+                      "name": "B Phone menu",
+                      "width": 18,
+                      "height": 18,
+                      "icon": "menu",
+                      "library": "lucide",
+                      "fill": "$ink"
+                    },
+                    {
+                      "type": "text",
+                      "id": "B7WMe",
+                      "name": "B Phone brand",
+                      "fill": "$ink",
+                      "content": "Orbit",
+                      "fontFamily": "$font",
+                      "fontSize": 15,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "wG7bs",
+                  "name": "B Phone body",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$bg",
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 14,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "frUDV",
+                      "name": "B seg",
+                      "width": "fill_container",
+                      "gap": 4,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "uRFt9",
+                          "name": "B Home",
+                          "width": "fill_container",
+                          "fill": "$tealSoft",
+                          "cornerRadius": 8,
+                          "padding": [
+                            6,
+                            4
+                          ],
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Z4BiN",
+                              "name": "B Home t",
+                              "fill": "$teal",
+                              "content": "Home",
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "lXLpr",
+                          "name": "B Work",
+                          "width": "fill_container",
+                          "fill": "$white",
+                          "cornerRadius": 8,
+                          "padding": [
+                            6,
+                            4
+                          ],
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "t45oh",
+                              "name": "B Work t",
+                              "fill": "$muted",
+                              "content": "Work",
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "YPIKt",
+                          "name": "B Assets",
+                          "width": "fill_container",
+                          "fill": "$white",
+                          "cornerRadius": 8,
+                          "padding": [
+                            6,
+                            4
+                          ],
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SLRSb",
+                              "name": "B Assets t",
+                              "fill": "$muted",
+                              "content": "Assets",
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Xa2PX",
+                      "name": "B card",
+                      "width": "fill_container",
+                      "fill": "$white",
+                      "cornerRadius": 12,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 4,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "G7AmLG",
+                          "name": "B ct",
+                          "fill": "$ink",
+                          "content": "Today",
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "X3GTy",
+                          "name": "B cs",
+                          "fill": "$muted",
+                          "content": "3 due · 1 overdue",
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "GlRil",
+              "name": "B Desktop",
+              "clip": true,
+              "width": 420,
+              "height": 240,
+              "fill": "$white",
+              "cornerRadius": 12,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "strokeAlignment": "inner",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "XTOw4",
+                  "name": "B Desktop side",
+                  "width": 120,
+                  "height": "fill_container",
+                  "fill": "$bg",
+                  "stroke": "$line",
+                  "strokeWidth": {
+                    "right": 1
+                  },
+                  "strokeAlignment": "inner",
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "olHJS",
+                      "name": "B Desktop Dashboard",
+                      "fill": "$teal",
+                      "content": "Dashboard",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "NxoWO",
+                      "name": "B Desktop Companies",
+                      "fill": "$muted",
+                      "content": "Companies",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "500"
+                    },
+                    {
+                      "type": "text",
+                      "id": "RqOVI",
+                      "name": "B Desktop Assets",
+                      "fill": "$muted",
+                      "content": "Assets",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "500"
+                    },
+                    {
+                      "type": "text",
+                      "id": "hZWAz",
+                      "name": "B Desktop Work orders",
+                      "fill": "$muted",
+                      "content": "Work orders",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "500"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "OK3ZC",
+                  "name": "B Desktop main",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "p7Dua",
+                      "name": "B Desktop title",
+                      "fill": "$ink",
+                      "content": "Dashboard",
+                      "fontFamily": "$font",
+                      "fontSize": 15,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "eluRW",
+                      "name": "B Desktop bar0",
+                      "width": 220,
+                      "height": 12,
+                      "fill": "$bg",
+                      "cornerRadius": 6
+                    },
+                    {
+                      "type": "frame",
+                      "id": "fifVC",
+                      "name": "B Desktop bar1",
+                      "width": 160,
+                      "height": 12,
+                      "fill": "$bg",
+                      "cornerRadius": 6
+                    },
+                    {
+                      "type": "frame",
+                      "id": "umJ2g",
+                      "name": "B Desktop bar2",
+                      "width": 220,
+                      "height": 12,
+                      "fill": "$bg",
+                      "cornerRadius": 6
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Dy5cV",
+          "name": "Split role shells row",
+          "width": "fill_container",
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "CZNzc",
+              "name": "Split role shells col",
+              "width": 220,
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "CXvHT",
+                  "name": "Split role shells tag",
+                  "fill": "$teal",
+                  "content": "D",
+                  "fontFamily": "$font",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "O5K8hc",
+                  "name": "Split role shells title",
+                  "fill": "$ink",
+                  "content": "Split role shells",
+                  "fontFamily": "$font",
+                  "fontSize": 20,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "L5li3",
+                  "name": "Split role shells blurb",
+                  "fill": "$muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Technician WO-first shell; admin dashboard-first. Powerful later; too heavy for pilot.",
+                  "fontFamily": "$font",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "S8ypWv",
+              "name": "D Phone",
+              "clip": true,
+              "width": 280,
+              "height": 560,
+              "fill": "$surface",
+              "cornerRadius": 28,
+              "stroke": "$ink",
+              "strokeWidth": 2,
+              "strokeAlignment": "inner",
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "y7zRHk",
+                  "name": "D Phone notch",
+                  "width": 90,
+                  "height": 18,
+                  "fill": "$ink",
+                  "cornerRadius": 10
+                },
+                {
+                  "type": "frame",
+                  "id": "yAGfJ",
+                  "name": "D Phone header",
+                  "width": "fill_container",
+                  "stroke": "$line",
+                  "strokeWidth": {
+                    "bottom": 1
+                  },
+                  "strokeAlignment": "inner",
+                  "gap": 10,
+                  "padding": [
+                    10,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "ptWv8",
+                      "name": "D Phone menu",
+                      "width": 18,
+                      "height": 18,
+                      "icon": "menu",
+                      "library": "lucide",
+                      "fill": "$ink"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Y0pjj",
+                      "name": "D Phone brand",
+                      "fill": "$ink",
+                      "content": "Orbit",
+                      "fontFamily": "$font",
+                      "fontSize": 15,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "f6N6j",
+                  "name": "D Phone body",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$bg",
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 14,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "gYzau",
+                      "name": "D start",
+                      "width": "fill_container",
+                      "fill": "$tealSoft",
+                      "cornerRadius": 12,
+                      "stroke": "$teal",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 4,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "cpVlw",
+                          "name": "D t",
+                          "fill": "$teal",
+                          "content": "Start next",
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "g7Mfqt",
+                          "name": "D s",
+                          "fill": "$ink",
+                          "content": "WO-1042 · Floor 3",
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "LutSu",
+                  "name": "D Phone tabs",
+                  "width": "fill_container",
+                  "height": 56,
+                  "fill": "$white",
+                  "stroke": "$line",
+                  "strokeWidth": {
+                    "top": 1
+                  },
+                  "strokeAlignment": "inner",
+                  "padding": [
+                    6,
+                    4,
+                    8,
+                    4
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "LVcqB",
+                      "name": "D Phone Queue",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "ZADob",
+                          "name": "D Phone Queue ic",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "clipboard-list",
+                          "library": "lucide",
+                          "fill": "$teal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "kle6z",
+                          "name": "D Phone Queue lb",
+                          "fill": "$teal",
+                          "content": "Queue",
+                          "fontFamily": "$font",
+                          "fontSize": 10,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "p0xXE",
+                      "name": "D Phone Scan",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "p0s68a",
+                          "name": "D Phone Scan ic",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "qr-code",
+                          "library": "lucide",
+                          "fill": "$muted"
+                        },
+                        {
+                          "type": "text",
+                          "id": "RUXPr",
+                          "name": "D Phone Scan lb",
+                          "fill": "$muted",
+                          "content": "Scan",
+                          "fontFamily": "$font",
+                          "fontSize": 10,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "x4rW7Z",
+                      "name": "D Phone Time",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "D8aR2",
+                          "name": "D Phone Time ic",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "timer",
+                          "library": "lucide",
+                          "fill": "$muted"
+                        },
+                        {
+                          "type": "text",
+                          "id": "tzHzj",
+                          "name": "D Phone Time lb",
+                          "fill": "$muted",
+                          "content": "Time",
+                          "fontFamily": "$font",
+                          "fontSize": 10,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "OSoA0",
+                      "name": "D Phone More",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "pqdGu",
+                          "name": "D Phone More ic",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "menu",
+                          "library": "lucide",
+                          "fill": "$muted"
+                        },
+                        {
+                          "type": "text",
+                          "id": "KVime",
+                          "name": "D Phone More lb",
+                          "fill": "$muted",
+                          "content": "More",
+                          "fontFamily": "$font",
+                          "fontSize": 10,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "zOJ1h",
+              "name": "D Desktop",
+              "clip": true,
+              "width": 420,
+              "height": 240,
+              "fill": "$white",
+              "cornerRadius": 12,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "strokeAlignment": "inner",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "FES3K",
+                  "name": "D Desktop side",
+                  "width": 120,
+                  "height": "fill_container",
+                  "fill": "$bg",
+                  "stroke": "$line",
+                  "strokeWidth": {
+                    "right": 1
+                  },
+                  "strokeAlignment": "inner",
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "El4yz",
+                      "name": "D Desktop Dashboard",
+                      "fill": "$teal",
+                      "content": "Dashboard",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "B3Jp8d",
+                      "name": "D Desktop Companies",
+                      "fill": "$muted",
+                      "content": "Companies",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "500"
+                    },
+                    {
+                      "type": "text",
+                      "id": "HV9bF",
+                      "name": "D Desktop Assets",
+                      "fill": "$muted",
+                      "content": "Assets",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "500"
+                    },
+                    {
+                      "type": "text",
+                      "id": "uLLzv",
+                      "name": "D Desktop Work orders",
+                      "fill": "$muted",
+                      "content": "Work orders",
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "500"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "MpOH2",
+                  "name": "D Desktop main",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "gbOhr",
+                      "name": "D Desktop title",
+                      "fill": "$ink",
+                      "content": "Dashboard",
+                      "fontFamily": "$font",
+                      "fontSize": 15,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "aB3LI",
+                      "name": "D Desktop bar0",
+                      "width": 220,
+                      "height": 12,
+                      "fill": "$bg",
+                      "cornerRadius": 6
+                    },
+                    {
+                      "type": "frame",
+                      "id": "umQW6",
+                      "name": "D Desktop bar1",
+                      "width": 160,
+                      "height": 12,
+                      "fill": "$bg",
+                      "cornerRadius": 6
+                    },
+                    {
+                      "type": "frame",
+                      "id": "eYV0g",
+                      "name": "D Desktop bar2",
+                      "width": 220,
+                      "height": 12,
+                      "fill": "$bg",
+                      "cornerRadius": 6
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variables": {
+    "bg": {
+      "type": "color",
+      "value": "#F5F5F4"
+    },
+    "surface": {
+      "type": "color",
+      "value": "#FAFAF9"
+    },
+    "ink": {
+      "type": "color",
+      "value": "#1C1917"
+    },
+    "muted": {
+      "type": "color",
+      "value": "#78716C"
+    },
+    "line": {
+      "type": "color",
+      "value": "#E7E5E4"
+    },
+    "teal": {
+      "type": "color",
+      "value": "#0F766E"
+    },
+    "tealSoft": {
+      "type": "color",
+      "value": "#CCFBF1"
+    },
+    "white": {
+      "type": "color",
+      "value": "#FFFFFF"
+    },
+    "font": {
+      "type": "string",
+      "value": "IBM Plex Sans"
+    }
+  },
+  "fileToken": "81778f6d-4531-46be-8575-b4f6c6afc3f1"
+}

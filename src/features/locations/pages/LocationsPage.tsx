@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiFetch } from "@/lib/api";
-import { LocationTree, type LocationTreeNode } from "@/components/LocationTree";
+import { LocationTree, type LocationTreeNode } from "@/shared/components/LocationTree";
 
 interface SiteRow {
   id: string;

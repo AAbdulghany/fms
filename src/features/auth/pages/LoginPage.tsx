@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+﻿import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -6,7 +6,7 @@ import { apiFetch, setTokens, getAccessToken, resolveApiError } from "@/lib/api"
 import { isPlatformStaff } from "@/lib/roles";
 import { applyLanguage, getStoredLanguage } from "@/lib/language";
 import type { User } from "@/lib/types";
-import { OrbitLogo } from "@/components/OrbitLogo";
+import { OrbitLogo } from "@/shared/components/OrbitLogo";
 
 const DEMO_SUFFIX = import.meta.env.VITE_DEMO_PASSWORD_SUFFIX ?? "123";
 
