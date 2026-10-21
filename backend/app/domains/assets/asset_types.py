@@ -148,7 +148,7 @@ def list_asset_types(
 ) -> list[AssetTypeOut]:
     # client_id scope check
     if client_id:
-        ensure_client_access(current, client_id)
+        ensure_client_access(db, current, client_id)
 
     q = select(AssetType).where(AssetType.tenant_id == current.tenant_id)
     if not include_inactive:

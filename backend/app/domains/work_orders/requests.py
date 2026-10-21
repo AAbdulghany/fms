@@ -96,7 +96,7 @@ def request_work_order(
     if body.tags:
         validate_tags(body.tags)
 
-    ensure_client_access(current, body.client_id)
+    ensure_client_access(db, current, body.client_id)
     site = ensure_site_access(db, current, body.site_id)
     if site.client_id != body.client_id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_CLIENT_SITE")

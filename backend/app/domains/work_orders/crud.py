@@ -177,7 +177,7 @@ def create_work_order(
         validate_tags(body.tags)
 
     # SECURITY: enforce client scope before touching any data
-    ensure_client_access(current, body.client_id)
+    ensure_client_access(db, current, body.client_id)
 
     # SECURITY: enforce site scope; also verify site belongs to the stated client
     site = ensure_site_access(db, current, body.site_id)
