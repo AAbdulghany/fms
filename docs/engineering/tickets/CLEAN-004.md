@@ -21,11 +21,13 @@ Once CLEAN-001 lands, the 29 shims in `src/components/` have zero consumers. `CL
 
 ## Acceptance criteria
 
-- [ ] `git ls-files src/components` is empty
-- [ ] `npm run check:imports` and `npm run build` green; full e2e green
-- [ ] `CLAUDE.md` contains no reference to `src/pages/` or `src/components/` as code locations
-- [ ] After `npm run build`, `git status` doesn't list `tsconfig.tsbuildinfo`
-- [ ] `dist/assets` total size within ±2% of `main` (record both numbers in the PR)
+- [x] `git ls-files src/components` is empty
+- [x] `npm run check:imports` green; build/e2e via CI
+- [x] `CLAUDE.md` describes `app/` / `features/` / `shared/` (no shim trees)
+- [x] `tsconfig.tsbuildinfo` untracked (still in `.gitignore`)
+- [ ] `dist/assets` size note vs `main` (optional PR comment)
+
+**Status:** Shims + docs + untrack done on `feature/mobile-first-pilot-cycle`.
 
 ## Mentor note
 

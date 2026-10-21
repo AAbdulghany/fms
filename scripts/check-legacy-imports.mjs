@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 /**
- * CLEAN-002 — fail if src/ (outside legacy shim dirs) imports @/components or @/pages.
+ * CLEAN-002 — fail if any src/ file imports legacy @/components or @/pages.
  */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "src");
-const SKIP_DIRS = new Set(["components", "pages"]);
 const PATTERN =
   /from\s+['"]@\/(components|pages)\/[^'"]+['"]|import\s*\(\s*['"]@\/(components|pages)\/[^'"]+['"]\s*\)/g;
 
@@ -17,10 +16,6 @@ function walk(dir) {
   for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, ent.name);
     if (ent.isDirectory()) {
-      const rel = path.relative(ROOT, full).split(path.sep)[0];
-      if (SKIP_DIRS.has(rel) && path.relative(ROOT, full).split(path.sep).length === 1) {
-        continue; // skip top-level src/components and src/pages while they exist
-      }
       if (ent.name === "node_modules" || ent.name === "dist") continue;
       walk(full);
       continue;
@@ -36,6 +31,11 @@ function walk(dir) {
   }
 }
 
+if (!fs.existsSync(ROOT)) {
+  console.error("src/ missing");
+  process.exit(1);
+}
+
 walk(ROOT);
 
 if (hits.length) {
@@ -44,4 +44,4 @@ if (hits.length) {
   process.exit(1);
 }
 
-console.log("check:imports OK — no @/components or @/pages imports outside shim dirs");
+console.log("check:imports OK — no @/components or @/pages imports");

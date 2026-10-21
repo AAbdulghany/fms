@@ -38,9 +38,8 @@ backend/app/cli/{docker_migrate,seed*,report_template_sync_cli}
 backend/app/api/routes/*.py          # shims → domains
 
 src/features/{auth,companies,assets,work-orders,invoices,…}/pages|components
-src/shared/{lib,components}
-src/pages/*.tsx                      # shims → features
-src/components/*.tsx                 # shims → shared/features
+src/shared/{lib,components,navigation}
+# Shims removed in CLEAN-003/004 (src/pages, src/components)
 
 backend/tests/domains/*
 tests/e2e/domains/*

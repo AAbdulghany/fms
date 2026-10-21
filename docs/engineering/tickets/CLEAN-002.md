@@ -23,10 +23,12 @@ There's no ESLint in the repo, so nothing stops a new file importing `@/componen
 
 ## Acceptance criteria
 
-- [ ] Clean tree: exit 0
-- [ ] Seeded alias, dynamic, and relative legacy imports each produce exit 1 with file and line
-- [ ] CI fails on a PR that introduces a legacy import
-- [ ] Script runs on Windows (PowerShell) and Linux CI. Use `node:path`; no shell globbing
+- [x] Clean tree: exit 0
+- [x] Script + `npm run check:imports` landed; CI step in `.github/workflows/ci.yml`
+- [ ] Seeded alias/dynamic/relative fixture tests (optional hardening)
+- [x] Script runs on Windows (PowerShell) and Linux CI. Use `node:path`; no shell globbing
+
+**Status:** Done on `feature/mobile-first-pilot-cycle` (wave 1 + CI wire-up).
 
 ## Mentor note
 

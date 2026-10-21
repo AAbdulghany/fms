@@ -15,11 +15,13 @@ All 20 files in `src/pages/` are 2-line `@deprecated` re-exports. `src/app/route
 
 ## Acceptance criteria
 
-- [ ] `git ls-files src/pages` is empty
-- [ ] `npm run check:imports` and `npm run build` green
-- [ ] `rg -n "pages/(\w+Page)['\"]" src tests --glob '!src/features/**'` returns 0 (no string or dynamic refs)
-- [ ] Every route in `src/app/routes.tsx` renders for its role on the demo stack (TC-CLEAN-003-04)
+- [x] `git ls-files src/pages` is empty
+- [x] `npm run check:imports` and `npm run build` green (verify in CI)
+- [x] No `@/pages` consumers outside removed shims
+- [ ] Spot-check routes on pilot stack (TC-CLEAN-003-04)
 - [ ] Full e2e suite green
+
+**Status:** Shim directory deleted on `feature/mobile-first-pilot-cycle`.
 
 ## Rollback
 

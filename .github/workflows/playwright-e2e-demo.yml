@@ -1,11 +1,12 @@
-# Playwright E2E — demo stack (tests/e2e)
+# Playwright E2E — pilot stack (tests/e2e)
+# (Filename still *demo* until wave-2 workflow rename — ENV_REORG_PLAN.md)
 #
 # Runs after a PR is merged into main (push to main).
 # Also: manual dispatch for ad-hoc runs.
 #
 # Caching: npm (setup-node), Playwright browsers (~/.cache/ms-playwright).
 
-name: Playwright E2E (demo stack)
+name: Playwright E2E (pilot stack)
 
 on:
   push:
@@ -14,11 +15,11 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: playwright-e2e-demo-${{ github.workflow }}-${{ github.ref }}
+  group: playwright-e2e-pilot-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  e2e-demo-scenarios:
+  e2e-pilot-scenarios:
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -44,10 +45,10 @@ jobs:
           echo "::warning::No *.spec.ts under tests/e2e/ — skipping E2E job"
           exit 0
 
-      - name: Start demo stack
+      - name: Start pilot stack
         if: steps.check.outputs.exists == 'true'
         run: |
-          docker compose -f docker-compose-demo.yml up -d --build
+          docker compose -f docker-compose-pilot.yml up -d --build
           echo "Waiting for API health…"
           timeout 180 bash -c 'until curl -sf http://localhost:9001/health; do sleep 5; done'
           echo "Waiting for web…"

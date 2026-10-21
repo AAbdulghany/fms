@@ -51,11 +51,15 @@ docker-compose-pilot-supabase.yml # optional managed-Postgres pilot
 
 ## Wave 2 (cutover — separate PR)
 
+**Partial (this branch):** Playwright E2E uses `docker-compose-pilot.yml`; deploy workflow comments + display name say Pilot but still uses `DEMO_*` secrets and `deploy/demo/` paths on the VM; CI runs `check:imports`.
+
+Still needs a human:
+
 1. Rename GitHub secrets `DEMO_*` → `PILOT_*` (or keep aliases).
 2. Rename workflow `deploy-orbit-demo.yml` → `deploy-orbit-pilot.yml`; branch `demo/live` → `pilot/live` if desired.
-3. Remove `docker-compose-demo.yml` after no references remain.
+3. On the VM: copy `deploy/demo/.env` → `deploy/pilot/.env`, switch compose to pilot files, then remove `docker-compose-demo.yml`.
 4. Drop `APP_ENV=demo` alias after tests updated.
-5. Delete empty `deploy/demo/` if still present.
+5. Delete `deploy/demo/` when live path no longer references it.
 
 ## What NOT to delete yet
 

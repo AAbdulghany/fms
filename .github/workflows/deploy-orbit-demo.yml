@@ -1,8 +1,12 @@
-# Deploy Orbit Demo Showcase
+# Deploy Orbit Pilot Showcase (legacy filename / secrets until wave-2 cutover)
 #
-# Pulls demo/live on the demo VM and rebuilds the live Docker Compose stack.
-# Cloudflare Tunnel (named) provides HTTPS at demo.orbittech.co — one-time host
-# setup. This workflow does not call Wrangler/Workers.
+# Pulls demo/live on the pilot VM and rebuilds the live Docker Compose stack.
+# Cloudflare Tunnel provides HTTPS at demo.orbittech.co — one-time host setup.
+# This workflow does not call Wrangler/Workers.
+#
+# Wave 2 (human): rename secrets DEMO_* → PILOT_*, switch compose to
+# docker-compose-pilot.yml + deploy/pilot/, optionally rename workflow/branch.
+# See docs/engineering/ENV_REORG_PLAN.md.
 #
 # Required secrets:
 #   DEMO_HOST              — VM hostname or IP
@@ -12,9 +16,8 @@
 #   DEMO_PATH              — clone path on VM (default /opt/fms)
 # Optional variables:
 #   DEMO_URL               — public showcase URL (https://demo.orbittech.co)
-#                            used for a post-deploy health check through Cloudflare
 
-name: Deploy Orbit Demo Showcase
+name: Deploy Orbit Pilot Showcase
 
 on:
   push:
