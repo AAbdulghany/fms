@@ -43,11 +43,16 @@ class Client(Base):
     status: Mapped[str] = mapped_column(String(32), default="active")
     billing_email: Mapped[Optional[str]] = mapped_column(String(320))
     activity_type: Mapped[Optional[str]] = mapped_column(String(64))
+    # A1: vertical_id FK (nullable; dual-write alongside activity_type)
+    vertical_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("verticals.id"), nullable=True
+    )
     metadata_json: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     sites: Mapped[list["Site"]] = relationship(back_populates="client")
     contracts: Mapped[list["Contract"]] = relationship(back_populates="client")
+    vertical: Mapped[Optional["Vertical"]] = relationship(foreign_keys=[vertical_id])
 
 class Site(Base):
     __tablename__ = "sites"

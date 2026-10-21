@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import date
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session
 
 from app.models import PlatformSettings, SubscriptionPackage, Tenant, TenantSubscription
+
+logger = logging.getLogger(__name__)
+from app.services.asset_type_catalog import ensure_vertical_catalog
 
 DEFAULT_PACKAGES: list[dict[str, Any]] = [
     {
@@ -139,5 +143,17 @@ def run_wave0_platform_bootstrap(db: Session) -> dict[str, int]:
         if not before:
             migrate_tenant_subscription_from_settings(db, tenant, packages)
             migrated += 1
+    # A1: platform vertical + asset type template catalog (idempotent upsert)
+    # Alembic owns the schema (AgDR-SCHEMA-ENSURE): skip the seed until `upgrade head` has run.
+    if inspect(db.get_bind()).has_table("verticals"):
+        catalog = ensure_vertical_catalog(db)
+    else:
+        logger.warning("A1 catalog seed skipped: 'verticals' table missing (run alembic upgrade head)")
+        catalog = {"verticals": 0, "templates": 0}
     db.flush()
-    return {"packages": len(packages), "tenants_migrated": migrated}
+    return {
+        "packages": len(packages),
+        "tenants_migrated": migrated,
+        "verticals": catalog["verticals"],
+        "asset_type_templates": catalog["templates"],
+    }

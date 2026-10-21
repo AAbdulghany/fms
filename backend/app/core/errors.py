@@ -97,6 +97,38 @@ ERROR_CATALOG: dict[str, tuple[str, str]] = {
         "The selected location is not valid.",
         "الموقع المحدد غير صالح.",
     ),
+    "INVALID_ASSET_TYPE": (
+        "The selected asset type was not found.",
+        "نوع الأصل المحدد غير موجود.",
+    ),
+    "ASSET_TYPE_ARCHIVED": (
+        "The selected asset type is archived.",
+        "نوع الأصل المحدد مؤرشف.",
+    ),
+    "ASSET_TYPE_CATEGORY_MISMATCH": (
+        "The category does not match the asset type code.",
+        "التصنيف لا يطابق رمز نوع الأصل.",
+    ),
+    "ASSET_TYPE_CODE_CONFLICT": (
+        "An asset type with this code already exists.",
+        "يوجد نوع أصل بنفس الرمز مسبقاً.",
+    ),
+    "ASSET_TYPE_CODE_IMMUTABLE": (
+        "The asset type code cannot be changed.",
+        "لا يمكن تغيير رمز نوع الأصل.",
+    ),
+    "INVALID_TEMPLATE": (
+        "One or more catalog templates were not found or are inactive.",
+        "قالب أو أكثر من الكتالوج غير موجود أو غير نشط.",
+    ),
+    "INVALID_REPORT_TEMPLATE": (
+        "The selected report template is not valid for this company.",
+        "قالب التقرير المحدد غير صالح لهذه الشركة.",
+    ),
+    "INVALID_VERTICAL": (
+        "The selected vertical is not valid.",
+        "القطاع المحدد غير صالح.",
+    ),
     "ASSET_RETIRED": (
         "This asset is retired and cannot be modified.",
         "الأصل مُستبدَل/متقاعد ولا يمكن تعديله.",

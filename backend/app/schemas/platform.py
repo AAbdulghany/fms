@@ -98,6 +98,7 @@ class PlatformClientCreate(BaseModel):
     code: Optional[str] = Field(None, max_length=64)
     billing_email: Optional[EmailStr] = None
     activity_type: Optional[str] = None
+    vertical_code: Optional[str] = Field(None, max_length=32)
 class PlatformUserCreate(BaseModel):
     email: EmailStr
     full_name: str = Field(..., min_length=1, max_length=255)

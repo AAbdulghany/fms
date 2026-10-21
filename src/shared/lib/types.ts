@@ -169,6 +169,8 @@ export interface Company {
   code: string;
   contact_email: string;
   contact_phone?: string;
+  /** A1: vertical code (hospital, hotel, …). */
+  vertical_code?: string | null;
   status: "active" | "inactive" | "suspended" | "archived";
   sites_count?: number;
   active_wo_count?: number;

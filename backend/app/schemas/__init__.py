@@ -12,8 +12,18 @@ from app.schemas.labor import *  # noqa: F403
 from app.schemas.locations import *  # noqa: F403
 from app.schemas.dashboard import *  # noqa: F403
 from app.schemas.common import *  # noqa: F403
+from app.schemas.asset_types import *  # noqa: F403
 
 __all__ = [
+    "AssetTypeAdoptRequest",
+    "AssetTypeAdoptResponse",
+    "AssetTypeAdoptSkipped",
+    "AssetTypeCreate",
+    "AssetTypeOut",
+    "AssetTypeRef",
+    "AssetTypeTemplateOut",
+    "AssetTypeUpdate",
+    "VerticalOut",
     "AiSchedulingStubOut",
     "ApproveReportBody",
     "AssetCreate",

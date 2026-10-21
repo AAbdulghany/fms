@@ -522,5 +522,10 @@
   "error_asset_type_category_mismatch": "رمز نوع الأصل لا يتطابق مع التصنيف المقدم.",
   "error_asset_type_code_exists": "يوجد نوع أصل بهذا الرمز مسبقاً.",
   "error_asset_type_code_immutable": "لا يمكن تغيير رمز نوع الأصل بعد الإنشاء.",
-  "error_invalid_vertical": "القطاع المحدد غير معروف."
+  "error_invalid_vertical": "القطاع المحدد غير معروف.",
+  "asset_category_placeholder": "مثال: تكييف",
+  "frequency_daily": "يوميًا",
+  "frequency_weekly": "أسبوعيًا",
+  "type_defaults_applied": "تم تطبيق القيم الافتراضية للنوع \"{{name}}\" على الحقول غير المعدّلة.",
+  "name": "الاسم"
 }

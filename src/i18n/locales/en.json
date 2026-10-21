@@ -522,5 +522,10 @@
   "error_asset_type_category_mismatch": "Asset type code does not match the provided category.",
   "error_asset_type_code_exists": "An asset type with this code already exists.",
   "error_asset_type_code_immutable": "The asset type code cannot be changed after creation.",
-  "error_invalid_vertical": "The selected vertical is not recognised."
+  "error_invalid_vertical": "The selected vertical is not recognised.",
+  "asset_category_placeholder": "e.g. HVAC",
+  "frequency_daily": "Daily",
+  "frequency_weekly": "Weekly",
+  "type_defaults_applied": "Defaults from type \"{{name}}\" applied to untouched fields.",
+  "name": "Name"
 }

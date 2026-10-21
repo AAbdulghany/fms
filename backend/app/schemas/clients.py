@@ -22,12 +22,14 @@ class ClientCreate(BaseModel):
     code: str = ""
     billing_email: Optional[EmailStr] = None
     activity_type: Optional[str] = Field(None, max_length=64)
+    vertical_code: Optional[str] = Field(None, max_length=32)
 class ClientProvisionRequest(BaseModel):
     """Super admin: create company + client admin with generated credentials."""
 
     legal_name: str = Field(..., min_length=1, max_length=255)
     manager_full_name: str = Field(..., min_length=1, max_length=255)
     activity_type: Optional[str] = Field(None, max_length=64)
+    vertical_code: Optional[str] = Field(None, max_length=32)
     site_name: str = Field(..., min_length=1, max_length=255)
     city: str = Field(..., min_length=1, max_length=100)
     country: str = Field(..., min_length=1, max_length=100)
@@ -42,6 +44,7 @@ class ClientProvisionResponse(BaseModel):
 class ClientUpdate(BaseModel):
     legal_name: Optional[str] = Field(None, min_length=1, max_length=255)
     code: Optional[str] = Field(None, max_length=64)
+    vertical_code: Optional[str] = Field(None, max_length=32)
 class ClientOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -51,6 +54,7 @@ class ClientOut(BaseModel):
     billing_email: Optional[str]
     status: str = "active"
     activity_type: Optional[str] = None
+    vertical_code: Optional[str] = None
     sites_count: int = 0
     active_wo_count: int = 0
     primary_contact_email: Optional[str] = None

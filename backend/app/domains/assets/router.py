@@ -46,6 +46,13 @@ from app.services.asset_lifecycle import get_lifecycle_timeline, reset_asset_lif
 from app.services.asset_metadata import expected_eol_date, read_asset_meta, write_asset_meta
 
 from app.services.audit import write_audit
+from app.services.asset_types import (
+    apply_type_defaults,
+    find_type_by_code,
+    get_tenant_asset_type,
+    resolve_asset_type_for_write,
+)
+from app.schemas.asset_types import AssetTypeRef
 
 from app.services.maintenance_schedules import create_schedule
 
@@ -132,6 +139,10 @@ def _asset_to_out(asset: Asset) -> AssetOut:
 
         category=asset.category,
 
+        asset_type_id=asset.asset_type_id,
+
+        asset_type=AssetTypeRef.model_validate(asset.asset_type) if asset.asset_type is not None else None,
+
         model=asset.model,
 
         serial=asset.serial,
@@ -194,6 +205,8 @@ def list_assets(
 
     category: str | None = Query(None),
 
+    asset_type_id: UUID | None = Query(None),
+
     search: str | None = Query(None),
 
     view: str | None = Query(None),
@@ -209,6 +222,7 @@ def list_assets(
     q = select(Asset).where(Asset.tenant_id == current.tenant_id).options(
         selectinload(Asset.schedules),
         joinedload(Asset.site).joinedload(Site.client),
+        joinedload(Asset.asset_type),
     )
 
     if not include_retired:
@@ -245,6 +259,10 @@ def list_assets(
     if category:
 
         q = q.where(Asset.category == category)
+
+    if asset_type_id:
+
+        q = q.where(Asset.asset_type_id == asset_type_id)
 
     if search:
 
@@ -384,9 +402,22 @@ def create_asset(
 
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_LOCATION")
 
+    resolved = resolve_asset_type_for_write(
+        db,
+        tenant_id=current.tenant_id,
+        asset_type_id=body.asset_type_id,
+        category=body.category,
+    )
+    defaults = apply_type_defaults(
+        resolved.asset_type,
+        max_age_years=body.max_age_years,
+        max_repair_count=body.max_repair_count,
+        criticality=body.criticality,
+    )
+
     label = generate_label_code(
 
-        db, tenant_id=current.tenant_id, site_id=body.site_id, category=body.category
+        db, tenant_id=current.tenant_id, site_id=body.site_id, category=resolved.category
 
     )
 
@@ -402,7 +433,9 @@ def create_asset(
 
         name=body.name,
 
-        category=body.category,
+        category=resolved.category,
+
+        asset_type_id=resolved.asset_type.id if resolved.asset_type else None,
 
         model=body.model,
 
@@ -412,9 +445,9 @@ def create_asset(
 
         warranty_until=body.warranty_until,
 
-        max_repair_count=body.max_repair_count,
+        max_repair_count=defaults["max_repair_count"],
 
-        max_age_years=body.max_age_years,
+        max_age_years=defaults["max_age_years"],
 
         label_code=label,
 
@@ -429,7 +462,7 @@ def create_asset(
         floor=body.floor,
         room=body.room,
         smart_labels=body.smart_labels,
-        criticality=body.criticality,
+        criticality=defaults["criticality"],
         last_maintenance_date=body.last_maintenance_date,
         is_spare=body.is_spare if body.is_spare else None,
     )
@@ -478,7 +511,12 @@ def create_asset(
 
         entity_id=str(a.id),
 
-        after={"name": body.name, "label_code": label},
+        after={
+            "name": body.name,
+            "label_code": label,
+            "category": resolved.category,
+            "asset_type_id": str(a.asset_type_id) if a.asset_type_id else None,
+        },
 
     )
 
@@ -515,6 +553,7 @@ def get_asset(
         .options(
             selectinload(Asset.schedules),
             joinedload(Asset.site).joinedload(Site.client),
+            joinedload(Asset.asset_type),
         )
     ).scalar_one()
 
@@ -539,8 +578,33 @@ def update_asset(
 
     if body.name is not None:
         asset.name = body.name.strip()
-    if body.category is not None:
-        asset.category = body.category.strip()
+    type_before = {
+        "asset_type_id": str(asset.asset_type_id) if asset.asset_type_id else None,
+        "category": asset.category,
+    }
+    if body.asset_type_id is not None:
+        new_type = get_tenant_asset_type(db, current.tenant_id, body.asset_type_id)
+        if new_type is None:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_ASSET_TYPE")
+        if body.category is not None and body.category.strip() != new_type.code:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="ASSET_TYPE_CATEGORY_MISMATCH")
+        if new_type.id != asset.asset_type_id:
+            if not new_type.is_active:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="ASSET_TYPE_ARCHIVED")
+            # I1: category mirrors the type code. label_code is NOT regenerated (physical sticker).
+            asset.asset_type_id = new_type.id
+            asset.category = new_type.code
+    elif body.category is not None:
+        new_category = body.category.strip()
+        if asset.asset_type_id is not None:
+            current_type = get_tenant_asset_type(db, current.tenant_id, asset.asset_type_id)
+            if current_type is not None and new_category != current_type.code:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="ASSET_TYPE_CATEGORY_MISMATCH")
+        else:
+            asset.category = new_category
+            linked = find_type_by_code(db, current.tenant_id, new_category)
+            if linked is not None:
+                asset.asset_type_id = linked.id
     if body.model is not None:
         asset.model = body.model
     if body.serial is not None:
@@ -574,7 +638,12 @@ def update_asset(
         action="update",
         entity_type="asset",
         entity_id=str(asset.id),
-        after={"name": asset.name},
+        before=type_before if type_before["asset_type_id"] != (str(asset.asset_type_id) if asset.asset_type_id else None) else None,
+        after={
+            "name": asset.name,
+            "asset_type_id": str(asset.asset_type_id) if asset.asset_type_id else None,
+            "category": asset.category,
+        },
     )
     db.commit()
     db.refresh(asset)

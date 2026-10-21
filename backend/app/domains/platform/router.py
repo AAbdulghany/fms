@@ -30,6 +30,7 @@ from app.schemas import (
     TenantProvisionBody,
     TenantProvisionOut,
 )
+from app.services.asset_types import apply_client_vertical
 from app.services.audit import write_audit
 from app.services.provisioning import generate_initial_password, next_client_code
 from app.services.subscription import assign_tenant_subscription, get_subscription
@@ -167,7 +168,9 @@ def platform_create_client(
         code=code,
         billing_email=body.billing_email,
         status="active",
-        activity_type=body.activity_type,
+    )
+    apply_client_vertical(
+        db, client, vertical_code=body.vertical_code, activity_type=body.activity_type
     )
     db.add(client)
     write_audit(

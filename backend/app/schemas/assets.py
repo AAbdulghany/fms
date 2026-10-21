@@ -7,6 +7,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
+from app.schemas.asset_types import AssetTypeRef
 from app.models import (
     AssetLifecycleStatus,
     InvoiceStatus,
@@ -50,6 +51,7 @@ class AssetCreate(BaseModel):
     site_id: UUID
     name: str
     category: str = "general"
+    asset_type_id: Optional[UUID] = None
     parent_asset_id: Optional[UUID] = None
     location_id: Optional[UUID] = None
     model: Optional[str] = None
@@ -68,6 +70,7 @@ class AssetCreate(BaseModel):
 class AssetUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     category: Optional[str] = Field(None, max_length=64)
+    asset_type_id: Optional[UUID] = None
     model: Optional[str] = None
     serial: Optional[str] = None
     installed_on: Optional[date] = None
@@ -89,6 +92,8 @@ class AssetOut(BaseModel):
     location_id: Optional[UUID] = None
     name: str
     category: str
+    asset_type_id: Optional[UUID] = None
+    asset_type: Optional[AssetTypeRef] = None
     model: Optional[str] = None
     serial: Optional[str] = None
     installed_on: Optional[date] = None

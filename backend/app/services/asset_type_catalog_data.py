@@ -1,0 +1,315 @@
+"""A1 — Static seed data for the platform vertical and asset-type catalog.
+
+This module contains pure Python constants; no DB imports.
+Import from here in ``asset_type_catalog.py`` and in tests.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+# -----------------------------------------------------------------------
+# Verticals — matches existing ``activity_type`` option values exactly.
+# -----------------------------------------------------------------------
+VERTICAL_SEED: list[dict[str, Any]] = [
+    {"code": "hospital",    "name_en": "Hospital",         "name_ar": "مستشفى",    "sort_order": 1},
+    {"code": "hotel",       "name_en": "Hotel",            "name_ar": "فندق",      "sort_order": 2},
+    {"code": "office",      "name_en": "Office",           "name_ar": "مكاتب",     "sort_order": 3},
+    {"code": "retail",      "name_en": "Retail",           "name_ar": "تجزئة",     "sort_order": 4},
+    {"code": "industrial",  "name_en": "Industrial",       "name_ar": "صناعي",     "sort_order": 5},
+    {"code": "education",   "name_en": "Education",        "name_ar": "تعليمي",    "sort_order": 6},
+    {"code": "other",       "name_en": "Other",            "name_ar": "أخرى",      "sort_order": 7},
+]
+
+# -----------------------------------------------------------------------
+# Activity-type alias map (Phase B backfill + client create/update)
+# Keys are lower-stripped values from clients.activity_type.
+# Values are vertical codes.
+# -----------------------------------------------------------------------
+ACTIVITY_TYPE_ALIAS_MAP: dict[str, str] = {
+    # identity
+    "hospital": "hospital",
+    "hotel": "hotel",
+    "office": "office",
+    "retail": "retail",
+    "industrial": "industrial",
+    "education": "education",
+    "other": "other",
+    # aliases — locked decision: commercial → office (Q1)
+    "commercial": "office",
+    # healthcare
+    "healthcare": "hospital",
+    "clinic": "hospital",
+    # education
+    "school": "education",
+    "university": "education",
+    # industrial
+    "factory": "industrial",
+    "warehouse": "industrial",
+    # retail
+    "mall": "retail",
+    "shop": "retail",
+}
+
+# -----------------------------------------------------------------------
+# Asset type template catalog.
+# ``verticals``: list of vertical codes; empty list means "universal".
+# ``default_frequency``: one of monthly | quarterly | yearly (locked A1).
+# -----------------------------------------------------------------------
+_UNIVERSAL: list[str] = []
+
+TEMPLATE_SEED: list[dict[str, Any]] = [
+    {
+        "code": "hvac_ahu",
+        "name_en": "Air handling unit",
+        "name_ar": "وحدة مناولة الهواء",
+        "verticals": _UNIVERSAL,
+        "default_max_age_years": 15,
+        "default_max_repair_count": None,
+        "default_criticality": "high",
+        "default_frequency": "quarterly",
+        "default_report_template_code": "STD-INSP",
+    },
+    {
+        "code": "hvac_chiller",
+        "name_en": "Chiller",
+        "name_ar": "مبرد مياه (تشيلر)",
+        "verticals": ["hospital", "hotel", "office", "retail", "industrial", "education"],
+        "default_max_age_years": 20,
+        "default_max_repair_count": None,
+        "default_criticality": "critical",
+        "default_frequency": "quarterly",
+        "default_report_template_code": "STD-INSP",
+    },
+    {
+        "code": "hvac_split",
+        "name_en": "Split AC unit",
+        "name_ar": "مكيف سبليت",
+        "verticals": _UNIVERSAL,
+        "default_max_age_years": 10,
+        "default_max_repair_count": None,
+        "default_criticality": "medium",
+        "default_frequency": "quarterly",
+        "default_report_template_code": "STD-INSP",
+    },
+    {
+        "code": "elevator",
+        "name_en": "Elevator",
+        "name_ar": "مصعد",
+        "verticals": ["hospital", "hotel", "office", "retail", "education"],
+        "default_max_age_years": 25,
+        "default_max_repair_count": None,
+        "default_criticality": "critical",
+        "default_frequency": "monthly",
+        "default_report_template_code": "STD-INSP",
+    },
+    {
+        "code": "escalator",
+        "name_en": "Escalator",
+        "name_ar": "سلم كهربائي",
+        "verticals": ["retail", "hotel"],
+        "default_max_age_years": 25,
+        "default_max_repair_count": None,
+        "default_criticality": "high",
+        "default_frequency": "monthly",
+        "default_report_template_code": "STD-INSP",
+    },
+    {
+        "code": "fire_alarm_panel",
+        "name_en": "Fire alarm panel",
+        "name_ar": "لوحة إنذار الحريق",
+        "verticals": _UNIVERSAL,
+        "default_max_age_years": 15,
+        "default_max_repair_count": None,
+        "default_criticality": "critical",
+        "default_frequency": "quarterly",
+        "default_report_template_code": "STD-INSP",
+    },
+    {
+        "code": "fire_pump",
+        "name_en": "Fire pump",
+        "name_ar": "مضخة حريق",
+        "verticals": _UNIVERSAL,
+        "default_max_age_years": 20,
+        "default_max_repair_count": None,
+        "default_criticality": "critical",
+        "default_frequency": "monthly",
+        "default_report_template_code": "STD-INSP",
+    },
+    {
+        "code": "generator",
+        "name_en": "Standby generator",
+        "name_ar": "مولد احتياطي",
+        "verticals": ["hospital", "hotel", "office", "industrial"],
+        "default_max_age_years": 25,
+        "default_max_repair_count": None,
+        "default_criticality": "critical",
+        "default_frequency": "monthly",
+        "default_report_template_code": "STD-INSP",
+    },
+    {
+        "code": "electrical_panel",
+        "name_en": "Electrical panel",
+        "name_ar": "لوحة كهربائية",
+        "verticals": _UNIVERSAL,
+        "default_max_age_years": 30,
+        "default_max_repair_count": None,
+        "default_criticality": "high",
+        "default_frequency": "yearly",
+        "default_report_template_code": "STD-INSP",
+    },
+    {
+        "code": "ups",
+        "name_en": "UPS",
+        "name_ar": "مزود طاقة غير منقطعة (UPS)",
+        "verticals": ["hospital", "office", "industrial"],
+        "default_max_age_years": 10,
+        "default_max_repair_count": None,
+        "default_criticality": "high",
+        "default_frequency": "quarterly",
+        "default_report_template_code": "STD-INSP",
+    },
+    {
+        "code": "water_pump",
+        "name_en": "Water pump",
+        "name_ar": "مضخة مياه",
+        "verticals": _UNIVERSAL,
+        "default_max_age_years": 15,
+        "default_max_repair_count": None,
+        "default_criticality": "medium",
+        "default_frequency": "quarterly",
+        "default_report_template_code": "STD-INSP",
+    },
+    {
+        "code": "lighting_system",
+        "name_en": "Lighting system",
+        "name_ar": "نظام الإنارة",
+        "verticals": _UNIVERSAL,
+        "default_max_age_years": 10,
+        "default_max_repair_count": None,
+        "default_criticality": "low",
+        "default_frequency": "yearly",
+        "default_report_template_code": "STD-INSP",
+    },
+    {
+        "code": "automatic_door",
+        "name_en": "Automatic door",
+        "name_ar": "باب أوتوماتيكي",
+        "verticals": ["hospital", "retail", "office"],
+        "default_max_age_years": 12,
+        "default_max_repair_count": None,
+        "default_criticality": "medium",
+        "default_frequency": "quarterly",
+        "default_report_template_code": "STD-INSP",
+    },
+    {
+        "code": "bms_controller",
+        "name_en": "BMS controller",
+        "name_ar": "وحدة تحكم نظام إدارة المباني",
+        "verticals": ["hospital", "hotel", "office"],
+        "default_max_age_years": 12,
+        "default_max_repair_count": None,
+        "default_criticality": "medium",
+        "default_frequency": "yearly",
+        "default_report_template_code": "STD-INSP",
+    },
+    {
+        "code": "medical_gas",
+        "name_en": "Medical gas system",
+        "name_ar": "نظام الغازات الطبية",
+        "verticals": ["hospital"],
+        "default_max_age_years": 20,
+        "default_max_repair_count": None,
+        "default_criticality": "critical",
+        "default_frequency": "quarterly",
+        "default_report_template_code": "STD-INSP",
+    },
+    {
+        "code": "nurse_call",
+        "name_en": "Nurse call system",
+        "name_ar": "نظام استدعاء التمريض",
+        "verticals": ["hospital"],
+        "default_max_age_years": 12,
+        "default_max_repair_count": None,
+        "default_criticality": "high",
+        "default_frequency": "quarterly",
+        "default_report_template_code": "STD-INSP",
+    },
+    {
+        "code": "sterilizer",
+        "name_en": "Sterilizer (autoclave)",
+        "name_ar": "جهاز تعقيم (أوتوكلاف)",
+        "verticals": ["hospital"],
+        "default_max_age_years": 15,
+        "default_max_repair_count": None,
+        "default_criticality": "critical",
+        "default_frequency": "monthly",
+        "default_report_template_code": "STD-INSP",
+    },
+    {
+        "code": "kitchen_hood",
+        "name_en": "Kitchen exhaust hood",
+        "name_ar": "شفاط المطبخ",
+        "verticals": ["hotel", "hospital"],
+        "default_max_age_years": 15,
+        "default_max_repair_count": None,
+        "default_criticality": "medium",
+        "default_frequency": "quarterly",
+        "default_report_template_code": "STD-INSP",
+    },
+    {
+        "code": "laundry_equipment",
+        "name_en": "Laundry equipment",
+        "name_ar": "معدات المغسلة",
+        "verticals": ["hotel", "hospital"],
+        "default_max_age_years": 12,
+        "default_max_repair_count": None,
+        "default_criticality": "medium",
+        "default_frequency": "quarterly",
+        "default_report_template_code": "STD-INSP",
+    },
+    {
+        "code": "pool_pump",
+        "name_en": "Pool pump",
+        "name_ar": "مضخة المسبح",
+        "verticals": ["hotel"],
+        "default_max_age_years": 10,
+        "default_max_repair_count": None,
+        "default_criticality": "medium",
+        "default_frequency": "monthly",
+        "default_report_template_code": "STD-INSP",
+    },
+    {
+        "code": "cold_room",
+        "name_en": "Cold room",
+        "name_ar": "غرفة تبريد",
+        "verticals": ["retail", "hotel", "hospital"],
+        "default_max_age_years": 15,
+        "default_max_repair_count": None,
+        "default_criticality": "high",
+        "default_frequency": "monthly",
+        "default_report_template_code": "STD-INSP",
+    },
+    {
+        "code": "air_compressor",
+        "name_en": "Air compressor",
+        "name_ar": "ضاغط هواء",
+        "verticals": ["industrial"],
+        "default_max_age_years": 15,
+        "default_max_repair_count": None,
+        "default_criticality": "high",
+        "default_frequency": "quarterly",
+        "default_report_template_code": "STD-INSP",
+    },
+    {
+        "code": "conveyor",
+        "name_en": "Conveyor",
+        "name_ar": "سير ناقل",
+        "verticals": ["industrial"],
+        "default_max_age_years": 15,
+        "default_max_repair_count": None,
+        "default_criticality": "high",
+        "default_frequency": "monthly",
+        "default_report_template_code": "STD-INSP",
+    },
+]

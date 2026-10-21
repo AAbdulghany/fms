@@ -19,6 +19,7 @@ type ClientApi = {
   primary_contact_email?: string | null;
   primary_contact_phone?: string | null;
   admin_user_id?: string | null;
+  vertical_code?: string | null;
 };
 
 export default function CompanyDetailPage() {
@@ -59,6 +60,7 @@ export default function CompanyDetailPage() {
           contact_email: c.primary_contact_email ?? c.billing_email ?? "",
           contact_phone: c.primary_contact_phone ?? undefined,
           status: st as Company["status"],
+          vertical_code: c.vertical_code ?? null,
           created_at: new Date().toISOString(),
         });
         setSettingsEmail(c.primary_contact_email ?? c.billing_email ?? "");
@@ -194,6 +196,7 @@ export default function CompanyDetailPage() {
         companyId={id}
         initialLegalName={company.name}
         initialCode={company.code}
+        initialVerticalCode={company.vertical_code}
         onClose={() => setEditOpen(false)}
         onSaved={load}
       />
