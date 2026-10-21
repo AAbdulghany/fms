@@ -300,3 +300,19 @@ Precondition: the pilot seed is extended to run `ensure_vertical_catalog`. One c
 - [ ] The pilot seed creates two clients with distinct verticals and runs the catalog bootstrap, so e2e has deterministic data.
 - [ ] Playwright `a1-asset-types.spec.ts` covers AT-E01 to AT-E16, including the AR/RTL and phone-viewport scenarios, and passes against the local stack.
 - [ ] The manual Postgres upgrade/downgrade check is recorded in the PR (until CI has a Postgres service).
+
+---
+
+## 8. Delivery log (2026-10-22)
+
+| Artifact | Location / link |
+|----------|-----------------|
+| PR | https://github.com/AAbdulghany/fms/pull/31 |
+| Issues | #28 BE · #29 FE · #30 QA/e2e |
+| Commits | `bc5e136` FE · `f4e5adc` BE+docs |
+| Unit tests | **41/41 passed** (catalog, adopt, API, asset link, client vertical) |
+| FE build | `check:imports` + `npm run build` green |
+
+**Deferred from customer plan (not A1):** `VerticalAssetPolicy` table — A1 uses AssetType vertical tags for recommendations; policy overlay is A1.1 if needed.
+
+**Next:** Playwright #30; Alembic on pilot; Rex/Tariq reviews; then Program A2 (QR).
