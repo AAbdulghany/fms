@@ -2,7 +2,7 @@
 
 Day-to-day coding: **host API + Vite**, Postgres in Docker.
 
-**Pitch / sales demo** (full Docker + Cloudflare): [demo-stack.md](./demo-stack.md) · [docker-seed-profiles.md](./docker-seed-profiles.md)
+**Pilot stack** (sales / UAT, full Docker + Cloudflare): [pilot-stack.md](./pilot-stack.md) · [environments.md](./environments.md) · [docker-seed-profiles.md](./docker-seed-profiles.md)
 
 ---
 
@@ -12,7 +12,7 @@ Day-to-day coding: **host API + Vite**, Postgres in Docker.
 |---------|-------------|-----|-----|--------------------|----------|
 | **A — Hybrid DEV** (this guide) | Feature work with hot reload | `:5173` Vite | host `:8000` | **9432** | `fms_local` |
 | **B — Full Docker DEV** | Run without installing Python/Node API | `:9080` | Docker `:9000` | **9432** | `fms_local` |
-| **C — Docker DEMO** | Sales, E2E, Cloudflare tunnel | `:9081` | Docker `:9001` | **9543** | `fms_demo` |
+| **C — Docker PILOT** | Sales, UAT, E2E, Cloudflare tunnel | `:9081` | Docker `:9001` | **9543** | `fms_pilot` |
 
 **Rule:** `backend/.env` `DATABASE_URL` must match the Postgres you actually started. Wrong port → `connection refused` or `password authentication failed` (often a **native Windows Postgres** on 5432/5433, not Docker).
 
@@ -69,7 +69,7 @@ APP_ENV=development
 CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:9080
 ```
 
-**Do not** use `.env.demo.example` for hybrid coding.
+**Do not** use `.env.pilot.example` for hybrid coding.
 
 ### 3. Install & migrate (if needed)
 
@@ -138,7 +138,7 @@ Open **http://localhost:9080**. No host uvicorn needed.
 
 ## Feature flags
 
-Subscription gates (`assets`, `invoices`) are **bypassed** when `APP_ENV=development` or `demo`. See [ENV_MATRIX.md](../phase3-restructure/ENV_MATRIX.md).
+Subscription gates (`assets`, `invoices`) are **bypassed** when `APP_ENV=development` or `pilot`. See [environments.md](./environments.md).
 
 ---
 
@@ -146,7 +146,7 @@ Subscription gates (`assets`, `invoices`) are **bypassed** when `APP_ENV=develop
 
 ### `password authentication failed for user "fms"` on 5433
 
-**Cause:** Host traffic hit **native Windows Postgres** (or an old volume), not the Orbit Docker DB. Demo Docker now uses **9543**, not 5433.
+**Cause:** Host traffic hit **native Windows Postgres** (or an old volume), not the Orbit Docker DB. The pilot Docker stack uses **9543**, not 5433.
 
 **Fix for coding:**
 
@@ -156,12 +156,12 @@ docker compose -f docker-compose-local.yml -f docker-compose-hybrid.yml up -d
 # Restart uvicorn
 ```
 
-**Fix for demo host API:**
+**Fix for pilot host API:**
 
 ```powershell
-copy backend\.env.demo.example backend\.env
-# DATABASE_URL must use :9543/fms_demo
-docker compose -f docker-compose-demo.yml up -d
+copy backend\.env.pilot.example backend\.env
+# DATABASE_URL must use :9543/fms_pilot
+docker compose -f docker-compose-pilot.yml up -d
 ```
 
 ### `connection refused` on 9432
@@ -179,7 +179,7 @@ Compose files live in the **repo root**. Always:
 
 ```powershell
 cd E:\03Workset\FMS
-docker compose -f docker-compose-demo.yml up -d
+docker compose -f docker-compose-pilot.yml up -d
 ```
 
 ### `ModuleNotFoundError: app`
@@ -205,7 +205,8 @@ python -c "from app.config import get_settings; print(get_settings().database_ur
 
 ## Related
 
-- [demo-stack.md](./demo-stack.md) — Docker demo + Cloudflare tunnel
-- [docker-seed-profiles.md](./docker-seed-profiles.md) — `test_seed` vs `pitch_seed`
+- [pilot-stack.md](./pilot-stack.md) — Docker pilot + Cloudflare tunnel
+- [environments.md](./environments.md) — dev / pilot / production matrix
+- [docker-seed-profiles.md](./docker-seed-profiles.md) — `test_seed` vs `pilot_seed`
 - [testing.md](./testing.md) — pytest & Playwright
 - `/docker-debug` skill — compose failure tree

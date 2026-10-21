@@ -27,7 +27,7 @@ The icons already exist (untracked) in `public/icons/`: `favicon.svg`, `apple-to
   - `<meta name="apple-mobile-web-app-capable" content="yes">`, `<meta name="apple-mobile-web-app-title" content="Orbit">`
   - `viewport-fit=cover` added to the viewport meta (needed for safe-area insets in CLEAN-009)
 - Commit the `public/icons/*` files.
-- Confirm the demo nginx/static host serves `.webmanifest` (`application/manifest+json`). Add a MIME mapping if not.
+- Confirm the pilot nginx/static host serves `.webmanifest` (`application/manifest+json`). Add a MIME mapping if not.
 
 **Out:** Service worker (CLEAN-008). Splash screens per iOS device size.
 
@@ -36,7 +36,7 @@ The icons already exist (untracked) in `public/icons/`: `favicon.svg`, `apple-to
 - [ ] Manifest is valid JSON; every icon path resolves; PNG sizes match the declared sizes
 - [ ] DevTools → Application → Manifest shows no errors (a missing-SW note is fine until CLEAN-008)
 - [ ] Maskable icon passes the DevTools safe-area preview
-- [ ] `GET /manifest.webmanifest` returns 200 on the demo stack
+- [ ] `GET /manifest.webmanifest` returns 200 on the pilot stack
 - [ ] Desktop tab favicon shows the Orbit mark
 
 ## Mentor note

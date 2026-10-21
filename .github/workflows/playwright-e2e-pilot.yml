@@ -1,5 +1,4 @@
 # Playwright E2E — pilot stack (tests/e2e)
-# (Filename still *demo* until wave-2 workflow rename — ENV_REORG_PLAN.md)
 #
 # Runs after a PR is merged into main (push to main).
 # Also: manual dispatch for ad-hoc runs.
@@ -120,4 +119,4 @@ jobs:
 
       - name: Teardown
         if: always() && steps.check.outputs.exists == 'true'
-        run: docker compose -f docker-compose-demo.yml down -v
+        run: docker compose -f docker-compose-pilot.yml down -v

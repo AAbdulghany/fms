@@ -19,13 +19,13 @@ Use **`vite-plugin-pwa`** with `strategies: "generateSW"` (Workbox), or hand-wri
 - Precache the built app shell (`index.html`, hashed JS/CSS, icons); `navigateFallback: "/index.html"`; `navigateFallbackDenylist: [/^\/api\//]`
 - Runtime: `/api/*` is **NetworkOnly**. No caching of authenticated responses, ever. Google Fonts get a `StaleWhileRevalidate` cache with an expiry
 - `registerType: "prompt"` + an AR/EN "New version available, refresh" toast; `cleanupOutdatedCaches: true`
-- Deploy runbook note (`docs/guides/demo-stack.md`): how to verify the SW update after deploy, and how to unregister in an emergency
+- Deploy runbook note (`docs/guides/pilot-stack.md`): how to verify the SW update after deploy, and how to unregister in an emergency
 
 **Out:** Offline data, background sync, push.
 
 ## Acceptance criteria
 
-- [ ] No SW in `npm run dev`; SW active in `npm run preview` and on the demo
+- [ ] No SW in `npm run dev`; SW active in `npm run preview` and on the pilot
 - [ ] Cache Storage contains **zero** `/api/` entries after a logged-in session (TC-CLEAN-008-03). Paste a screenshot in the PR
 - [ ] Offline reload shows the app shell and the existing error state (TC-CLEAN-008-04)
 - [ ] Deploying a new build surfaces the update toast; refresh loads new assets without a chunk-load error

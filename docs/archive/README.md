@@ -11,6 +11,6 @@ Historical delivery records from Phase 1–3.1 (pre–Phase 3 restructure).
 | [phase2/](phase2/) | Milestone 2 | RBAC matrix, API reference, QA, UI specs |
 | [phase3/](phase3/) | Original Phase 3 sprint | WO request flow AgDR, test plan |
 | [phase3.1/](phase3.1/) | Pre-restructure | Notifications, invoices, assets, demo deploy |
-| [demo/](demo/) | Pre–env reorg | DEMO_DEPLOY / QUICKSTART / LIVE_DEPLOY (use [../guides/environments.md](../guides/environments.md)) |
+| [demo/](demo/) | Pre–env reorg (Oct 2026) | DEMO_DEPLOY, DEMO_QUICKSTART, DEMO_LIVE_DEPLOY, demo-stack guide, Supabase demo runbook, demo/live branch manifest. Current: [../guides/environments.md](../guides/environments.md) |
 
 Do not use archived docs for current RBAC or run commands without cross-checking [../architecture/RBAC.md](../architecture/RBAC.md) and [../guides/](../guides/).

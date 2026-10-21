@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Bootstrap Ubuntu 22.04/24.04 VM for FMS demo (Docker Compose).
-# Run as root or with sudo: bash deploy/demo/setup-ubuntu.sh
+# Bootstrap Ubuntu 22.04/24.04 VM for the Orbit pilot stack (Docker Compose).
+# Run as root or with sudo: bash deploy/pilot/setup-ubuntu.sh
 
 set -euo pipefail
 
@@ -30,7 +30,7 @@ if command -v ufw >/dev/null 2>&1 && ufw status | grep -q "Status: active"; then
 fi
 
 echo "==> Done. Next steps:"
-echo "  1. Clone repo branch demo/live"
-echo "  2. cp deploy/demo/.env.example deploy/demo/.env && nano deploy/demo/.env"
-echo "  3. docker compose -f docker-compose-local.yml -f docker-compose-demo.yml -f deploy/demo/docker-compose.live.yml --env-file deploy/demo/.env up -d --build"
-echo "  4. Optional TLS: install Caddy — see docs/phase3-restructure/DEMO_LIVE_DEPLOY.md"
+echo "  1. Clone repo branch pilot/live"
+echo "  2. cp deploy/pilot/.env.example deploy/pilot/.env && chmod 600 deploy/pilot/.env && nano deploy/pilot/.env"
+echo "  3. docker compose -f docker-compose-pilot.yml -f deploy/pilot/docker-compose.live.yml --env-file deploy/pilot/.env up -d --build"
+echo "  4. HTTPS: Cloudflare Tunnel -> http://localhost:\${WEB_PORT} — see docs/guides/pilot-stack.md"

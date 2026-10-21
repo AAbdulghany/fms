@@ -15,8 +15,8 @@
 | [AgDR-PHASE3-TENANT-ARCHITECTURE.md](AgDR-PHASE3-TENANT-ARCHITECTURE.md) | Architecture decisions (Tariq review gate) |
 | [SPRINT_BACKLOG_NT.md](SPRINT_BACKLOG_NT.md) | Ticket IDs NT-101+ for parallel execution |
 | [ENV_MATRIX.md](ENV_MATRIX.md) | APP_ENV behavior (NT-104) |
-| [DEMO_QUICKSTART.md](DEMO_QUICKSTART.md) | **Docker commands + demo logins** |
-| [DEMO_DEPLOY.md](DEMO_DEPLOY.md) | Demo hosting (Railway) |
+| [environments.md](../guides/environments.md) | **Dev / pilot / production** (replaces DEMO_QUICKSTART) |
+| [archive/demo/](../archive/demo/) | Archived DEMO_QUICKSTART / DEMO_DEPLOY / DEMO_LIVE_DEPLOY |
 | `.claude/skills/docker-debug/SKILL.md` | Docker compose debugging playbook |
 | [WAVE0_SIGNOFF.md](WAVE0_SIGNOFF.md) | Wave 0 gate — GO |
 | [PROGRESS_BASELINE.md](PROGRESS_BASELINE.md) | Link to Phase 3.1 snapshot |

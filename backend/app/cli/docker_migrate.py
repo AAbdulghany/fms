@@ -1,4 +1,4 @@
-"""Docker migrate entrypoint — schema then seed (dev or demo)."""
+"""Docker migrate entrypoint — schema then seed (SEED_MODULE=test | pilot)."""
 
 from __future__ import annotations
 
@@ -24,16 +24,19 @@ def _upgrade_schema() -> None:
 
 def main() -> None:
     seed = os.environ.get("SEED_MODULE", "test").lower()
+    # `pitch` is the pre-reorg name for the pilot dataset.
+    if seed == "pitch":
+        seed = "pilot"
     print("Applying database schema…")
     _upgrade_schema()
     print(f"Running seed: {seed}")
-    if seed == "pitch":
-        from app.cli.pitch_seed import seed_pitch_demo
+    if seed == "pilot":
+        from app.cli.pilot_seed import seed_pilot
 
         with SessionLocal() as db:
-            info = seed_pitch_demo(db)
+            info = seed_pilot(db)
             db.commit()
-            print("Pitch demo seeded:", info)
+            print("Pilot seeded:", info)
     else:
         from app.cli.test_seed import seed_data
 

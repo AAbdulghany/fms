@@ -11,15 +11,15 @@
 
 ## Quick start
 
-### Pitch demo (Docker — recommended for first run)
+### Pilot stack (Docker — recommended for first run)
 
 ```powershell
-docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build
+docker compose -f docker-compose-pilot.yml up -d --build
 ```
 
-Open **http://localhost:8080** — login `super@demo.com` / `super123`
+Open **http://localhost:9081** — login `super@demo.com` / `super123`
 
-Full commands, logins, troubleshooting: **[docs/guides/demo-stack.md](docs/guides/demo-stack.md)**
+Full commands, logins, troubleshooting: **[docs/guides/pilot-stack.md](docs/guides/pilot-stack.md)** · environments: **[docs/guides/environments.md](docs/guides/environments.md)** (dev / pilot / production)
 
 ### Local development (hot reload)
 
@@ -41,9 +41,10 @@ $env:PYTHONPATH = "backend"; uv run python -m app.seed_super
 |-------|-------------|
 | **[docs/README.md](docs/README.md)** | Documentation hub — start here |
 | [Local development](docs/guides/local-development.md) | uv, Vite, seeds, troubleshooting |
-| [Demo stack](docs/guides/demo-stack.md) | Docker demo, logins, reset |
+| [Environments](docs/guides/environments.md) | Dev / pilot / production matrix |
+| [Pilot stack](docs/guides/pilot-stack.md) | Docker pilot, logins, reset, tunnel |
 | [Testing](docs/guides/testing.md) | pytest, Playwright, CI |
-| [Deployment](docs/guides/deployment.md) | demo/live branch, cloud, production |
+| [Deployment](docs/guides/deployment.md) | pilot/live branch, cloud, production |
 | [Architecture](docs/ARCHITECTURE.md) | System design |
 | [Cleanup stage](docs/CLEANUP_STAGE.md) | Wave 6 restructure — **complete** (pending merge) |
 
@@ -68,11 +69,11 @@ $env:PYTHONPATH = "backend"; uv run python -m app.seed_super
 FMS/
 ├── backend/app/          # FastAPI — routes, services, models
 ├── backend/tests/domains/  # pytest by domain
-├── src/                  # React SPA (features/ pilot + pages/)
+├── src/                  # React SPA (app/, features/, shared/)
 ├── tests/e2e/            # Playwright scenarios
 ├── docs/                 # Runbooks, architecture, wave trackers
-├── deploy/               # Dockerfiles, nginx, live demo overlay
-└── docker-compose-*.yml   # local (dev), demo, hybrid profiles
+├── deploy/               # Dockerfiles, nginx, dev/ pilot/ production/ env templates
+└── docker-compose-*.yml   # local (dev), hybrid, pilot, pilot-supabase, prod
 ```
 
 ---
@@ -82,18 +83,18 @@ FMS/
 ```powershell
 uv run pytest backend/tests/ -q    # backend
 npm run build                       # frontend regression
-# E2E: demo stack up, then npx playwright test tests/e2e/
+# E2E: pilot stack up, then npx playwright test tests/e2e/
 ```
 
 Details: **[docs/guides/testing.md](docs/guides/testing.md)**
 
 ---
 
-## Public demo deployment
+## Pilot deployment
 
-Deploy the pitch stack to a free VM (Oracle Cloud, etc.):
+Deploy the pilot stack to a VM (Oracle Cloud free tier, etc.) behind Cloudflare Tunnel:
 
-**[docs/phase3-restructure/DEMO_LIVE_DEPLOY.md](docs/phase3-restructure/DEMO_LIVE_DEPLOY.md)** · branch `demo/live`
+**[docs/guides/deployment.md](docs/guides/deployment.md#pilot-server-pilotlive-branch)** · branch `pilot/live`
 
 ---
 

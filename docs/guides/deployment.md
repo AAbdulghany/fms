@@ -1,6 +1,6 @@
 # Deployment
 
-Deploy Orbit demo or production stacks. **Local demo commands:** [demo-stack.md](./demo-stack.md).
+Deploy the Orbit **pilot** or **production** stacks. For the environment matrix, see [environments.md](./environments.md). For local pilot commands, see [pilot-stack.md](./pilot-stack.md).
 
 ---
 
@@ -8,11 +8,11 @@ Deploy Orbit demo or production stacks. **Local demo commands:** [demo-stack.md]
 
 | Profile | `APP_ENV` | Database | Seed | License gates |
 |---------|-----------|----------|------|---------------|
-| Development | `development` | `fms` | manual / test_seed | Bypassed |
-| Pitch demo | `demo` | `fms_demo` | pitch_seed | Bypassed |
-| Production | `production` | dedicated | minimal | Enforced |
+| Dev | `development` | `fms_local` | `test` | Bypassed |
+| Pilot | `pilot` | `fms_pilot` (or Supabase) | `pilot` | Bypassed |
+| Production | `production` | dedicated | none (manual super user) | Enforced |
 
-See [ENV_MATRIX.md](../phase3-restructure/ENV_MATRIX.md).
+The backend rejects any other `APP_ENV` value at startup. `demo` is still accepted and maps to `pilot`.
 
 ---
 
@@ -26,95 +26,95 @@ See [ENV_MATRIX.md](../phase3-restructure/ENV_MATRIX.md).
 
 ### Compose files
 
-| File | Purpose |
-|------|---------|
-| `docker-compose-local.yml` | Base: db, migrate, api, web |
-| `docker-compose-demo.yml` | Overlay: `fms_demo`, `APP_ENV=demo`, pitch seed |
-| `docker-compose-hybrid.yml` | DB + migrate only (host API/UI) |
-| `deploy/demo/docker-compose.live.yml` | Production VM: web on port 80, env from file |
+| File | Environment | Purpose |
+|------|-------------|---------|
+| `docker-compose-local.yml` | Dev | db, migrate, api, web (`fms-local`) |
+| `docker-compose-hybrid.yml` | Dev | Overlay: DB + migrate only, for host API and Vite |
+| `docker-compose-pilot.yml` | Pilot | Self-contained stack (`fms-pilot`), `APP_ENV=pilot`, pilot seed |
+| `deploy/pilot/docker-compose.live.yml` | Pilot | Server overlay: publishes only web on `WEB_PORT`; secrets from `deploy/pilot/.env` |
+| `docker-compose-pilot-supabase.yml` | Pilot | Pilot against managed Postgres; no db container |
+| `docker-compose-prod.yml` | Production | Prebuilt images; every secret required from the environment |
 
 ---
 
-## Local demo (reference)
+## Pilot server (`pilot/live` branch)
 
-```powershell
-docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build
-```
-
-→ http://localhost:8080
-
----
-
-## Public demo (`demo/live` branch)
-
-Step-by-step guide: [DEMO_LIVE_DEPLOY.md](../phase3-restructure/DEMO_LIVE_DEPLOY.md)
-
-Summary:
-
-1. Ensure tests pass locally (pytest, build, demo compose smoke)
-2. Maintain branch **`demo/live`** — demo-stable merges only
-3. Tag releases: `demo-live-vX.Y.Z`
-4. On server (recommended: Oracle Cloud free VM + Cloudflare Tunnel → **https://demo.orbittech.co**):
+1. Make sure tests pass (pytest, `npm run build`, a pilot compose smoke test).
+2. Merge pilot-ready work into **`pilot/live`**. Tag snapshots as `pilot-live-vX.Y.Z`.
+3. First-time server setup (for example, an Oracle Cloud free VM with Cloudflare Tunnel):
 
 ```bash
-git clone -b demo/live <repo-url> /opt/fms
+git clone -b pilot/live <repo-url> /opt/fms
 cd /opt/fms
-cp deploy/demo/.env.example deploy/demo/.env   # SECRET_KEY; PUBLIC_APP_URL/CORS = https://demo.orbittech.co
-docker compose -f docker-compose-local.yml \
-  -f docker-compose-demo.yml \
-  -f deploy/demo/docker-compose.live.yml \
-  --env-file deploy/demo/.env up -d --build
+sudo bash deploy/pilot/setup-ubuntu.sh
+cp deploy/pilot/.env.example deploy/pilot/.env && chmod 600 deploy/pilot/.env
+# set SECRET_KEY, PUBLIC_APP_URL, CORS_ORIGINS, WEB_PORT
+docker compose -f docker-compose-pilot.yml \
+  -f deploy/pilot/docker-compose.live.yml \
+  --env-file deploy/pilot/.env up -d --build
 ```
 
-`docker-compose.live.yml` exposes web on `${WEB_PORT:-80}:8080` and requires secrets via env file.
+4. Subsequent deploys run automatically on push to `pilot/live` through [`.github/workflows/deploy-orbit-pilot.yml`](../../.github/workflows/deploy-orbit-pilot.yml).
 
-CI deploy on push to `demo/live`: [`.github/workflows/deploy-orbit-demo.yml`](../../.github/workflows/deploy-orbit-demo.yml).
+The live overlay publishes only the web container. nginx proxies `/api`, so the API and database have no host ports. Point the Cloudflare Tunnel at `http://localhost:${WEB_PORT}`.
 
-Manifest: [deploy/demo/BRANCH_MANIFEST.md](../../deploy/demo/BRANCH_MANIFEST.md)
+Server file reference: [deploy/pilot/README.md](../../deploy/pilot/README.md). Cutover from the old demo stack: [ENV_REORG_PLAN.md](../engineering/ENV_REORG_PLAN.md).
+
+---
+
+## Production
+
+```bash
+cp deploy/production/.env.example deploy/production/.env   # on the server only
+set -a; . deploy/production/.env; set +a
+export API_IMAGE=<registry>/fms-api:<tag> WEB_IMAGE=<registry>/fms-web:<tag>
+docker compose -f docker-compose-prod.yml up -d
+```
+
+`docker_migrate` runs with the default `SEED_MODULE=test` unless you override it. For production, run schema only and create the first super user manually:
+
+```bash
+alembic upgrade head
+python -m app.seed_super   # then change the password immediately
+```
+
+### Production checklist
+
+- [ ] `APP_ENV=production`
+- [ ] Strong `SECRET_KEY` (not a dev default). It signs access and refresh tokens.
+- [ ] Dedicated PostgreSQL (`DATABASE_URL`)
+- [ ] Alembic at head: `alembic upgrade head`
+- [ ] No rich seed. Seed passwords are public.
+- [ ] `CORS_ORIGINS` matches the real frontend origin(s)
+- [ ] HTTPS termination (reverse proxy or platform)
+- [ ] SMTP configured if email notifications are required
+- [ ] PostgreSQL backups scheduled
+- [ ] `POST /platform/pilot/reset` returns 403 (it does whenever `APP_ENV=production`)
 
 ---
 
 ## Cloud / PaaS (Railway, Render)
 
-High-level steps (see also archived [phase3.1/DEMO_DEPLOY.md](../phase3.1/DEMO_DEPLOY.md)):
-
 1. Managed PostgreSQL → set `DATABASE_URL`
 2. API service from `deploy/Dockerfile.api`
-3. Web service from `deploy/Dockerfile.web` **or** nginx container serving built static files
+3. Web service from `deploy/Dockerfile.web`, or an nginx container serving the built static files
 4. Required env vars:
 
 ```env
 DATABASE_URL=postgresql+psycopg2://...
 SECRET_KEY=<random-32+-chars>
-JWT_SECRET=<random-32+-chars>
-APP_ENV=demo                    # or production
+APP_ENV=pilot                   # or production
 CORS_ORIGINS=https://your-domain
 PUBLIC_APP_URL=https://your-domain
 ```
 
-5. One-off migrate + seed:
+5. One-off migrate and seed for a pilot:
 
 ```bash
-python -m app.docker_migrate    # with SEED_MODULE=pitch for demo
-# or: alembic upgrade head && python -m app.pitch_seed
+SEED_MODULE=pilot python -m app.docker_migrate
 ```
 
-6. Optional nightly demo reset: cron → `POST /api/v1/platform/demo/reset` (demo env only)
-
----
-
-## Production checklist
-
-- [ ] `APP_ENV=production`
-- [ ] Strong `SECRET_KEY` / `JWT_SECRET` (not dev defaults)
-- [ ] Dedicated PostgreSQL (`DATABASE_URL`)
-- [ ] Alembic at head: `alembic upgrade head`
-- [ ] Minimal seed: `python -m app.seed_super` — change default password
-- [ ] `CORS_ORIGINS` matches actual frontend origin(s)
-- [ ] HTTPS termination (reverse proxy or platform)
-- [ ] SMTP configured if email notifications required
-- [ ] Backups scheduled for PostgreSQL
-- [ ] Do **not** expose demo reset endpoint in production
+6. Optional nightly pilot reset: a cron job calls `POST /api/v1/platform/pilot/reset` (pilot only).
 
 ---
 
@@ -123,20 +123,21 @@ python -m app.docker_migrate    # with SEED_MODULE=pitch for demo
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `DATABASE_URL` | yes | PostgreSQL connection string |
-| `SECRET_KEY` | yes | App secret |
-| `JWT_SECRET` | yes | Token signing |
-| `APP_ENV` | yes | `development` \| `demo` \| `production` |
-| `CORS_ORIGINS` | prod | Comma-separated allowed origins |
-| `PUBLIC_APP_URL` | prod | Canonical app URL (links, emails) |
-| `SEED_MODULE` | migrate | `pitch` or `test` (docker_migrate only) |
+| `SECRET_KEY` | yes | App secret; signs JWT access and refresh tokens |
+| `APP_ENV` | yes | `development` \| `pilot` \| `production` |
+| `CORS_ORIGINS` | pilot, prod | Comma-separated allowed origins |
+| `PUBLIC_APP_URL` | pilot, prod | Canonical app URL (links, emails) |
+| `SEED_MODULE` | migrate | `test` (default) or `pilot` (docker_migrate only) |
+| `SEED_PASSWORD_SUFFIX` | optional | Suffix for seed-account passwords (default `123`) |
 | `SMTP_*` | optional | Outbound email |
 
-Examples: `backend/.env.example`, `backend/.env.demo.example`, `deploy/demo/.env.example`
+Templates: `backend/.env.example`, `backend/.env.pilot.example`, `deploy/dev/.env.example`, `deploy/pilot/.env.example`, `deploy/pilot/.env.supabase.example`, `deploy/production/.env.example`.
 
 ---
 
 ## Related
 
-- [demo-stack.md](./demo-stack.md) — local Docker demo
-- [local-development.md](./local-development.md) — host development
-- [PIPELINE_ARCHITECTURE.md](../phase3-restructure/PIPELINE_ARCHITECTURE.md) — CI/CD
+- [environments.md](./environments.md): dev, pilot, and production matrix
+- [pilot-stack.md](./pilot-stack.md): local pilot stack and tunnel
+- [local-development.md](./local-development.md): host development
+- [PIPELINE_ARCHITECTURE.md](../phase3-restructure/PIPELINE_ARCHITECTURE.md): CI/CD

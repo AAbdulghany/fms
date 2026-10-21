@@ -183,7 +183,7 @@ Every PR must pass the gates for its wave before review is requested.
 | G1 Build | `npm run build` (tsc -b + vite build) | — | ✅ | ✅ | ✅ |
 | G2 Import guard | `npm run check:imports` | — | ✅ | ✅ | ✅ |
 | G3 Unit | `npm test` | — | ✅ (smoke) | ✅ | ✅ |
-| G4 E2E desktop | `npx playwright test --project=chromium` against demo stack | — | ✅ | ✅ | ✅ |
+| G4 E2E desktop | `npx playwright test --project=chromium` against pilot stack | — | ✅ | ✅ | ✅ |
 | G5 E2E mobile | `npx playwright test --project=mobile-chrome` | — | — | ✅ | ✅ |
 | G6 Zero-diff proof | `rg "@/components/\|@/pages/" src tests` → 0; `git ls-files src/pages src/components` → empty | — | ✅ | — | — |
 | G7 Bundle sanity | Compare `dist/assets` total size before/after; ±2% expected for cleanup (shims are tree-shaken anyway) | — | ✅ | report delta | report delta |
@@ -207,7 +207,7 @@ Packing rules:
 - **PR2 is mechanical and behaviour-neutral.** One commit per ticket, so a reviewer can verify each with a single `rg` and so any single step can be reverted without touching the rest. If CLEAN-005 review drags, drop it from PR2 and ship it as PR2b. PR3 depends on it, PR2 does not.
 - **PR3 split threshold:** if CLEAN-009 grows beyond ~600 changed lines, split PR3 into **PR3a (PWA: 006–008)** and **PR3b (bottom nav: 009)**. PR3a alone is shippable: users can install the app and the existing drawer still works.
 - **God-page splits never ride with shell work.** They carry high diff noise and need a focused review. CLEAN-010 goes first because WO detail is the technician's main phone screen.
-- **Don't let untracked work leak.** `deploy/demo/.env.supabase-demo`, `nnn.md`, and pitch artifacts currently sit untracked in the working tree. Stage files explicitly per PR. Never `git add -A`.
+- **Don't let untracked work leak.** local env files, `nnn.md`, and pitch artifacts currently sit untracked in the working tree. Stage files explicitly per PR. Never `git add -A`.
 
 ---
 
@@ -222,7 +222,7 @@ Packing rules:
 | R5 | RTL mirroring regressions (tabs order, sheet slide direction) | Medium | Medium (AR is default) | Logical CSS props (`ps-/pe-`, `start/end`); e2e runs in AR; manual AR check in G8 |
 | R6 | iOS Safari has no `beforeinstallprompt`, so stakeholders expect a one-tap install | Certain | Low | iOS hint copy ("Share → Add to Home Screen") already in hook; set expectation in pilot PRD |
 | R7 | God-page split changes behaviour silently (no tests today) | Medium | High | CLEAN-005 first; characterization tests before moving code; e2e WO specs as regression net; split by extraction only, no logic edits in the same PR |
-| R8 | Demo e2e stack flakiness blocks merges | Medium | Medium | Gate on desktop project first; mobile project allowed `retries: 2` in CI; flaky test → `/bug` ticket, not `test.skip` |
+| R8 | Pilot e2e stack flakiness blocks merges | Medium | Medium | Gate on desktop project first; mobile project allowed `retries: 2` in CI; flaky test → `/bug` ticket, not `test.skip` |
 | R9 | Scope creep: "while we're here" layout redesigns on desktop | Medium | Medium | Non-goal; G8 desktop regression screenshot must match pre-change |
 
 ---

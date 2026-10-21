@@ -23,7 +23,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in deploy/pilot/.env.supabase}
       SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY}
       APP_ENV: pilot
-      SEED_MODULE: ${SEED_MODULE:-pitch}
+      SEED_MODULE: ${SEED_MODULE:-pilot}
     command: python -m app.docker_migrate
     restart: "no"
 

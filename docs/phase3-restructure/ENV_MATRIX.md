@@ -2,7 +2,7 @@
 
 | Variable | Values | Purpose |
 |----------|--------|---------|
-| `APP_ENV` | `development` \| `pilot` \| `production` (`demo` = deprecated alias of `pilot`) | License freeze bypass in non-production |
+| `APP_ENV` | `development` \| `pilot` \| `production` (`demo` still maps to `pilot`; other values are rejected) | License freeze bypass in non-production |
 | `DATABASE_URL` | per environment | Separate DB per env |
 
 Canonical guide: [environments.md](../guides/environments.md) · Reorg plan: [ENV_REORG_PLAN.md](../engineering/ENV_REORG_PLAN.md)
@@ -12,8 +12,7 @@ Canonical guide: [environments.md](../guides/environments.md) · Reorg plan: [EN
 | APP_ENV | License freeze | Feature gates | Typical database | Compose |
 |---------|----------------|---------------|------------------|---------|
 | `development` | **Bypassed** | All open | `fms_local` | `docker-compose-local.yml` |
-| `pilot` | **Bypassed** | All open (pitch seed) | `fms_pilot` | `docker-compose-pilot.yml` |
-| `demo` | **Bypassed** (alias) | Same as pilot | `fms_demo` (legacy) | `docker-compose-demo.yml` (deprecated) |
+| `pilot` | **Bypassed** | All open (pilot seed) | `fms_pilot` | `docker-compose-pilot.yml` |
 | `production` | **Enforced** | Package-driven | `fms_prod` | `docker-compose-prod.yml` |
 
 ## Local defaults

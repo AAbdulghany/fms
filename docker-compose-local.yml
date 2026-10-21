@@ -2,7 +2,7 @@
 # Usage: docker compose -f docker-compose-local.yml up -d --build
 # Or hybrid (host API + Vite): docker compose -f docker-compose-local.yml -f docker-compose-hybrid.yml up -d
 #
-# Project name MUST stay distinct from docker-compose-demo.yml (fms-demo)
+# Project name MUST stay distinct from docker-compose-pilot.yml (fms-pilot)
 # or containers overwrite each other under the same symlink path.
 
 name: fms-local

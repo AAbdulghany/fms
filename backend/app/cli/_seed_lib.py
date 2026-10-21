@@ -1,4 +1,4 @@
-"""Shared utilities for seed scripts (test_seed + pitch_seed).
+"""Shared utilities for seed scripts (test_seed + pilot_seed).
 
 Provides:
   - truncate_tenant_data(db)  — idempotent wipe of all tenant tables
@@ -124,7 +124,7 @@ def truncate_tenant_data(db: Session) -> None:
 @dataclass
 class UserSeedSpec:
     email: str
-    pw_local: str          # local part used with demo_password()
+    pw_local: str          # local part used with seed_password()
     role: UserRole
     full_name: str = ""
     username: Optional[str] = None
@@ -144,11 +144,11 @@ def create_seed_user(
     """Insert a User from a UserSeedSpec. Caller must flush/commit.
 
     If *password_hash* is not provided the hash is derived via
-    ``app.cli._demo_passwords.demo_password(spec.pw_local)``.
+    ``app.cli._seed_passwords.seed_password(spec.pw_local)``.
     """
     if password_hash is None:
-        from app.cli._demo_passwords import demo_password
-        password_hash = hash_password(demo_password(spec.pw_local))
+        from app.cli._seed_passwords import seed_password
+        password_hash = hash_password(seed_password(spec.pw_local))
 
     user = User(
         tenant_id=tenant_id,

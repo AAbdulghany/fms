@@ -1,8 +1,10 @@
-# Pilot stack — isolated DB with pitch seed (sales / UAT / field pilot)
+# Pilot stack — isolated DB with pilot seed (sales / UAT / field pilot)
 # Usage: docker compose -f docker-compose-pilot.yml up -d --build
+# Server: add -f deploy/pilot/docker-compose.live.yml --env-file deploy/pilot/.env
 #
-# Replaces the old "demo" naming. docker-compose-demo.yml remains as a
-# deprecated alias until CI/VM cutover (see docs/engineering/ENV_REORG_PLAN.md).
+# Project name MUST stay distinct from docker-compose-local.yml (fms-local).
+# Replaces docker-compose-demo.yml (project fms-demo); stop that project first
+# or its containers keep ports 9001/9081/9543: docker compose -p fms-demo down
 
 name: fms-pilot
 
@@ -32,7 +34,7 @@ services:
       DATABASE_URL: postgresql+psycopg2://fms:fms@db:5432/fms_pilot
       SECRET_KEY: ${SECRET_KEY:-pilot-secret}
       APP_ENV: pilot
-      SEED_MODULE: pitch
+      SEED_MODULE: pilot
     depends_on:
       db:
         condition: service_healthy

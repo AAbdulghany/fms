@@ -116,3 +116,43 @@ def test_demo_alias_bypasses_freeze(monkeypatch, db_session, sample_tenant):
     assert is_subscription_active(db_session, sample_tenant) is True
 
     get_settings.cache_clear()
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("development", "development"),
+        ("pilot", "pilot"),
+        ("production", "production"),
+        ("demo", "pilot"),
+        ("DEMO", "pilot"),
+        (" Pilot ", "pilot"),
+        ("dev", "development"),
+        ("prod", "production"),
+    ],
+)
+def test_app_env_normalized(raw, expected):
+    from app.config import Settings
+
+    assert Settings(app_env=raw).app_env == expected
+
+
+def test_app_env_rejects_unknown_value():
+    from pydantic import ValidationError
+
+    from app.config import Settings
+
+    with pytest.raises(ValidationError):
+        Settings(app_env="staging")
+
+
+@pytest.mark.parametrize(
+    ("raw", "is_pilot", "bypasses"),
+    [("development", False, True), ("pilot", True, True), ("demo", True, True), ("production", False, False)],
+)
+def test_app_env_flags(raw, is_pilot, bypasses):
+    from app.config import Settings
+
+    settings = Settings(app_env=raw)
+    assert settings.is_pilot is is_pilot
+    assert settings.bypasses_license is bypasses

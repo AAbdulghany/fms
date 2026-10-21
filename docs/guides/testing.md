@@ -73,17 +73,17 @@ Config: `playwright.config.ts` → `testDir: ./tests/e2e`.
 
 | How you run the app | Start command | `E2E_BASE_URL` |
 |---------------------|---------------|----------------|
-| **Demo Docker** (recommended for E2E) | `docker compose -f docker-compose-demo.yml up -d --build` | `http://localhost:9081` |
+| **Pilot Docker** (recommended for E2E) | `docker compose -f docker-compose-pilot.yml up -d --build` | `http://localhost:9081` |
 | **Local full Docker** | `docker compose -f docker-compose-local.yml up -d --build` | `http://localhost:9080` |
 | **Hybrid** (Docker DB + host API/UI) | hybrid compose + `uvicorn` + `npm run dev` | `http://localhost:5173` |
 
-Default in `playwright.config.ts` is **`http://localhost:9081`** (demo stack) when `E2E_BASE_URL` is unset.
+Default in `playwright.config.ts` is **`http://localhost:9081`** (pilot stack) when `E2E_BASE_URL` is unset.
 
-### Prerequisites (demo stack — recommended)
+### Prerequisites (pilot stack — recommended)
 
 ```powershell
-docker compose -f docker-compose-demo.yml up -d --build
-docker compose -f docker-compose-demo.yml logs migrate --tail 10
+docker compose -f docker-compose-pilot.yml up -d --build
+docker compose -f docker-compose-pilot.yml logs migrate --tail 10
 ```
 
 Wait for `Migrate complete.` and open http://localhost:9081 once to confirm.
@@ -124,14 +124,14 @@ npx playwright test tests/e2e/domains/assets/wave3-assets.spec.ts
 
 Plan docs: `docs/phase3-restructure/WAVE3_E2E.md`, `WAVE4_E2E.md`.
 
-Fixtures: `tests/e2e/fixtures/auth.ts` — demo users compose passwords from `E2E_DEMO_PASSWORD_SUFFIX`.
+Fixtures: `tests/e2e/fixtures/auth.ts` — seed users compose passwords from `E2E_DEMO_PASSWORD_SUFFIX` (must match the stack's `SEED_PASSWORD_SUFFIX`).
 
 ### CI
 
-[`.github/workflows/playwright-e2e-demo.yml`](../../.github/workflows/playwright-e2e-demo.yml):
+[`.github/workflows/playwright-e2e-pilot.yml`](../../.github/workflows/playwright-e2e-pilot.yml):
 
 - Runs on **push to `main`** (including when a PR is merged into main) and manual dispatch
-- Starts `docker-compose-demo.yml`, waits for API `:9001` and web `:9081`
+- Starts `docker-compose-pilot.yml`, waits for API `:9001` and web `:9081`
 - Runs **all** Playwright specs under `tests/e2e/`
 - On failure: writes `test-results/e2e-failure-summary.json` + GitHub job summary
 - Uploads `test-results/` and `playwright-report/` artifacts
@@ -145,8 +145,8 @@ Fixtures: `tests/e2e/fixtures/auth.ts` — demo users compose passwords from `E2
 uv run pytest backend/tests/ -q
 npm run build
 
-# Optional E2E (demo stack up)
-docker compose -f docker-compose-demo.yml up -d --build
+# Optional E2E (pilot stack up)
+docker compose -f docker-compose-pilot.yml up -d --build
 $env:E2E_BASE_URL="http://localhost:9081"
 npx playwright test tests/e2e/domains/assets/wave3-assets.spec.ts
 ```
@@ -156,5 +156,5 @@ npx playwright test tests/e2e/domains/assets/wave3-assets.spec.ts
 ## Related
 
 - [local-development.md](./local-development.md) — run API/UI for manual testing
-- [demo-stack.md](./demo-stack.md) — Docker stack for E2E
+- [pilot-stack.md](./pilot-stack.md) — Docker stack for E2E
 - [tests/e2e/README.md](../../tests/e2e/README.md) — spec table

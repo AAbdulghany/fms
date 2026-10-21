@@ -1,4 +1,4 @@
-"""Pitch / demo seed: rich multi-client dataset for sales demos and E2E tests.
+"""Pilot seed: rich multi-client dataset for the pilot (sales / UAT) stack and E2E tests.
 
 Creates:
   - 1 maintenance tenant "Demo Facility Co" with a Pro subscription
@@ -9,8 +9,8 @@ Creates:
   - 2 draft invoices on verified WOs
   - Full user roster (super, swdev, admin, client × 2, site, tech)
 
-Canonical: app.cli.pitch_seed (shim at app.pitch_seed).
-Run: python -m app.pitch_seed
+Selected by SEED_MODULE=pilot in app.cli.docker_migrate (legacy alias: pitch).
+Run: python -m app.cli.pilot_seed
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
-from app.cli._demo_passwords import demo_password
+from app.cli._seed_passwords import seed_password
 from app.cli._seed_lib import UserSeedSpec, create_seed_user, truncate_tenant_data
 from app.models import (
     Asset,
@@ -70,21 +70,21 @@ _USER_SPECS: list[UserSeedSpec] = [
         role=UserRole.super_user, full_name="Super Admin",
         username="superadmin", phone="+966500000001",
         locale="en", is_platform=True,
-        metadata_json={"seed_profile": "pitch"},
+        metadata_json={"seed_profile": "pilot"},
     ),
     UserSeedSpec(
         email="swdev@demo.com", pw_local="swdev",
         role=UserRole.sw_dev, full_name="SW Developer",
         username="swdev", phone="+966500000002",
         locale="en", is_platform=True,
-        metadata_json={"seed_profile": "pitch"},
+        metadata_json={"seed_profile": "pilot"},
     ),
     UserSeedSpec(
         email="admin@demo.com", pw_local="admin",
         role=UserRole.company_admin, full_name="Company Admin",
         username="companyadmin", phone="+966500000003",
         locale="ar",
-        metadata_json={"seed_profile": "pitch"},
+        metadata_json={"seed_profile": "pilot"},
     ),
     # client_id will be patched after clients are flushed
     UserSeedSpec(
@@ -92,28 +92,28 @@ _USER_SPECS: list[UserSeedSpec] = [
         role=UserRole.client_admin, full_name="Client Admin GE",
         username="clientadmin_ge", phone="+966500000004",
         locale="ar",
-        metadata_json={"seed_profile": "pitch"},
+        metadata_json={"seed_profile": "pilot"},
     ),
     UserSeedSpec(
         email="client2@demo.com", pw_local="client2",
         role=UserRole.client_admin, full_name="Client Admin RR",
         username="clientadmin_rr", phone="+966500000005",
         locale="ar",
-        metadata_json={"seed_profile": "pitch"},
+        metadata_json={"seed_profile": "pilot"},
     ),
     UserSeedSpec(
         email="site@demo.com", pw_local="site",
         role=UserRole.site_manager, full_name="Site Manager",
         username="sitemanager", phone="+966500000006",
         locale="ar",
-        metadata_json={"seed_profile": "pitch"},
+        metadata_json={"seed_profile": "pilot"},
     ),
     UserSeedSpec(
         email="tech@demo.com", pw_local="tech",
         role=UserRole.technician, full_name="Field Technician",
         username="technician", phone="+966500000007",
         locale="ar",
-        metadata_json={"seed_profile": "pitch"},
+        metadata_json={"seed_profile": "pilot"},
     ),
 ]
 
@@ -122,8 +122,8 @@ _USER_SPECS: list[UserSeedSpec] = [
 # Main seeder
 # ---------------------------------------------------------------------------
 
-def seed_pitch_demo(db: Session) -> dict[str, str | int]:
-    """Reset and seed rich pitch demo data. Caller must commit."""
+def seed_pilot(db: Session) -> dict[str, str | int]:
+    """Reset and seed rich pilot data. Caller must commit."""
     truncate_tenant_data(db)
     packages = ensure_default_packages(db)
     ensure_platform_settings(db)
@@ -516,6 +516,9 @@ def seed_pitch_demo(db: Session) -> dict[str, str | int]:
     }
 
 
+seed_pitch_demo = seed_pilot
+
+
 if __name__ == "__main__":
     from app.database import SessionLocal, engine
     from app.schema_ensure import ensure_schema
@@ -526,9 +529,9 @@ if __name__ == "__main__":
         run_wave0_platform_bootstrap(db)
         db.commit()
     with SessionLocal() as db:
-        info = seed_pitch_demo(db)
+        info = seed_pilot(db)
         db.commit()
-        print("Pitch demo seeded:", info)
+        print("Pilot seeded:", info)
         print("\nAccounts:")
         for email, _, _, pw_local in SEED_USERS:
-            print(f"  {email} / {demo_password(pw_local)}")
+            print(f"  {email} / {seed_password(pw_local)}")

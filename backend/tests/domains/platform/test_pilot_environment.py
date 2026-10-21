@@ -1,6 +1,6 @@
-"""Demo environment tests — pitch_seed produces rich multi-client dataset.
+"""Pilot environment tests — pilot_seed produces rich multi-client dataset.
 
-NT-P1-03 / pitch profile: 2 clients, 3 sites, ~15 assets, ~50 WOs, 2 invoices.
+NT-P1-03 / pilot profile: 2 clients, 3 sites, ~15 assets, ~50 WOs, 2 invoices.
 """
 from __future__ import annotations
 
@@ -11,15 +11,15 @@ from sqlalchemy import func, select
 
 from app.core.security import hash_password
 from app.models import Asset, Client, Invoice, Site, Tenant, User, UserRole, WorkOrder
-from app.cli.pitch_seed import seed_pitch_demo, SEED_USERS, TENANT_NAME
+from app.cli.pilot_seed import seed_pilot, SEED_USERS, TENANT_NAME
 from app.services.platform_bootstrap import ensure_default_packages
 from tests.api_helpers import auth_header
 
 
-def test_pitch_seed_rich_dataset(db_session):
-    """pitch_seed creates 2 clients, 3 sites, ≥12 assets, ≥40 WOs, 2 invoices."""
+def test_pilot_seed_rich_dataset(db_session):
+    """pilot_seed creates 2 clients, 3 sites, ≥12 assets, ≥40 WOs, 2 invoices."""
     ensure_default_packages(db_session)
-    info = seed_pitch_demo(db_session)
+    info = seed_pilot(db_session)
     db_session.commit()
 
     assert int(info["users_created"]) == len(SEED_USERS)
@@ -30,10 +30,10 @@ def test_pitch_seed_rich_dataset(db_session):
     assert info["invoices"] == 2
 
 
-def test_pitch_seed_client_structure(db_session):
+def test_pilot_seed_client_structure(db_session):
     """Two clients GE-001 and RR-002 are created with correct codes."""
     ensure_default_packages(db_session)
-    seed_pitch_demo(db_session)
+    seed_pilot(db_session)
     db_session.commit()
 
     clients = db_session.scalars(select(Client).order_by(Client.code)).all()
@@ -43,10 +43,10 @@ def test_pitch_seed_client_structure(db_session):
     assert "RR-002" in codes
 
 
-def test_pitch_seed_work_order_distribution(db_session):
+def test_pilot_seed_work_order_distribution(db_session):
     """WOs are distributed across multiple statuses (no single-status dominance)."""
     ensure_default_packages(db_session)
-    info = seed_pitch_demo(db_session)
+    info = seed_pilot(db_session)
     db_session.commit()
 
     by_status = info["wo_by_status"]
@@ -56,10 +56,10 @@ def test_pitch_seed_work_order_distribution(db_session):
         assert by_status.get(status, 0) > 0, f"No WOs in status '{status}'"
 
 
-def test_pitch_seed_invoices_on_verified_wos(db_session):
+def test_pilot_seed_invoices_on_verified_wos(db_session):
     """Draft invoices exist and are linked to verified work orders."""
     ensure_default_packages(db_session)
-    seed_pitch_demo(db_session)
+    seed_pilot(db_session)
     db_session.commit()
 
     invoices = db_session.scalars(select(Invoice)).all()
@@ -70,10 +70,10 @@ def test_pitch_seed_invoices_on_verified_wos(db_session):
         assert wo.status.value == "verified"
 
 
-def test_pitch_seed_user_client_wiring(db_session):
+def test_pilot_seed_user_client_wiring(db_session):
     """client@demo.com and client2@demo.com are wired to distinct clients."""
     ensure_default_packages(db_session)
-    seed_pitch_demo(db_session)
+    seed_pilot(db_session)
     db_session.commit()
 
     u1 = db_session.scalar(select(User).where(User.email == "client@demo.com"))
@@ -83,22 +83,22 @@ def test_pitch_seed_user_client_wiring(db_session):
     assert u1.client_id != u2.client_id
 
 
-def test_pitch_seed_idempotent(db_session):
-    """Running pitch_seed twice stays idempotent (one tenant, correct counts)."""
+def test_pilot_seed_idempotent(db_session):
+    """Running pilot_seed twice stays idempotent (one tenant, correct counts)."""
     ensure_default_packages(db_session)
-    seed_pitch_demo(db_session)
+    seed_pilot(db_session)
     db_session.commit()
-    seed_pitch_demo(db_session)
+    seed_pilot(db_session)
     db_session.commit()
 
     assert db_session.scalar(select(func.count()).select_from(Tenant)) == 1
     assert db_session.scalar(select(func.count()).select_from(Client)) == 2
 
 
-def test_pitch_seed_tenant_name(db_session):
+def test_pilot_seed_tenant_name(db_session):
     """Tenant is created with the canonical TENANT_NAME."""
     ensure_default_packages(db_session)
-    seed_pitch_demo(db_session)
+    seed_pilot(db_session)
     db_session.commit()
 
     tenant = db_session.scalar(select(Tenant))
@@ -106,18 +106,12 @@ def test_pitch_seed_tenant_name(db_session):
     assert tenant.name == TENANT_NAME
 
 
-def test_demo_reset_endpoint_demo_env(api_client, db_session, monkeypatch):
-    monkeypatch.setenv("APP_ENV", "demo")
-    from app.config import get_settings
-
-    get_settings.cache_clear()
-
-    ensure_default_packages(db_session)
+def _platform_admin(db_session, email: str) -> User:
     tenant = Tenant(id=uuid4(), name="T", status="active")
     db_session.add(tenant)
     admin = User(
         tenant_id=tenant.id,
-        email="p@demo.com",
+        email=email,
         password_hash=hash_password("pass"),
         role=UserRole.super_admin,
         is_platform_admin=True,
@@ -125,32 +119,42 @@ def test_demo_reset_endpoint_demo_env(api_client, db_session, monkeypatch):
     )
     db_session.add(admin)
     db_session.commit()
+    return admin
 
-    res = api_client.post("/api/v1/platform/demo/reset", headers=auth_header(admin))
+
+@pytest.mark.parametrize(
+    ("app_env", "path"),
+    [
+        ("pilot", "/api/v1/platform/pilot/reset"),
+        ("demo", "/api/v1/platform/pilot/reset"),
+        ("pilot", "/api/v1/platform/demo/reset"),
+    ],
+)
+def test_pilot_reset_allowed_in_pilot_env(api_client, db_session, monkeypatch, app_env, path):
+    monkeypatch.setenv("APP_ENV", app_env)
+    from app.config import get_settings
+
+    get_settings.cache_clear()
+    ensure_default_packages(db_session)
+    admin = _platform_admin(db_session, "p@demo.com")
+
+    res = api_client.post(path, headers=auth_header(admin))
     assert res.status_code == 200
     assert res.json()["status"] == "ok"
     assert db_session.scalar(select(func.count()).select_from(Tenant)) == 1
     get_settings.cache_clear()
 
 
-def test_demo_reset_blocked_in_production(api_client, db_session, monkeypatch):
-    monkeypatch.setenv("APP_ENV", "production")
+@pytest.mark.parametrize("app_env", ["production", "development"])
+@pytest.mark.parametrize("path", ["/api/v1/platform/pilot/reset", "/api/v1/platform/demo/reset"])
+def test_pilot_reset_blocked_outside_pilot(api_client, db_session, monkeypatch, app_env, path):
+    monkeypatch.setenv("APP_ENV", app_env)
     from app.config import get_settings
 
     get_settings.cache_clear()
-    tenant = Tenant(id=uuid4(), name="T", status="active")
-    db_session.add(tenant)
-    admin = User(
-        tenant_id=tenant.id,
-        email="p2@demo.com",
-        password_hash=hash_password("pass"),
-        role=UserRole.super_admin,
-        is_platform_admin=True,
-        is_active=True,
-    )
-    db_session.add(admin)
-    db_session.commit()
+    admin = _platform_admin(db_session, "p2@demo.com")
 
-    res = api_client.post("/api/v1/platform/demo/reset", headers=auth_header(admin))
+    res = api_client.post(path, headers=auth_header(admin))
     assert res.status_code == 403
+    assert res.json()["detail"] == "PILOT_ENV_ONLY"
     get_settings.cache_clear()

@@ -22,7 +22,7 @@ test.describe("Wave 3 — Assets module (AST-01–AST-06)", () => {
     await page.goto("/assets");
     await expect(page.getByTestId("maintenance-calendar")).toBeVisible();
     const assetCells = page.locator("[data-testid^='calendar-asset-']");
-    // pitch_seed may have no MaintenanceSchedule rows — empty panel is valid then.
+    // pilot_seed may have no MaintenanceSchedule rows — empty panel is valid then.
     const count = await assetCells.count();
     if (count > 0) {
       await assetCells.first().click();

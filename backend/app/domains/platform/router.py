@@ -380,22 +380,18 @@ def assign_tenant_license(
     return SubscriptionOut.model_validate(get_subscription(db, tenant))
 
 
-def _is_pilot_env() -> bool:
-    """Pilot (and deprecated demo alias) may reset pitch seed data."""
-    return get_settings().app_env.lower() in ("pilot", "demo")
-
-
-@router.post("/demo/reset")
+# `/demo/reset` is the pre-reorg path; kept for existing cron jobs, hidden from OpenAPI.
+@router.post("/demo/reset", include_in_schema=False)
 @router.post("/pilot/reset")
 def pilot_reset(
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, _platform],
 ) -> dict[str, str]:
-    if not _is_pilot_env():
+    if not get_settings().is_pilot:
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="PILOT_ENV_ONLY")
-    from app.pitch_seed import seed_pitch_demo
+    from app.cli.pilot_seed import seed_pilot
 
-    info = seed_pitch_demo(db)
+    info = seed_pilot(db)
     actor = db.scalar(select(User).where(User.email == "super@demo.com"))
     if actor:
         write_audit(

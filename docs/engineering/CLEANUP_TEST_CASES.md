@@ -14,7 +14,7 @@ Each case has an ID `TC-<ticket>-NN`, a layer, and how it's run.
 
 **Shared preconditions:**
 
-- **P-DEMO:** the demo stack is running (`docker compose -f docker-compose-demo.yml up -d --build`), with `E2E_BASE_URL=http://localhost:9081`.
+- **P-PILOT:** the pilot stack is running (`docker compose -f docker-compose-pilot.yml up -d --build`), with `E2E_BASE_URL=http://localhost:9081`.
 - **P-MOBILE:** Playwright project `mobile-chrome` (`devices["Pixel 7"]`, 412×915) is in use. Added in CLEAN-009.
 - **P-DESKTOP:** Playwright project `chromium` (`devices["Desktop Chrome"]`, 1280×720) is in use.
 
@@ -28,7 +28,7 @@ Each case has an ID `TC-<ticket>-NN`, a layer, and how it's run.
 | TC-CLEAN-001-02 | S | Same | I run `npm run build` | `tsc -b` and `vite build` both exit 0 with no new warnings |
 | TC-CLEAN-001-03 | S | `src/shared/components/Sidebar.tsx` | I read its imports | `OrbitLogo` is imported from `@/shared/components/OrbitLogo` (or `./OrbitLogo`), not `@/components/*` |
 | TC-CLEAN-001-04 | S | Each repointed import | I compare the new path with the target in the old shim file | The new path equals the shim's re-export target exactly (same module, same named/default export) |
-| TC-CLEAN-001-05 | E | P-DEMO, P-DESKTOP | I run the full existing e2e suite | All 5 domain specs pass, the same as on `main` |
+| TC-CLEAN-001-05 | E | P-PILOT, P-DESKTOP | I run the full existing e2e suite | All 5 domain specs pass, the same as on `main` |
 
 ## CLEAN-002: Legacy-import guard
 
@@ -48,8 +48,8 @@ Each case has an ID `TC-<ticket>-NN`, a layer, and how it's run.
 | TC-CLEAN-003-01 | S | The branch with CLEAN-003 applied | I run `git ls-files src/pages` | Empty output |
 | TC-CLEAN-003-02 | S | Same | I run `npm run build` and `npm run check:imports` | Both exit 0 |
 | TC-CLEAN-003-03 | S | Same | I run `rg -n "pages/(\w+Page)['\"]" src tests --glob '!src/features/**'` | 0 matches (no string or dynamic references) |
-| TC-CLEAN-003-04 | E | P-DEMO, P-DESKTOP | I log in as each demo role and visit `/`, `/work-orders`, `/work-orders/:id`, `/invoices`, `/companies`, `/assets`, `/users`, `/profile` | Every route renders its page; no blank screen; no console `Failed to fetch dynamically imported module` |
-| TC-CLEAN-003-05 | E | P-DEMO, P-DESKTOP | I run the full e2e suite | All specs pass |
+| TC-CLEAN-003-04 | E | P-PILOT, P-DESKTOP | I log in as each seeded role and visit `/`, `/work-orders`, `/work-orders/:id`, `/invoices`, `/companies`, `/assets`, `/users`, `/profile` | Every route renders its page; no blank screen; no console `Failed to fetch dynamically imported module` |
+| TC-CLEAN-003-05 | E | P-PILOT, P-DESKTOP | I run the full e2e suite | All specs pass |
 
 ## CLEAN-004: Delete `src/components/` shims + docs + build info
 
@@ -61,7 +61,7 @@ Each case has an ID `TC-<ticket>-NN`, a layer, and how it's run.
 | TC-CLEAN-004-04 | S | `docs/CLEANUP_STAGE.md` § Layout | I read it | The shim lines are removed or marked "removed in CLEAN-003/004" |
 | TC-CLEAN-004-05 | S | `git rm --cached tsconfig.tsbuildinfo` applied (already in `.gitignore`) | I run `npm run build`, then `git status` and `git ls-files tsconfig.tsbuildinfo` | `git status` doesn't list it; `ls-files` prints nothing |
 | TC-CLEAN-004-06 | S | `dist/` sizes recorded on `main` before PR2 | I build PR2 and compare `dist/assets` total bytes | The delta is within ±2% |
-| TC-CLEAN-004-07 | E | P-DEMO, P-DESKTOP | I run the full e2e suite | All specs pass |
+| TC-CLEAN-004-07 | E | P-PILOT, P-DESKTOP | I run the full e2e suite | All specs pass |
 
 ## CLEAN-005: Vitest harness
 
@@ -83,7 +83,7 @@ Each case has an ID `TC-<ticket>-NN`, a layer, and how it's run.
 | TC-CLEAN-006-03 | S | `index.html` | I read `<head>` | It contains `<link rel="manifest" href="/manifest.webmanifest">`, `<meta name="theme-color">`, `<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">`, `<link rel="icon" type="image/svg+xml" href="/icons/favicon.svg">`, and `<meta name="apple-mobile-web-app-capable" content="yes">` |
 | TC-CLEAN-006-04 | M | `npm run build && npm run preview` in Chrome | I open DevTools → Application → Manifest | Name, icons, and theme show; **no errors** in the Installability section, apart from a missing-SW warning until CLEAN-008 |
 | TC-CLEAN-006-05 | M | The maskable icon | I preview it in the DevTools maskable-icon "show only minimum safe area" view | The logo sits fully inside the safe zone |
-| TC-CLEAN-006-06 | E | P-DEMO | Playwright requests `/manifest.webmanifest` | HTTP 200 with `Content-Type` containing `manifest+json` or `json` |
+| TC-CLEAN-006-06 | E | P-PILOT | Playwright requests `/manifest.webmanifest` | HTTP 200 with `Content-Type` containing `manifest+json` or `json` |
 
 ## CLEAN-007: Wire `InstallOrbitBanner`
 
@@ -104,7 +104,7 @@ Unit tests run against `usePwaInstall` with `localStorage`, `matchMedia`, the UA
 | TC-CLEAN-007-11 | C | Language `en`, mode `ios` | It renders | The iOS hint text from `en.json` shows; no install CTA button |
 | TC-CLEAN-007-12 | C | The authenticated `Layout` | It renders | Exactly one `role="dialog"` banner instance at most. It isn't rendered on `/login` |
 | TC-CLEAN-007-13 | S | `ar.json` and `en.json` | I diff their key sets for the `pwa_install_` prefix | Both contain exactly `pwa_install_title`, `pwa_install_body`, `pwa_install_ios_hint`, `pwa_install_cta`, `pwa_install_dismiss` |
-| TC-CLEAN-007-14 | M | An Android device, second visit to the deployed demo | I wait about 3s on the dashboard | The banner appears; tapping Install shows the native prompt; after install, the app opens standalone and the banner doesn't show there |
+| TC-CLEAN-007-14 | M | An Android device, second visit to the deployed pilot | I wait about 3s on the dashboard | The banner appears; tapping Install shows the native prompt; after install, the app opens standalone and the banner doesn't show there |
 
 ## CLEAN-008: App-shell service worker
 
@@ -116,7 +116,7 @@ Unit tests run against `usePwaInstall` with `localStorage`, `matchMedia`, the UA
 | TC-CLEAN-008-04 | M | The SW is active | I go offline in DevTools and reload `/work-orders/123` | The app shell (`index.html`) loads from cache; the page shows the existing API-error state instead of the browser's offline dinosaur |
 | TC-CLEAN-008-05 | M | The SW is active on build A | I deploy build B and revisit | A "new version available" toast appears (AR/EN). Tapping refresh activates the new SW and loads build B's assets, with no chunk-load error |
 | TC-CLEAN-008-06 | M | Logged in, SW active | I log out, then press Back | No authenticated data is shown from cache; the route guard redirects to `/login` |
-| TC-CLEAN-008-07 | M | An Android Chrome device | I visit the demo twice | Chrome offers install (banner via CLEAN-007, or the omnibox install icon) |
+| TC-CLEAN-008-07 | M | An Android Chrome device | I visit the pilot twice | Chrome offers install (banner via CLEAN-007, or the omnibox install icon) |
 | TC-CLEAN-008-08 | S | The build output | I inspect `dist/` | It contains `sw.js` (or the configured name) and a registration call guarded by `import.meta.env.PROD` |
 
 ## CLEAN-009: `MobileBottomNav` + More sheet
@@ -149,7 +149,7 @@ Unit tests run against `usePwaInstall` with `localStorage`, `matchMedia`, the UA
 | TC-CLEAN-010-06 | C | A user selects status `on_hold` | They confirm | The Hold modal opens; submitting with an empty reason is blocked; submitting with a reason calls `PATCH /work-orders/:id` once with that reason |
 | TC-CLEAN-010-07 | C | A user adds a comment | They submit | `POST /work-orders/:id/comments` is called, then the comments list refreshes; the input clears |
 | TC-CLEAN-010-08 | S | After the refactor | I run `wc -l` on `WorkOrderDetailPage.tsx` | ≤ 400 lines; no extracted file > 300 lines; `useState` count in the page ≤ 8 |
-| TC-CLEAN-010-09 | E | P-DEMO, P-DESKTOP + P-MOBILE | I run `wave4-workflows.spec.ts` and `wave4-golden-path.spec.ts` | Both pass unchanged (selectors not edited unless a test-id is added) |
+| TC-CLEAN-010-09 | E | P-PILOT, P-DESKTOP + P-MOBILE | I run `wave4-workflows.spec.ts` and `wave4-golden-path.spec.ts` | Both pass unchanged (selectors not edited unless a test-id is added) |
 | TC-CLEAN-010-10 | M | AR and EN | I walk a WO: assign → in progress → report draft → submit → approve → verify → invoice | Same behaviour and strings as on `main` |
 
 ## CLEAN-011: Split `WorkOrdersPage`
@@ -161,7 +161,7 @@ Unit tests run against `usePwaInstall` with `localStorage`, `matchMedia`, the UA
 | TC-CLEAN-011-03 | C | Filters set in the URL (`?status=assigned`) | The page mounts | `FilterBar` shows `assigned` selected and the list fetch uses it |
 | TC-CLEAN-011-04 | C | A pending request row | The user opens request review | `WorkOrderRequestReviewModal` opens with that row's data (imported from `@/features/work-orders/components/…`) |
 | TC-CLEAN-011-05 | S | After the refactor | I count lines | Page ≤ 350 lines; no extracted file > 300 |
-| TC-CLEAN-011-06 | E | P-DEMO, desktop + mobile | I run the work-order e2e specs | They pass |
+| TC-CLEAN-011-06 | E | P-PILOT, desktop + mobile | I run the work-order e2e specs | They pass |
 
 ## CLEAN-012: Split `CompanyDetailPage` + `AssetDetailPage`
 
@@ -171,5 +171,5 @@ Unit tests run against `usePwaInstall` with `localStorage`, `matchMedia`, the UA
 | TC-CLEAN-012-02 | C | `SiteProvisionModal` success response with credentials | The modal completes | `ProvisionCredentialsModal` shows the returned credentials once |
 | TC-CLEAN-012-03 | C | `AssetDetailPage` with mocked asset + lifecycle events | It renders | The lifecycle badge, timeline (events in date order), and WO panel render; Edit opens `AssetEditModal` |
 | TC-CLEAN-012-04 | S | After the refactor | I count lines | Each page ≤ 350; no extracted file > 300 |
-| TC-CLEAN-012-05 | E | P-DEMO, desktop + mobile | I run `wave3-assets.spec.ts` | It passes |
+| TC-CLEAN-012-05 | E | P-PILOT, desktop + mobile | I run `wave3-assets.spec.ts` | It passes |
 | TC-CLEAN-012-06 | M | `company_admin` | I create a company, provision a site, assign a manager, edit the site, view the QR | Every flow works as on `main` in AR and EN |
