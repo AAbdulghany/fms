@@ -139,8 +139,13 @@ celerybeat.pid
 
 # Environments
 .env
+.env.*
+!.env.example
+!.env*.example
 .envrc
 .venv
+# Demo/local secrets (never commit)
+deploy/demo/.env.supabase-demo
 env/
 venv/
 ENV/
