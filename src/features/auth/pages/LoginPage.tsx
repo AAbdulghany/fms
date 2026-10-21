@@ -59,66 +59,74 @@ export function LoginPage() {
     }
   }
 
+  const fieldClass =
+    "w-full rounded-xl border border-neutral-200 bg-neutral-0 px-4 py-3 text-base text-neutral-900 outline-none focus:border-primary-500";
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-100 px-4">
-      <div className="absolute top-4 right-4">
-        <button
-          type="button"
-          className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-100"
-          onClick={toggleLang}
-        >
-          {i18n.language.toUpperCase()}
-        </button>
-      </div>
-      <form
-        onSubmit={onSubmit}
-        className="w-full max-w-md space-y-4 rounded-xl border border-neutral-200 bg-neutral-0 p-8 shadow-md"
-      >
-        <div className="flex flex-col items-center pb-2">
-          <OrbitLogo iconSize={40} />
-        </div>
-        <h1 className="text-center text-xl font-semibold text-neutral-900">{t("login")}</h1>
-        {error && (
-          <p role="alert" className="rounded-md bg-error-light px-3 py-2 text-sm text-error-dark">{error}</p>
-        )}
-        <div>
-          <label htmlFor="login-identifier" className="mb-1 block text-sm text-neutral-600">
-            {t("login_identifier")}
-          </label>
-          <input
-            id="login-identifier"
-            className="w-full rounded-md border border-neutral-300 px-3 py-2"
-            type="text"
-            value={identifier}
-            onChange={(e) => setIdentifier(e.target.value)}
-            autoComplete="username"
-          />
-        </div>
-        <div>
-          <label htmlFor="login-password" className="mb-1 block text-sm text-neutral-600">
-            {t("password")}
-          </label>
-          <input
-            id="login-password"
-            className="w-full rounded-md border border-neutral-300 px-3 py-2"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-          />
-        </div>
-        <button
-          type="submit"
-          className="w-full rounded-md bg-primary-600 py-2 font-medium text-neutral-0 hover:bg-primary-700"
-        >
-          {t("login")}
-        </button>
-        <p className="text-center text-xs text-neutral-500">
-          {t("login_demo_accounts")}
-          <br />
-          {t("login_demo_password_pattern", { suffix: DEMO_SUFFIX })}
-        </p>
-      </form>
+    <div className="flex min-h-dvh flex-col bg-neutral-50 lg:flex-row">
+      <section className="flex flex-col items-center justify-center gap-3 bg-primary-900 px-8 py-12 text-center text-neutral-50 lg:w-[42%] lg:px-12">
+        <OrbitLogo showWordmark={false} iconSize={168} tone="onDark" />
+        <p className="font-['Syne'] text-3xl font-bold tracking-[0.18em] text-neutral-50">ORBIT</p>
+        <p className="font-['Syne'] text-xl font-bold text-neutral-50">{t("login_maintain")}</p>
+        <p className="font-['Syne'] text-xl font-bold text-secondary-500">{t("login_orbit_line")}</p>
+      </section>
+      <div className="h-1.5 bg-secondary-500 lg:h-auto lg:w-1.5" aria-hidden />
+      <section className="flex flex-1 items-center justify-center px-6 py-10 lg:px-16">
+        <form onSubmit={onSubmit} className="w-full max-w-md space-y-5">
+          <div className="flex items-center justify-between gap-4">
+            <h1 className="font-['Syne'] text-4xl font-bold text-neutral-900">{t("login")}</h1>
+            <button
+              type="button"
+              className="rounded-full bg-neutral-100 px-3 py-1.5 text-sm font-semibold text-neutral-700"
+              onClick={toggleLang}
+            >
+              {i18n.language === "ar" ? "EN" : "عربي"}
+            </button>
+          </div>
+          {error && (
+            <p role="alert" className="rounded-xl bg-error-light px-3 py-2 text-sm text-error-dark">
+              {error}
+            </p>
+          )}
+          <div>
+            <label htmlFor="login-identifier" className="mb-2 block text-sm font-semibold text-neutral-500">
+              {t("login_identifier")}
+            </label>
+            <input
+              id="login-identifier"
+              className={fieldClass}
+              type="text"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              autoComplete="username"
+            />
+          </div>
+          <div>
+            <label htmlFor="login-password" className="mb-2 block text-sm font-semibold text-neutral-500">
+              {t("password")}
+            </label>
+            <input
+              id="login-password"
+              className={fieldClass}
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full rounded-xl bg-secondary-500 py-3.5 font-['Syne'] text-lg font-bold text-neutral-900 hover:bg-secondary-600"
+          >
+            {t("login")}
+          </button>
+          <p className="text-xs text-neutral-500">
+            {t("login_demo_accounts")}
+            <br />
+            {t("login_demo_password_pattern", { suffix: DEMO_SUFFIX })}
+          </p>
+        </form>
+      </section>
     </div>
   );
 }

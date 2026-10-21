@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import (
     auth,
     assets,
+    asset_types,
     billing_actions,
     catalog,
     clients,
@@ -21,6 +22,7 @@ from app.api.routes import (
     tenants,
     platform,
     users,
+    verticals,
     work_orders,
 )
 from app.config import get_settings
@@ -60,6 +62,8 @@ app.include_router(users.router, prefix=api)
 app.include_router(clients.router, prefix=api)
 app.include_router(sites.router, prefix=api)
 app.include_router(assets.router, prefix=api)
+app.include_router(asset_types.router, prefix=api)
+app.include_router(verticals.router, prefix=api)
 app.include_router(templates.router, prefix=api)
 app.include_router(work_orders.router, prefix=api)
 app.include_router(reports.router, prefix=api)

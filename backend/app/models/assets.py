@@ -11,6 +11,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -35,12 +36,19 @@ from app.models._base import (
 
 class Asset(Base):
     __tablename__ = "assets"
+    __table_args__ = (
+        Index("ix_assets_tenant_asset_type", "tenant_id", "asset_type_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("sites.id"), nullable=False)
     location_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("locations.id"))
     parent_asset_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("assets.id"))
+    # A1: asset_type_id FK (nullable; backfilled in Phase B)
+    asset_type_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("asset_types.id"), nullable=True
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     category: Mapped[str] = mapped_column(String(64), default="general")
     model: Mapped[Optional[str]] = mapped_column(String(255))
@@ -62,6 +70,8 @@ class Asset(Base):
     site: Mapped["Site"] = relationship(back_populates="assets")
     location: Mapped[Optional["Location"]] = relationship()
     schedules: Mapped[list["MaintenanceSchedule"]] = relationship(back_populates="asset")
+    # A1 relationship — lazy='joined' only where router asks; use selectinload elsewhere
+    asset_type: Mapped[Optional["AssetType"]] = relationship(foreign_keys=[asset_type_id])
 
 class MaintenanceSchedule(Base):
     __tablename__ = "maintenance_schedules"

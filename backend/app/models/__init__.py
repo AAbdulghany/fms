@@ -11,6 +11,7 @@ from app.models.billing import *  # noqa: F403
 from app.models.labor import *  # noqa: F403
 from app.models.notifications import *  # noqa: F403
 from app.models.audit import *  # noqa: F403
+from app.models.asset_types import *  # noqa: F403  # A1: verticals + asset type library
 
 __all__ = [
     "UserRole", "WorkOrderStatus", "WorkOrderSource", "Urgency", "ReportStatus",
@@ -22,4 +23,7 @@ __all__ = [
     "PricingProfile", "Contract", "Part", "Invoice", "InvoiceLineItem",
     "TechnicianProfile", "LaborEntry", "TechnicianSchedule",
     "Notification", "AuditLog",
+    # A1
+    "Vertical", "AssetTypeTemplate", "AssetTypeTemplateVertical",
+    "AssetType", "AssetTypeVertical",
 ]

@@ -119,11 +119,16 @@ def commit_import(db: Session, tenant_id: UUID, content: str) -> dict[str, int]:
                 skipped += 1
                 continue
         category = (row.get("category") or "general").strip()
+        # A1: link tenant asset type when category matches an active type code.
+        from app.services.asset_types_service import resolve_asset_type_for_category
+
+        linked_type = resolve_asset_type_for_category(db, tenant_id, category)
         asset = Asset(
             tenant_id=tenant_id,
             site_id=site.id,
             name=(row.get("name") or "").strip(),
             category=category,
+            asset_type_id=linked_type.id if linked_type is not None else None,
             serial=serial,
             label_code=generate_label_code(db, tenant_id=tenant_id, site_id=site.id, category=category),
         )

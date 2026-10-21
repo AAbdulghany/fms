@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import decode_token
 from app.database import get_db
-from app.models import Site, Tenant, User, UserRole, UserSiteScope
+from app.models import Client, Site, Tenant, User, UserRole, UserSiteScope
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -119,11 +119,15 @@ def ensure_site_access(db: Session, current: User, site_id: UUID) -> Site:
     return site
 
 
-def ensure_client_access(current: User, client_id: UUID) -> None:
+def ensure_client_access(db: Session, current: User, client_id: UUID) -> Client:
     """Verify the current user can act on the given client_id.
 
-    super_admin and company_admin are unrestricted.  client_admin is limited to
-    their own client_id; any other client_id raises 403.
+    Loads the client and enforces tenant isolation (404 if missing or other tenant).
+    client_admin is limited to their own client_id (403 otherwise).
     """
+    client = db.get(Client, client_id)
+    if not client or client.tenant_id != current.tenant_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="NOT_FOUND")
     if current.role == UserRole.client_admin and current.client_id and current.client_id != client_id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
+    return client

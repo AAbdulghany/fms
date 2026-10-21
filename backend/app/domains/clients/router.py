@@ -17,6 +17,7 @@ from app.schemas import (
     ClientProvisionResponse,
     ClientUpdate,
 )
+from app.services.asset_types import apply_client_vertical, client_vertical_code
 from app.services.audit import write_audit
 from app.services.provisioning import (
     build_manager_username,
@@ -77,6 +78,7 @@ def _client_to_out(db: Session, c: Client) -> ClientOut:
         billing_email=c.billing_email,
         status=c.status,
         activity_type=c.activity_type,
+        vertical_code=client_vertical_code(db, c),
         sites_count=sites_count,
         active_wo_count=active_wo_count,
         primary_contact_email=admin.email if admin else c.billing_email,
@@ -117,15 +119,15 @@ def create_client(
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
     _: Annotated[User, _admin],
-) -> Client:
+) -> ClientOut:
     c = Client(
         tenant_id=current.tenant_id,
         legal_name=body.legal_name,
         code=body.code,
         billing_email=body.billing_email,
         status="active",
-        activity_type=body.activity_type,
     )
+    apply_client_vertical(db, c, vertical_code=body.vertical_code, activity_type=body.activity_type)
     db.add(c)
     db.flush()
     from app.services.billing_setup import ensure_client_active_contract
@@ -142,7 +144,7 @@ def create_client(
     )
     db.commit()
     db.refresh(c)
-    return c
+    return _client_to_out(db, c)
 
 
 @router.post("/provision", response_model=ClientProvisionResponse)
@@ -161,8 +163,8 @@ def provision_client_with_manager(
         code=code,
         billing_email=None,
         status="active",
-        activity_type=body.activity_type,
     )
+    apply_client_vertical(db, c, vertical_code=body.vertical_code, activity_type=body.activity_type)
     db.add(c)
     db.flush()
 
@@ -246,7 +248,7 @@ def update_client(
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
     _: Annotated[User, _admin],
-) -> Client:
+) -> ClientOut:
     c = db.get(Client, client_id)
     if not c or c.tenant_id != current.tenant_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="NOT_FOUND")
@@ -264,6 +266,8 @@ def update_client(
         if dup:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="CODE_IN_USE")
         c.code = code
+    if body.vertical_code is not None:
+        apply_client_vertical(db, c, vertical_code=body.vertical_code, activity_type=None)
     write_audit(
         db,
         tenant_id=current.tenant_id,
@@ -271,11 +275,11 @@ def update_client(
         action="update",
         entity_type="client",
         entity_id=str(c.id),
-        after={"legal_name": c.legal_name, "code": c.code},
+        after={"legal_name": c.legal_name, "code": c.code, "activity_type": c.activity_type},
     )
     db.commit()
     db.refresh(c)
-    return c
+    return _client_to_out(db, c)
 
 
 @router.post("/{client_id}/archive", response_model=ClientOut)

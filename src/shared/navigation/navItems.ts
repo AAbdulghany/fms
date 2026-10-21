@@ -96,4 +96,12 @@ export const NAV_ITEMS: NavItem[] = [
     icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
     allowedRoles: ["super_admin", "company_admin"],
   },
+  /** A1: asset type library — admin-only, under Assets feature */
+  {
+    path: "/asset-types",
+    labelKey: "asset_types",
+    icon: "M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2z M7 7h.01",
+    allowedRoles: ["super_admin", "company_admin"],
+    requiredFeature: "assets",
+  },
 ];
