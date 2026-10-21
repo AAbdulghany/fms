@@ -1,37 +1,32 @@
 # Orbit layout concepts (mobile-first pilot)
 
-## Files
+## Locked decision
+
+**Concept D** — field shell: **Queue · Scan · Time · More**.  
+Desktop sidebar unchanged. More menu contents TBD.  
+Details: [`CONCEPT_D_LOCKED.md`](./CONCEPT_D_LOCKED.md).
+
+**Applied in app:** Harbor Navy (P1) + Dot grid (Pat2) + Start-next queue hero.
+
+## Pencil boards (`orbit-mobile-first-layouts.pen`)
+
+| Board | Purpose |
+|-------|---------|
+| Orbit mobile-first concepts | A–D chrome sketches |
+| C vs D — full page layouts | Side-by-side journeys |
+| **D FINAL — full pages (locked)** | Queue, Active WO, Create, Scan, Time, Asset, More, Desktop |
+| **Palette comparison** | P0–P4 vs previous teal |
+| **Background patterns** | Pat1–Pat4 |
+
+## HTML previews
 
 | File | Purpose |
 |------|---------|
-| `orbit-mobile-first-layouts.pen` | Pencil canvas — open in the Pencil / pen.dev extension to edit frames |
-| `orbit-layout-concepts.html` | Self-contained preview of **4** concepts (phone + desktop companion) |
-| `UX_COPY.md` | UX writing for chrome, empty, error, confirm |
+| [`palette-pattern-compare.html`](./palette-pattern-compare.html) | Pick palette / pattern |
+| [`orbit-c-vs-d-full-pages.html`](./orbit-c-vs-d-full-pages.html) | Earlier C/D twin |
+| [`orbit-layout-concepts.html`](./orbit-layout-concepts.html) | A–D chrome |
+| [`UX_COPY.md`](./UX_COPY.md) | Microcopy |
 
-## How to open the `.pen`
+## Switch palette or pattern
 
-1. Install / enable the **Pencil** (pen.dev) Cursor extension.  
-2. Open `designs/orbit-mobile-first-layouts.pen` from the file tree (double-click).  
-3. Ask the agent to generate frames into that file once Pencil reports the file as active.
-
-Until Pencil has the file active, use `orbit-layout-concepts.html` as the reviewable design board.
-
-## Concepts (recommended pick for pilot: **C — Field tabs**)
-
-| ID | Name | Phone idea | Desktop |
-|----|------|------------|---------|
-| A | Overlay drawer only | Keep hamburger + full sidebar | Current sidebar |
-| B | Top segmented | Segmented control under header | Sidebar + segments |
-| C | **Field tabs** | Bottom tabs: Home · Work · Assets · More | Sidebar unchanged |
-| D | Split role shells | Tech: WO-first; Admin: dashboard-first | Role-aware sidebar order |
-
-**Pilot decision:** ship **C** (implemented in code). Keep desktop sidebar. Native app = vision anti-scope (1C).
-
-## C vs D — full page boards
-
-| File | Contents |
-|------|----------|
-| `.pen` board **“C vs D — full page layouts”** | C: Home, Work list, WO detail, Assets, More + 2 desktops. D: Queue, Active WO, Scan, Time, More + 2 admin desktops + verdict panel |
-| [`orbit-c-vs-d-full-pages.html`](./orbit-c-vs-d-full-pages.html) | Same journeys for browser review without Pencil |
-
-**UX call:** ship **C** now; borrow **D**’s “Start next” / action-first WO detail into C’s Work tab as a follow-up experiment.
+Reply with an ID, e.g. `use P2 + Pat3`, and we retoken `tokens.css` / `.orbit-app-shell`.
