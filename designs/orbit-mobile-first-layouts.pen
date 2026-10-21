@@ -11871,6 +11871,752 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "RqFAX",
+      "x": 4920,
+      "y": 2905,
+      "name": "CMMS palettes — eye comfort research",
+      "clip": true,
+      "width": 1320,
+      "fill": "#F8FAFC",
+      "layout": "vertical",
+      "gap": 20,
+      "padding": 36,
+      "children": [
+        {
+          "type": "text",
+          "id": "wmswH",
+          "name": "R title",
+          "fill": "#0F172A",
+          "content": "What CMMS apps use — and what’s easier on the eye",
+          "fontFamily": "IBM Plex Sans",
+          "fontSize": 26,
+          "fontWeight": "700"
+        },
+        {
+          "type": "text",
+          "id": "HDxnk",
+          "name": "R sub",
+          "fill": "#64748B",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Field techs work outdoors / bright wards. Industry leans cool blue/teal + green CTAs. Warm copper as the main brand color reads as “alert” and fatigues faster. Below: competitor patterns vs Orbit options.",
+          "fontFamily": "IBM Plex Sans",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "frsv0",
+          "name": "R row1",
+          "width": "fill_container",
+          "gap": 14,
+          "children": [
+            {
+              "type": "frame",
+              "id": "cI530",
+              "name": "MaintainX-like",
+              "width": "fill_container",
+              "fill": "#F0FDFA",
+              "cornerRadius": 14,
+              "stroke": "#E2E8F0",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "uxf6P",
+                  "name": "MaintainX-like n",
+                  "fill": "#134E4A",
+                  "content": "MaintainX-like",
+                  "fontFamily": "IBM Plex Sans",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "q6hmq",
+                  "name": "MaintainX-like note",
+                  "fill": "#64748B",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Teal/cyan brand · calm ops feel",
+                  "fontFamily": "IBM Plex Sans",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "ob90c",
+                  "name": "MaintainX-like sw",
+                  "width": "fill_container",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "sLdnK",
+                      "name": "MaintainX-like pri",
+                      "width": "fill_container",
+                      "height": 34,
+                      "fill": "#0D9488",
+                      "cornerRadius": 6
+                    },
+                    {
+                      "type": "frame",
+                      "id": "FzXZd",
+                      "name": "MaintainX-like sec",
+                      "width": "fill_container",
+                      "height": 34,
+                      "fill": "#F59E0B",
+                      "cornerRadius": 6
+                    },
+                    {
+                      "type": "frame",
+                      "id": "MAi25",
+                      "name": "MaintainX-like ink",
+                      "width": "fill_container",
+                      "height": 34,
+                      "fill": "#134E4A",
+                      "cornerRadius": 6
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "hpXTo",
+                  "name": "MaintainX-like btn",
+                  "width": "fill_container",
+                  "fill": "#0D9488",
+                  "cornerRadius": 8,
+                  "padding": 10,
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "o5DQTh",
+                      "name": "MaintainX-like bt",
+                      "fill": "#FFFFFF",
+                      "content": "Start work order",
+                      "fontFamily": "IBM Plex Sans",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "yUKhx",
+                  "name": "MaintainX-like map",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Closest to P0 / old Orbit teal",
+                  "fontFamily": "IBM Plex Sans",
+                  "fontSize": 11,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "lJCbE",
+              "name": "UpKeep-like",
+              "width": "fill_container",
+              "fill": "#F7FBF7",
+              "cornerRadius": 14,
+              "stroke": "#E2E8F0",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "jpKn1",
+                  "name": "UpKeep-like n",
+                  "fill": "#14532D",
+                  "content": "UpKeep-like",
+                  "fontFamily": "IBM Plex Sans",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "K3OOc",
+                  "name": "UpKeep-like note",
+                  "fill": "#64748B",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Green CTA · high “go” contrast",
+                  "fontFamily": "IBM Plex Sans",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "k1K0S9",
+                  "name": "UpKeep-like sw",
+                  "width": "fill_container",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "cTFlA",
+                      "name": "UpKeep-like pri",
+                      "width": "fill_container",
+                      "height": 34,
+                      "fill": "#2B8831",
+                      "cornerRadius": 6
+                    },
+                    {
+                      "type": "frame",
+                      "id": "z3JT0",
+                      "name": "UpKeep-like sec",
+                      "width": "fill_container",
+                      "height": 34,
+                      "fill": "#E49325",
+                      "cornerRadius": 6
+                    },
+                    {
+                      "type": "frame",
+                      "id": "sh13E",
+                      "name": "UpKeep-like ink",
+                      "width": "fill_container",
+                      "height": 34,
+                      "fill": "#14532D",
+                      "cornerRadius": 6
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "y6zZW",
+                  "name": "UpKeep-like btn",
+                  "width": "fill_container",
+                  "fill": "#2B8831",
+                  "cornerRadius": 8,
+                  "padding": 10,
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "AHGKL",
+                      "name": "UpKeep-like bt",
+                      "fill": "#FFFFFF",
+                      "content": "Start work order",
+                      "fontFamily": "IBM Plex Sans",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "qr4kD",
+                  "name": "UpKeep-like map",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Green primary — strong for Start next",
+                  "fontFamily": "IBM Plex Sans",
+                  "fontSize": 11,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "DeXg5",
+              "name": "Trimble Modus-like",
+              "width": "fill_container",
+              "fill": "#F1F5F9",
+              "cornerRadius": 14,
+              "stroke": "#E2E8F0",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "S8daTo",
+                  "name": "Trimble Modus-like n",
+                  "fill": "#252A2E",
+                  "content": "Trimble Modus-like",
+                  "fontFamily": "IBM Plex Sans",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "F7W1u",
+                  "name": "Trimble Modus-like note",
+                  "fill": "#64748B",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Industrial blue + yellow signal",
+                  "fontFamily": "IBM Plex Sans",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "n7NnRn",
+                  "name": "Trimble Modus-like sw",
+                  "width": "fill_container",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "M3YM9",
+                      "name": "Trimble Modus-like pri",
+                      "width": "fill_container",
+                      "height": 34,
+                      "fill": "#0063A3",
+                      "cornerRadius": 6
+                    },
+                    {
+                      "type": "frame",
+                      "id": "e6cpCi",
+                      "name": "Trimble Modus-like sec",
+                      "width": "fill_container",
+                      "height": 34,
+                      "fill": "#E49325",
+                      "cornerRadius": 6
+                    },
+                    {
+                      "type": "frame",
+                      "id": "yGwaT",
+                      "name": "Trimble Modus-like ink",
+                      "width": "fill_container",
+                      "height": 34,
+                      "fill": "#252A2E",
+                      "cornerRadius": 6
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "gZoEs",
+                  "name": "Trimble Modus-like btn",
+                  "width": "fill_container",
+                  "fill": "#0063A3",
+                  "cornerRadius": 8,
+                  "padding": 10,
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Q41hS",
+                      "name": "Trimble Modus-like bt",
+                      "fill": "#FFFFFF",
+                      "content": "Start work order",
+                      "fontFamily": "IBM Plex Sans",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "T5zjt",
+                  "name": "Trimble Modus-like map",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Closest to P1 Harbor Navy",
+                  "fontFamily": "IBM Plex Sans",
+                  "fontSize": 11,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "GsLWC",
+          "name": "R row2",
+          "width": "fill_container",
+          "gap": 14,
+          "children": [
+            {
+              "type": "frame",
+              "id": "IAaD9",
+              "name": "Field sunlight mode",
+              "width": "fill_container",
+              "fill": "#0F172A",
+              "cornerRadius": 14,
+              "stroke": "#E2E8F0",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "W9laJ8",
+                  "name": "Field sunlight mode n",
+                  "fill": "#F8FAFC",
+                  "content": "Field sunlight mode",
+                  "fontFamily": "IBM Plex Sans",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "DumTI",
+                  "name": "Field sunlight mode note",
+                  "fill": "#94A3B8",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Near-black + bright ink (glare)",
+                  "fontFamily": "IBM Plex Sans",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "UusIZ",
+                  "name": "Field sunlight mode sw",
+                  "width": "fill_container",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "k4Bx1p",
+                      "name": "Field sunlight mode pri",
+                      "width": "fill_container",
+                      "height": 34,
+                      "fill": "#F8FAFC",
+                      "cornerRadius": 6
+                    },
+                    {
+                      "type": "frame",
+                      "id": "R6RCQ",
+                      "name": "Field sunlight mode sec",
+                      "width": "fill_container",
+                      "height": 34,
+                      "fill": "#FACC15",
+                      "cornerRadius": 6
+                    },
+                    {
+                      "type": "frame",
+                      "id": "e8Vrt",
+                      "name": "Field sunlight mode ink",
+                      "width": "fill_container",
+                      "height": 34,
+                      "fill": "#F8FAFC",
+                      "cornerRadius": 6
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "kQucA",
+                  "name": "Field sunlight mode btn",
+                  "width": "fill_container",
+                  "fill": "#FACC15",
+                  "cornerRadius": 8,
+                  "padding": 10,
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "HDgLa",
+                      "name": "Field sunlight mode bt",
+                      "fill": "#0F172A",
+                      "content": "Start work order",
+                      "fontFamily": "IBM Plex Sans",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "s3HQp2",
+                  "name": "Field sunlight mode map",
+                  "fill": "#CBD5E1",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Optional dark mode later — best outdoors",
+                  "fontFamily": "IBM Plex Sans",
+                  "fontSize": 11,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "QAWYG",
+              "name": "Orbit P4 Copper (now)",
+              "width": "fill_container",
+              "fill": "#FAF8F6",
+              "cornerRadius": 14,
+              "stroke": "#E2E8F0",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "WEmfN",
+                  "name": "Orbit P4 Copper (now) n",
+                  "fill": "#1C1917",
+                  "content": "Orbit P4 Copper (now)",
+                  "fontFamily": "IBM Plex Sans",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "QOHla",
+                  "name": "Orbit P4 Copper (now) note",
+                  "fill": "#64748B",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Warm brand · urgent feel",
+                  "fontFamily": "IBM Plex Sans",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "YLNR5",
+                  "name": "Orbit P4 Copper (now) sw",
+                  "width": "fill_container",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "i3EbXJ",
+                      "name": "Orbit P4 Copper (now) pri",
+                      "width": "fill_container",
+                      "height": 34,
+                      "fill": "#9A3412",
+                      "cornerRadius": 6
+                    },
+                    {
+                      "type": "frame",
+                      "id": "smb2x",
+                      "name": "Orbit P4 Copper (now) sec",
+                      "width": "fill_container",
+                      "height": 34,
+                      "fill": "#0F766E",
+                      "cornerRadius": 6
+                    },
+                    {
+                      "type": "frame",
+                      "id": "m9FOlz",
+                      "name": "Orbit P4 Copper (now) ink",
+                      "width": "fill_container",
+                      "height": 34,
+                      "fill": "#1C1917",
+                      "cornerRadius": 6
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "NpSp4",
+                  "name": "Orbit P4 Copper (now) btn",
+                  "width": "fill_container",
+                  "fill": "#9A3412",
+                  "cornerRadius": 8,
+                  "padding": 10,
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "DfyIY",
+                      "name": "Orbit P4 Copper (now) bt",
+                      "fill": "#FFFFFF",
+                      "content": "Start work order",
+                      "fontFamily": "IBM Plex Sans",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "bVlEL",
+                  "name": "Orbit P4 Copper (now) map",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Current — distinctive, higher eye strain",
+                  "fontFamily": "IBM Plex Sans",
+                  "fontSize": 11,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Xfgmg",
+              "name": "Recommended hybrid",
+              "width": "fill_container",
+              "fill": "#F7F9FC",
+              "cornerRadius": 14,
+              "stroke": "#1D4E89",
+              "strokeWidth": 2,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "wE7Je",
+                  "name": "Recommended hybrid n",
+                  "fill": "#0F172A",
+                  "content": "Recommended hybrid",
+                  "fontFamily": "IBM Plex Sans",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "f1ivUA",
+                  "name": "Recommended hybrid note",
+                  "fill": "#64748B",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Navy chrome + green CTA + amber urgency",
+                  "fontFamily": "IBM Plex Sans",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "hofrH",
+                  "name": "Recommended hybrid sw",
+                  "width": "fill_container",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "lsdTH",
+                      "name": "Recommended hybrid pri",
+                      "width": "fill_container",
+                      "height": 34,
+                      "fill": "#1D4E89",
+                      "cornerRadius": 6
+                    },
+                    {
+                      "type": "frame",
+                      "id": "bi8O1",
+                      "name": "Recommended hybrid sec",
+                      "width": "fill_container",
+                      "height": 34,
+                      "fill": "#2B8831",
+                      "cornerRadius": 6
+                    },
+                    {
+                      "type": "frame",
+                      "id": "zCVKK",
+                      "name": "Recommended hybrid ink",
+                      "width": "fill_container",
+                      "height": 34,
+                      "fill": "#0F172A",
+                      "cornerRadius": 6
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "gGa1Q",
+                  "name": "Recommended hybrid btn",
+                  "width": "fill_container",
+                  "fill": "#1D4E89",
+                  "cornerRadius": 8,
+                  "padding": 10,
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "zLNOb",
+                      "name": "Recommended hybrid bt",
+                      "fill": "#FFFFFF",
+                      "content": "Start work order",
+                      "fontFamily": "IBM Plex Sans",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "SurmU",
+                  "name": "Recommended hybrid map",
+                  "fill": "#1D4E89",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Best of Trimble + UpKeep for field",
+                  "fontFamily": "IBM Plex Sans",
+                  "fontSize": 11,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "XtdOY",
+          "name": "R verdict",
+          "width": "fill_container",
+          "fill": "#FFFFFF",
+          "cornerRadius": 12,
+          "stroke": "#1D4E89",
+          "strokeWidth": 2,
+          "layout": "vertical",
+          "gap": 8,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "NO4X2",
+              "name": "Rv t",
+              "fill": "#0F172A",
+              "content": "Eye-comfort verdict for Orbit field (Concept D)",
+              "fontFamily": "IBM Plex Sans",
+              "fontSize": 16,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "z8X1i",
+              "name": "Rv b",
+              "fill": "#475569",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "1) Prefer cool primary (teal/navy) for chrome — matches MaintainX/Trimble and reduces alert fatigue. 2) Put saturated green on Start/Complete CTAs (UpKeep pattern). 3) Keep amber/copper only for urgency — not the whole brand (P4 as primary fights the eye). 4) Pat2 dots stay fine; avoid busy patterns in sun. 5) Later: optional dark “sunlight” theme for outdoor sites.",
+              "fontFamily": "IBM Plex Sans",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "va6kq",
+              "name": "Rv pick",
+              "fill": "#1D4E89",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Suggested next switch: Recommended hybrid (navy + green CTA) — or P1 Harbor Navy if you want one ID. Say “apply hybrid” or “use P1 + Pat2”.",
+              "fontFamily": "IBM Plex Sans",
+              "fontSize": 14,
+              "fontWeight": "600"
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {
