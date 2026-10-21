@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "build:css": "tailwindcss -i ./src/styles/globals.css -o ./dist/styles.css --minify",
-    "dev:css": "tailwindcss -i ./src/styles/globals.css -o ./dist/styles.css --watch"
+    "dev:css": "tailwindcss -i ./src/styles/globals.css -o ./dist/styles.css --watch",
+    "check:imports": "node scripts/check-legacy-imports.mjs"
   },
   "dependencies": {
     "i18next": "^24.2.0",

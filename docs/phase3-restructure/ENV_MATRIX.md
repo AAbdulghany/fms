@@ -1,17 +1,20 @@
-# Environment Matrix — Wave 0 (NT-104)
+# Environment Matrix
 
 | Variable | Values | Purpose |
 |----------|--------|---------|
-| `APP_ENV` | `development` \| `demo` \| `production` | License freeze bypass in dev/demo |
-| `DATABASE_URL` | per environment | Separate DB per env (see AgDR) |
+| `APP_ENV` | `development` \| `pilot` \| `production` (`demo` = deprecated alias of `pilot`) | License freeze bypass in non-production |
+| `DATABASE_URL` | per environment | Separate DB per env |
+
+Canonical guide: [environments.md](../guides/environments.md) · Reorg plan: [ENV_REORG_PLAN.md](../engineering/ENV_REORG_PLAN.md)
 
 ## Behavior matrix
 
-| APP_ENV | License freeze | Feature gates | Typical database |
-|---------|----------------|---------------|------------------|
-| `development` | **Bypassed** | All open | `fms_dev` |
-| `demo` | **Bypassed** | All open (pitch) | `fms_demo` |
-| `production` | **Enforced** | Package-driven | `fms_prod` |
+| APP_ENV | License freeze | Feature gates | Typical database | Compose |
+|---------|----------------|---------------|------------------|---------|
+| `development` | **Bypassed** | All open | `fms_local` | `docker-compose-local.yml` |
+| `pilot` | **Bypassed** | All open (pitch seed) | `fms_pilot` | `docker-compose-pilot.yml` |
+| `demo` | **Bypassed** (alias) | Same as pilot | `fms_demo` (legacy) | `docker-compose-demo.yml` (deprecated) |
+| `production` | **Enforced** | Package-driven | `fms_prod` | `docker-compose-prod.yml` |
 
 ## Local defaults
 
@@ -33,9 +36,5 @@ environment:
 
 ```bash
 cd backend
-uv run pytest tests/test_wave0_app_env.py -q
+pytest tests/domains/platform/test_app_env.py -q
 ```
-
-## Wave 2 follow-up
-
-- `docker-compose-demo.yml` with `APP_ENV=demo` + `fms_demo` URL (NT-112)

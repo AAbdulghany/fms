@@ -1,8 +1,9 @@
-# Demo stack — isolated database with pre-seeded users (sales/testing)
-# Usage: docker compose -f docker-compose-demo.yml up -d --build
+# DEPRECATED — use docker-compose-pilot.yml instead.
+# Kept so existing CI/scripts keep working until wave-2 cutover
+# (docs/engineering/ENV_REORG_PLAN.md). Prefer:
+#   docker compose -f docker-compose-pilot.yml up -d --build
 #
-# Project name MUST stay distinct from docker-compose-local.yml (fms-local)
-# or containers overwrite each other under the same symlink path.
+# Project name MUST stay distinct from docker-compose-local.yml (fms-local).
 
 name: fms-demo
 

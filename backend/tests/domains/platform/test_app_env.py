@@ -73,7 +73,30 @@ def test_production_expired_valid_until(monkeypatch, db_session, sample_tenant):
     get_settings.cache_clear()
 
 
-def test_demo_bypasses_freeze(monkeypatch, db_session, sample_tenant):
+def test_pilot_bypasses_freeze(monkeypatch, db_session, sample_tenant):
+    monkeypatch.setenv("APP_ENV", "pilot")
+    from app.config import get_settings
+
+    get_settings.cache_clear()
+
+    packages = ensure_default_packages(db_session)
+    pkg = packages["trial"]
+    db_session.add(
+        TenantSubscription(
+            tenant_id=sample_tenant.id,
+            package_id=pkg.id,
+            status="expired",
+        )
+    )
+    db_session.commit()
+
+    assert is_subscription_active(db_session, sample_tenant) is True
+
+    get_settings.cache_clear()
+
+
+def test_demo_alias_bypasses_freeze(monkeypatch, db_session, sample_tenant):
+    """`demo` remains accepted as deprecated alias of `pilot` (ENV_REORG wave 1)."""
     monkeypatch.setenv("APP_ENV", "demo")
     from app.config import get_settings
 

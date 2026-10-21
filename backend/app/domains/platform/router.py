@@ -380,13 +380,19 @@ def assign_tenant_license(
     return SubscriptionOut.model_validate(get_subscription(db, tenant))
 
 
+def _is_pilot_env() -> bool:
+    """Pilot (and deprecated demo alias) may reset pitch seed data."""
+    return get_settings().app_env.lower() in ("pilot", "demo")
+
+
 @router.post("/demo/reset")
-def demo_reset(
+@router.post("/pilot/reset")
+def pilot_reset(
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, _platform],
 ) -> dict[str, str]:
-    if get_settings().app_env.lower() != "demo":
-        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="DEMO_ENV_ONLY")
+    if not _is_pilot_env():
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="PILOT_ENV_ONLY")
     from app.pitch_seed import seed_pitch_demo
 
     info = seed_pitch_demo(db)
@@ -396,10 +402,10 @@ def demo_reset(
             db,
             tenant_id=actor.tenant_id,
             actor=actor,
-            action="demo_reset",
+            action="pilot_reset",
             entity_type="platform",
-            entity_id="demo",
+            entity_id="pilot",
         )
     db.commit()
     str_info = {k: str(v) for k, v in info.items()}
-    return {"status": "ok", "message": "Demo database reset complete", **str_info}
+    return {"status": "ok", "message": "Pilot database reset complete", **str_info}

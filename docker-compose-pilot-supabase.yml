@@ -1,0 +1,62 @@
+# Pilot stack with external Postgres (e.g. Supabase) — no local db container.
+#
+# 1. Copy deploy/pilot/.env.supabase.example → deploy/pilot/.env.supabase
+# 2. Fill DATABASE_URL, SECRET_KEY, CORS/PUBLIC_APP_URL
+# 3. From repo root:
+#
+#    docker compose -f docker-compose-pilot-supabase.yml --env-file deploy/pilot/.env.supabase up -d --build
+#
+# UI: http://localhost:9581
+# API: http://localhost:9501
+
+name: fms-pilot-supabase
+
+services:
+  migrate:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.api
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in deploy/pilot/.env.supabase}
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY}
+      APP_ENV: pilot
+      SEED_MODULE: ${SEED_MODULE:-pitch}
+    command: python -m app.docker_migrate
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.api
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in deploy/pilot/.env.supabase}
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY}
+      APP_ENV: pilot
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://demo.orbittech.co}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-https://demo.orbittech.co}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      FROM_EMAIL: ${FROM_EMAIL:-pilot@fms.local}
+    ports:
+      - "9501:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: on-failure
+
+  web:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.web
+    ports:
+      - "9581:8080"
+    depends_on:
+      - api

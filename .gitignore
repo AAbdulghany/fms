@@ -144,8 +144,13 @@ celerybeat.pid
 !.env*.example
 .envrc
 .venv
-# Demo/local secrets (never commit)
+# Env secrets (never commit)
+deploy/demo/.env
 deploy/demo/.env.supabase-demo
+deploy/pilot/.env
+deploy/pilot/.env.supabase
+deploy/dev/.env
+deploy/production/.env
 env/
 venv/
 ENV/
