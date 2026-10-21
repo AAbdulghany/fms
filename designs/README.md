@@ -6,7 +6,7 @@
 Desktop sidebar unchanged. More menu contents TBD.  
 Details: [`CONCEPT_D_LOCKED.md`](./CONCEPT_D_LOCKED.md).
 
-**Applied in app:** Harbor Navy (P1) + Dot grid (Pat2) + Start-next queue hero.
+**Applied in app:** Copper Signal (P4) + Dot grid (Pat2) + Start-next queue hero.
 
 ## Pencil boards (`orbit-mobile-first-layouts.pen`)
 

@@ -7138,7 +7138,7 @@
           "fill": "#57534E",
           "textGrowth": "fixed-width",
           "width": "fill_container",
-          "content": "Concept D locked. Compare these five. Recommended for on-site: Harbor Navy (P2). Applied in code until you pick another.",
+          "content": "Concept D locked. Applied: P4 Copper Signal + Pat2 Dot grid. Reply with another ID to switch.",
           "fontFamily": "IBM Plex Sans",
           "fontSize": 14,
           "fontWeight": "normal"
@@ -7331,7 +7331,7 @@
                   "id": "VIZKv",
                   "name": "P1 id",
                   "fill": "#1D4E89",
-                  "content": "P1 · APPLY",
+                  "content": "P1",
                   "fontFamily": "IBM Plex Sans",
                   "fontSize": 11,
                   "fontWeight": "700"
@@ -7820,7 +7820,7 @@
                   "id": "wGvYv",
                   "name": "P4 id",
                   "fill": "#9A3412",
-                  "content": "P4",
+                  "content": "P4 · APPLY",
                   "fontFamily": "IBM Plex Sans",
                   "fontSize": 11,
                   "fontWeight": "700"
@@ -7999,7 +7999,7 @@
           "fill": "#64748B",
           "textGrowth": "fixed-width",
           "width": "fill_container",
-          "content": "Recommended for D: Dot Grid (Pat2) — calm, technical, works in RTL. Applied in CSS until you choose another.",
+          "content": "Applied: Pat2 Dot grid with P4 Copper Signal. Reply with another pattern ID to switch.",
           "fontFamily": "IBM Plex Sans",
           "fontSize": 13,
           "fontWeight": "normal"
@@ -9343,7 +9343,7 @@
           "fill": "#64748B",
           "textGrowth": "fixed-width",
           "width": "fill_container",
-          "content": "Locked: Queue · Scan · Time · More. Palette: Harbor Navy. Pattern: Dot grid. Menu contents TBD later.",
+          "content": "Locked: Queue · Scan · Time · More. Palette: P4 Copper Signal. Pattern: Pat2 Dot grid. Menu contents TBD later.",
           "fontFamily": "IBM Plex Sans",
           "fontSize": 14,
           "fontWeight": "normal"

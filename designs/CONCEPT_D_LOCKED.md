@@ -20,10 +20,10 @@ Desktop (`lg+`): full sidebar unchanged.
 | ID | Name | Status |
 |----|------|--------|
 | P0 | Current Industrial Teal | retired for D |
-| **P1** | **Harbor Navy** | **Applied in `tokens.css`** |
+| P1 | Harbor Navy | alternate |
 | P2 | Field Olive | alternate |
 | P3 | Midnight Steel | alternate |
-| P4 | Copper Signal | alternate |
+| **P4** | **Copper Signal** | **Applied in `tokens.css`** |
 
 ## Pattern comparison
 
