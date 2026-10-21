@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Orbit — Concept C vs D full pages</title>
+  <style>
+    :root {
+      --ink: #1c1917; --muted: #78716c; --line: #e7e5e4; --bg: #f5f5f4;
+      --card: #fafaf9; --teal: #0f766e; --teal-soft: #ccfbf1; --warn: #c2410c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+      color: var(--ink);
+      background: linear-gradient(165deg, #ecfdf5 0%, var(--bg) 45%, #fff 100%);
+    }
+    header.page { max-width: 1400px; margin: 0 auto; padding: 2rem 1.5rem 1rem; }
+    header.page h1 { margin: 0 0 .4rem; font-size: clamp(1.6rem, 3vw, 2.2rem); letter-spacing: -.03em; }
+    header.page p { margin: 0; color: var(--muted); max-width: 48rem; line-height: 1.5; }
+    .rec {
+      display: inline-block; margin-top: 1rem; padding: .4rem .8rem;
+      background: var(--teal); color: #fff; border-radius: 8px; font-size: .85rem; font-weight: 600;
+    }
+    section { max-width: 1400px; margin: 0 auto; padding: 1rem 1.5rem 2.5rem; }
+    section h2 { margin: 0 0 .35rem; font-size: 1.35rem; color: var(--teal); }
+    section .note { color: var(--muted); font-size: .92rem; margin: 0 0 1.25rem; max-width: 52rem; line-height: 1.45; }
+    .row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-start; }
+    .phone {
+      width: 168px; height: 340px; border: 2px solid var(--ink); border-radius: 22px;
+      background: var(--card); position: relative; overflow: hidden;
+      box-shadow: 0 12px 28px rgba(28,25,23,.1); flex-shrink: 0;
+    }
+    .phone .notch { width: 42%; height: 16px; background: var(--ink); border-radius: 0 0 10px 10px; margin: 0 auto; }
+    .phone .bar {
+      height: 28px; border-bottom: 1px solid var(--line); display: flex; align-items: center;
+      gap: 6px; padding: 0 8px; font-size: 9px; font-weight: 600;
+    }
+    .phone .body { padding: 8px; font-size: 8px; color: var(--muted); height: calc(100% - 16px - 28px - 40px); overflow: hidden; }
+    .phone .card {
+      background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 7px; margin-bottom: 5px;
+    }
+    .phone .card.accent { background: var(--teal-soft); border-color: var(--teal); }
+    .phone .card strong { display: block; color: var(--ink); font-size: 9px; margin-bottom: 2px; }
+    .phone .card.accent strong { color: var(--teal); }
+    .phone .btn {
+      display: block; text-align: center; padding: 7px; border-radius: 7px; margin-bottom: 5px;
+      font-size: 9px; font-weight: 600; background: var(--teal); color: #fff;
+    }
+    .phone .btn.ghost { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+    .phone .tabs {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 40px; border-top: 1px solid var(--line);
+      display: grid; grid-template-columns: repeat(4, 1fr); background: #fff;
+      font-size: 7px; text-align: center; align-items: center; color: var(--muted);
+    }
+    .phone .tabs .on { color: var(--teal); font-weight: 700; }
+    .desk {
+      width: 340px; height: 220px; border: 1px solid var(--line); border-radius: 10px; background: #fff;
+      display: grid; grid-template-columns: 88px 1fr; overflow: hidden; flex-shrink: 0;
+      box-shadow: 0 8px 20px rgba(28,25,23,.08);
+    }
+    .desk .side { background: var(--bg); border-right: 1px solid var(--line); padding: 8px 6px; font-size: 7px; color: var(--muted); line-height: 1.7; }
+    .desk .side .on { color: var(--teal); font-weight: 700; }
+    .desk .main { padding: 8px; font-size: 8px; }
+    .desk .main h3 { margin: 0 0 6px; font-size: 11px; }
+    .desk .metric { display: flex; gap: 6px; margin-bottom: 6px; }
+    .desk .metric span { flex: 1; background: var(--bg); border-radius: 6px; padding: 6px; text-align: center; }
+    .desk .metric b { display: block; color: var(--teal); font-size: 12px; }
+    .desk .rowline { height: 16px; background: var(--bg); border-radius: 4px; margin-bottom: 4px; }
+    .label { font-size: .7rem; color: var(--muted); margin-bottom: .3rem; width: 100%; }
+    .cap { width: 168px; }
+    .verdict {
+      max-width: 1400px; margin: 0 auto 3rem; padding: 1.25rem 1.5rem;
+      background: #fff; border: 2px solid var(--teal); border-radius: 14px;
+    }
+    .verdict h3 { margin: 0 0 .6rem; }
+    .verdict p { margin: 0 0 .6rem; color: var(--muted); line-height: 1.5; font-size: .92rem; }
+    .verdict .pick { color: var(--teal); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <header class="page">
+    <h1>Concept C vs D — full page layouts</h1>
+    <p>Same journeys, two shells. Open the Pencil file for hi-fi frames; this HTML mirrors the board for quick review.</p>
+    <span class="rec">Pilot: ship C · Borrow D’s “Start next” into Work tab later</span>
+  </header>
+
+  <section>
+    <h2>Concept C — Field tabs (one chrome)</h2>
+    <p class="note">Home · Work · Assets · More for every role. Desktop sidebar unchanged. Predictable; admin tools live under More.</p>
+    <div class="row">
+      <div class="cap"><div class="label">Home</div>
+        <div class="phone"><div class="notch"></div><div class="bar">☰ Home</div>
+          <div class="body">
+            <strong style="color:var(--ink);font-size:10px">Good morning, Faris</strong>
+            <div style="margin:2px 0 6px">3 open · 1 overdue</div>
+            <div class="card accent"><strong>Overdue</strong>WO-1031 · HVAC · Floor 2</div>
+            <div class="card"><strong>Due today</strong>WO-1042 · Electrical</div>
+            <div class="card"><strong>Assigned</strong>WO-1048 · Plumbing</div>
+          </div>
+          <div class="tabs"><span class="on">Home</span><span>Work</span><span>Assets</span><span>More</span></div>
+        </div>
+      </div>
+      <div class="cap"><div class="label">Work list</div>
+        <div class="phone"><div class="notch"></div><div class="bar">☰ Work orders</div>
+          <div class="body">
+            <div class="card"><strong>WO-1042</strong>In progress · HVAC</div>
+            <div class="card"><strong>WO-1038</strong>Assigned · Electrical</div>
+            <div class="card accent"><strong>WO-1031</strong>Overdue · Floor 2</div>
+          </div>
+          <div class="tabs"><span>Home</span><span class="on">Work</span><span>Assets</span><span>More</span></div>
+        </div>
+      </div>
+      <div class="cap"><div class="label">WO detail</div>
+        <div class="phone"><div class="notch"></div><div class="bar">← WO-1042</div>
+          <div class="body">
+            <div style="color:var(--teal);font-weight:600;margin-bottom:4px">In progress</div>
+            <div style="color:var(--ink);font-weight:600;margin-bottom:6px">AHU-3 · Floor 3</div>
+            <div class="card"><strong>What to do</strong>Replace filter, check drain…</div>
+            <div class="btn">Continue report</div>
+            <div class="btn ghost">Put on hold</div>
+          </div>
+          <div class="tabs"><span>Home</span><span class="on">Work</span><span>Assets</span><span>More</span></div>
+        </div>
+      </div>
+      <div class="cap"><div class="label">Assets</div>
+        <div class="phone"><div class="notch"></div><div class="bar">☰ Assets</div>
+          <div class="body">
+            <div class="card"><strong>AHU-3</strong>Active · Building A</div>
+            <div class="card accent"><strong>Gen-01</strong>Warning · Warranty</div>
+            <div class="card"><strong>Pump-12</strong>Active · Basement</div>
+          </div>
+          <div class="tabs"><span>Home</span><span>Work</span><span class="on">Assets</span><span>More</span></div>
+        </div>
+      </div>
+      <div class="cap"><div class="label">More</div>
+        <div class="phone"><div class="notch"></div><div class="bar">☰ More</div>
+          <div class="body">
+            <div class="card"><strong>Companies</strong></div>
+            <div class="card"><strong>Invoices</strong></div>
+            <div class="card"><strong>Labor</strong></div>
+            <div class="card"><strong>Profile</strong></div>
+          </div>
+          <div class="tabs"><span>Home</span><span>Work</span><span>Assets</span><span class="on">More</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="label">Desktop (same shell)</div>
+        <div class="desk">
+          <div class="side"><b>Orbit</b><br><span class="on">Dashboard</span><br>Companies<br>Assets<br>Work orders<br>Invoices</div>
+          <div class="main">
+            <h3>Dashboard</h3>
+            <div class="metric"><span><b>12</b>Open</span><span><b>2</b>Overdue</span><span><b>486</b>Assets</span></div>
+            <div class="rowline"></div><div class="rowline"></div><div class="rowline"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Concept D — Split role shells</h2>
+    <p class="note">Technician phone is Queue · Scan · Time · More. Admin gets a denser desktop. Faster in the field; two UX systems to maintain.</p>
+    <div class="row">
+      <div class="cap"><div class="label">Queue (tech)</div>
+        <div class="phone"><div class="notch"></div><div class="bar">My work</div>
+          <div class="body">
+            <div class="card accent"><strong>Start next</strong>WO-1042 · AHU-3 · Floor 3</div>
+            <div class="btn">Start work order</div>
+            <div style="margin:6px 0 4px;font-weight:600">Up next</div>
+            <div class="card"><strong>WO-1038</strong>Assigned · Electrical</div>
+            <div class="card"><strong>WO-1048</strong>Assigned · Plumbing</div>
+          </div>
+          <div class="tabs"><span class="on">Queue</span><span>Scan</span><span>Time</span><span>More</span></div>
+        </div>
+      </div>
+      <div class="cap"><div class="label">Active WO</div>
+        <div class="phone"><div class="notch"></div><div class="bar">← WO-1042</div>
+          <div class="body">
+            <div style="color:var(--teal);font-weight:600">In progress</div>
+            <div style="color:var(--ink);font-weight:600;margin:4px 0 6px">AHU-3 · Floor 3</div>
+            <div class="card"><strong>Checklist</strong>Replace filter · Check drain · Log readings</div>
+            <div class="btn ghost">Add photo</div>
+            <div class="btn">Complete work</div>
+            <div class="btn ghost">Put on hold</div>
+          </div>
+          <div class="tabs"><span class="on">Queue</span><span>Scan</span><span>Time</span><span>More</span></div>
+        </div>
+      </div>
+      <div class="cap"><div class="label">Scan</div>
+        <div class="phone"><div class="notch"></div><div class="bar">Scan asset</div>
+          <div class="body">
+            <div style="height:110px;background:var(--ink);border-radius:10px;color:var(--teal-soft);display:flex;align-items:center;justify-content:center;margin-bottom:6px">QR frame</div>
+            <div class="btn ghost">Enter asset code</div>
+          </div>
+          <div class="tabs"><span>Queue</span><span class="on">Scan</span><span>Time</span><span>More</span></div>
+        </div>
+      </div>
+      <div class="cap"><div class="label">Time</div>
+        <div class="phone"><div class="notch"></div><div class="bar">Log time</div>
+          <div class="body">
+            <div class="card accent"><strong>WO-1042</strong>Active timer · 0:42</div>
+            <div class="btn">Stop and save</div>
+            <div class="card"><strong>WO-1038</strong>1.5 h · Completed</div>
+          </div>
+          <div class="tabs"><span>Queue</span><span>Scan</span><span class="on">Time</span><span>More</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="label">Admin desktop (separate shell)</div>
+        <div class="desk">
+          <div class="side"><b>Orbit Admin</b><br><span class="on">Dashboard</span><br>Companies<br>Assets<br>Work orders</div>
+          <div class="main">
+            <h3>Company overview</h3>
+            <div class="metric"><span><b>8</b>Sites</span><span><b>41</b>Open</span><span><b>6</b>Unbilled</span></div>
+            <div class="rowline"></div><div class="rowline"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="verdict">
+    <h3>UX verdict</h3>
+    <p><strong>C</strong> wins consistency: one nav model, faster to ship, desktop stays familiar. Field path ≈ Home → Work → detail → Continue report.</p>
+    <p><strong>D</strong> wins field speed: Start next first, large Complete work, Scan/Time first-class. Cost: two shells + role gate before chrome.</p>
+    <p class="pick">Recommendation: ship C for the PWA pilot (already coded). Prototype D’s Queue / Start next pattern inside C’s Work tab as the next UX experiment — borrow D’s action hierarchy without forking the shell.</p>
+  </div>
+</body>
+</html>

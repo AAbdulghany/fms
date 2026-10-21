@@ -26,3 +26,12 @@ Until Pencil has the file active, use `orbit-layout-concepts.html` as the review
 | D | Split role shells | Tech: WO-first; Admin: dashboard-first | Role-aware sidebar order |
 
 **Pilot decision:** ship **C** (implemented in code). Keep desktop sidebar. Native app = vision anti-scope (1C).
+
+## C vs D — full page boards
+
+| File | Contents |
+|------|----------|
+| `.pen` board **“C vs D — full page layouts”** | C: Home, Work list, WO detail, Assets, More + 2 desktops. D: Queue, Active WO, Scan, Time, More + 2 admin desktops + verdict panel |
+| [`orbit-c-vs-d-full-pages.html`](./orbit-c-vs-d-full-pages.html) | Same journeys for browser review without Pencil |
+
+**UX call:** ship **C** now; borrow **D**’s “Start next” / action-first WO detail into C’s Work tab as a follow-up experiment.
