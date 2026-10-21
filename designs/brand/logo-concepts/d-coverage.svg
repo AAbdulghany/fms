@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title">
+  <title id="title">Orbit D Coverage</title>
+  <path fill="#1D4E89" d="M 223.07 142.64 A 96 96 0 0 0 32.93 142.64 L 62.64 146.81 A 66 66 0 0 1 193.36 146.81 Z"/>
+  <rect x="40" y="150" width="176" height="26" rx="6" fill="#1D4E89"/>
+  <rect x="164" y="132" width="40" height="40" rx="8" fill="#C4A574"/>
+</svg>

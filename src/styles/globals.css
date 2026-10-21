@@ -37,14 +37,18 @@
     @apply min-h-screen bg-neutral-50 text-neutral-600;
   }
 
-  /* Concept D — Dot grid pattern (Pat2). Swap class for Pat1/3/4 later. */
+  /* Concept D — Pat1 wide blueprint grid (soft, spacious). */
   .orbit-app-shell {
-    background-color: var(--color-neutral-50);
-    background-image: radial-gradient(
-      var(--color-neutral-300) 1px,
-      transparent 1px
+    --orbit-pattern-line: color-mix(
+      in srgb,
+      var(--color-neutral-400) calc(var(--orbit-pattern-opacity, 0.22) * 100%),
+      transparent
     );
-    background-size: 18px 18px;
+    background-color: var(--color-neutral-50);
+    background-image:
+      linear-gradient(var(--orbit-pattern-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--orbit-pattern-line) 1px, transparent 1px);
+    background-size: var(--orbit-pattern-size, 48px) var(--orbit-pattern-size, 48px);
   }
 
   .orbit-app-shell header,
