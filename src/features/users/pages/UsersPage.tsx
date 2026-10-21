@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+﻿import { FormEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "@/lib/api";
 import type { Employee, User, UserRole } from "@/lib/types";
@@ -12,10 +12,10 @@ function visibleRolesForFilter(actorRole: UserRole): UserRole[] {
   const roles = new Set<UserRole>([...creatable, actorRole]);
   return Array.from(roles);
 }
-import { EmptyState } from "@/components/EmptyState";
-import { UserRoleBadge } from "@/components/UserRoleBadge";
+import { EmptyState } from "@/shared/components/EmptyState";
+import { UserRoleBadge } from "@/shared/components/UserRoleBadge";
 
-import { ProvisionCredentialsModal } from "@/components/ProvisionCredentialsModal";
+import { ProvisionCredentialsModal } from "@/features/companies/components/ProvisionCredentialsModal";
 
 type UserListApi = {
   id: string;

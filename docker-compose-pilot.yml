@@ -1,0 +1,80 @@
+# Pilot stack — isolated DB with pilot seed (sales / UAT / field pilot)
+# Usage: docker compose -f docker-compose-pilot.yml up -d --build
+# Server: add -f deploy/pilot/docker-compose.live.yml --env-file deploy/pilot/.env
+#
+# Project name MUST stay distinct from docker-compose-local.yml (fms-local).
+# Replaces docker-compose-demo.yml (project fms-demo); stop that project first
+# or its containers keep ports 9001/9081/9543: docker compose -p fms-demo down
+
+name: fms-pilot
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: fms
+      POSTGRES_PASSWORD: fms
+      POSTGRES_DB: fms_pilot
+    ports:
+      # 9543 avoids clash with native Windows Postgres often on 5432/5433
+      - "9543:5432"
+    volumes:
+      - fms_pilot_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fms -d fms_pilot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.api
+    environment:
+      DATABASE_URL: postgresql+psycopg2://fms:fms@db:5432/fms_pilot
+      SECRET_KEY: ${SECRET_KEY:-pilot-secret}
+      APP_ENV: pilot
+      SEED_MODULE: pilot
+    depends_on:
+      db:
+        condition: service_healthy
+    command: python -m app.docker_migrate
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.api
+    environment:
+      DATABASE_URL: postgresql+psycopg2://fms:fms@db:5432/fms_pilot
+      SECRET_KEY: ${SECRET_KEY:-pilot-secret}
+      APP_ENV: pilot
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:9081}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:9081}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      FROM_EMAIL: ${FROM_EMAIL:-pilot@fms.local}
+    ports:
+      - "9001:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: on-failure
+
+  web:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.web
+    ports:
+      - "9081:8080"
+    depends_on:
+      - api
+    environment:
+      VITE_API_URL: http://localhost:9001
+
+volumes:
+  fms_pilot_pgdata:

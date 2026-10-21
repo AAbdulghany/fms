@@ -10,9 +10,10 @@
 | Task | Guide |
 |------|-------|
 | Local dev (Vite + uvicorn) | [guides/local-development.md](./guides/local-development.md) |
-| Docker pitch demo | [guides/demo-stack.md](./guides/demo-stack.md) |
+| Environments (dev / pilot / production) | [guides/environments.md](./guides/environments.md) |
+| Docker pilot stack | [guides/pilot-stack.md](./guides/pilot-stack.md) |
 | Tests | [guides/testing.md](./guides/testing.md) |
-| Deploy demo / production | [guides/deployment.md](./guides/deployment.md) |
+| Deploy pilot / production | [guides/deployment.md](./guides/deployment.md) |
 | All documentation | [README.md](./README.md) |
 
 ---

@@ -80,8 +80,8 @@ uv run pytest backend/tests/ -q
 # Frontend dev
 npm run dev
 
-# Docker demo stack
-docker compose -f docker-compose-local.yml -f docker-compose-demo.yml up --build
+# Docker pilot stack
+docker compose -f docker-compose-local.yml -f docker-compose-pilot.yml up --build
 ```
 
 ---

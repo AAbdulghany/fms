@@ -8,7 +8,7 @@ Run from backend folder:
 """
 from __future__ import annotations
 
-from app.cli._demo_passwords import demo_password
+from app.cli._seed_passwords import seed_password
 from app.cli._seed_lib import UserSeedSpec, create_seed_user, truncate_tenant_data
 from app.database import SessionLocal, engine
 from app.models import Tenant, TenantSubscription, UserRole
@@ -121,7 +121,7 @@ def seed_data() -> dict[str, str]:
 
     print("\n--- TEST USERS READY ---")
     for spec in SEED_USER_SPECS:
-        print(f"  {spec.email} / {demo_password(spec.pw_local)} ({spec.role.value})")
+        print(f"  {spec.email} / {seed_password(spec.pw_local)} ({spec.role.value})")
     print("------------------------")
     return result
 

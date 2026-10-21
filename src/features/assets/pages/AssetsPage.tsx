@@ -1,15 +1,15 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "@/lib/api";
 import type { Asset, AssetLifecycleStatus, User } from "@/lib/types";
 import { hasAnyRole } from "@/lib/roles";
-import { EmptyState } from "@/components/EmptyState";
-import { AssetLifecycleBadge } from "@/components/AssetLifecycleBadge";
-import { AssetRegisterModal } from "@/components/AssetRegisterModal";
-import { AssetImportModal } from "@/components/AssetImportModal";
-import { MaintenanceCalendar } from "@/components/MaintenanceCalendar";
-import { AssetWorkOrderPanel } from "@/components/AssetWorkOrderPanel";
+import { EmptyState } from "@/shared/components/EmptyState";
+import { AssetLifecycleBadge } from "@/features/assets/components/AssetLifecycleBadge";
+import { AssetRegisterModal } from "@/features/assets/components/AssetRegisterModal";
+import { AssetImportModal } from "@/features/assets/components/AssetImportModal";
+import { MaintenanceCalendar } from "@/features/assets/components/MaintenanceCalendar";
+import { AssetWorkOrderPanel } from "@/features/assets/components/AssetWorkOrderPanel";
 
 type AssetOutApi = {
   id: string;
@@ -43,7 +43,7 @@ function mapToDisplayAsset(a: AssetOutApi): Asset {
   const eolDate = a.expected_eol_date ?? computeEolDate(a.installed_on, a.max_age_years);
   return {
     id: a.id,
-    asset_id: a.label_code || `${a.id.slice(0, 8)}…`,
+    asset_id: a.label_code || `${a.id.slice(0, 8)}â€¦`,
     name: a.name,
     site_id: a.site_id,
     site_name: a.site_name ?? undefined,
@@ -350,14 +350,14 @@ export default function AssetsPage() {
                   >
                     <td className="px-6 py-4">
                       <div className="text-sm font-semibold text-neutral-900">
-                        {asset.name || "—"}
+                        {asset.name || "â€”"}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-neutral-700">
                       {asset.category}
                     </td>
                     <td className="px-6 py-4 text-sm text-neutral-900">
-                      {asset.site_name || "—"}
+                      {asset.site_name || "â€”"}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm">
                       <AssetLifecycleBadge status={asset.lifecycle_status} />
@@ -368,7 +368,7 @@ export default function AssetsPage() {
                           {t(wb.label === "Active" ? "warranty_active" : "warranty_expired") || wb.label}
                         </span>
                       ) : (
-                        <span className="text-neutral-400">—</span>
+                        <span className="text-neutral-400">â€”</span>
                       )}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm">
@@ -387,7 +387,7 @@ export default function AssetsPage() {
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-700">
                       {asset.expected_eol_date
                         ? new Date(asset.expected_eol_date).toLocaleDateString()
-                        : "—"}
+                        : "â€”"}
                     </td>
                   </tr>
                   );

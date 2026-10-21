@@ -1,0 +1,26 @@
+# Pilot live overlay (public server)
+# Usage (on server, from repo root):
+#   cp deploy/pilot/.env.example deploy/pilot/.env   # edit secrets + PUBLIC_APP_URL
+#   docker compose -f docker-compose-pilot.yml -f deploy/pilot/docker-compose.live.yml \
+#     --env-file deploy/pilot/.env up -d --build
+#
+# Only the web container is published; nginx proxies /api to the api service.
+
+services:
+  db:
+    ports: !reset []
+
+  api:
+    ports: !reset []
+    environment:
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in deploy/pilot/.env}
+      CORS_ORIGINS: ${CORS_ORIGINS:?set CORS_ORIGINS}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:?set PUBLIC_APP_URL}
+
+  web:
+    ports: !override
+      - "${WEB_PORT:-8080}:8080"
+
+  migrate:
+    environment:
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in deploy/pilot/.env}

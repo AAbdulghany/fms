@@ -12,7 +12,7 @@ npm run dev:css      # Tailwind CSS watch mode
 npm run build:css    # Tailwind CSS one-time build (minified)
 ```
 
-**Documentation:** [docs/README.md](docs/README.md) · [local dev](docs/guides/local-development.md) · [demo stack](docs/guides/demo-stack.md) · [testing](docs/guides/testing.md)
+**Documentation:** [docs/README.md](docs/README.md) · [local dev](docs/guides/local-development.md) · [environments](docs/guides/environments.md) · [testing](docs/guides/testing.md)
 
 ## Architecture Overview
 
@@ -24,28 +24,28 @@ npm run build:css    # Tailwind CSS one-time build (minified)
 - **Styling:** Tailwind CSS 3 with custom design tokens in `src/styles/tokens.css`
 - **Routing:** React Router 6 with protected routes
 - **State:** localStorage for auth tokens; component-level useState/useEffect
-- **i18n:** react-i18next with inline resources (AR default, EN fallback)
+- **i18n:** react-i18next with locale JSON (AR default, EN fallback)
 
 ### Project Structure
 ```
 src/
-├── main.tsx              # Entry: mounts App with I18nextProvider
-├── App.tsx               # Router + Layout + auth guard (PrivateRoute)
-├── i18n/index.ts         # i18next configuration with AR/EN translations
-├── lib/
-│   ├── api.ts            # HTTP client: apiFetch(), token management
-│   └── types.ts          # TypeScript interfaces (WorkOrder, Invoice, etc.)
-├── pages/                # Route components
-│   ├── LoginPage.tsx     # Email/password auth, demo credentials shown
-│   ├── DashboardPage.tsx # Summary cards (open WO count, invoices)
-│   ├── WorkOrdersPage.tsx# List view with links to detail
-│   ├── WorkOrderDetailPage.tsx  # Report editor, status transitions, invoice generation
-│   └── InvoicesPage.tsx  # Invoice list
+├── main.tsx                 # Entry: mounts App with I18nextProvider
+├── App.tsx                  # Thin shell → app router
+├── app/                     # Router, auth guard, providers
+├── features/                # Domain UI (auth, work-orders, …)/{pages,components}
+├── shared/
+│   ├── lib/                 # apiFetch (also @/lib), types, helpers
+│   ├── components/          # Layout, nav, shared UI
+│   └── navigation/          # Field shell tabs, redirects
+├── features/pwa/            # Manifest / install banner
+├── i18n/locales/            # AR/EN JSON
 └── styles/
-    ├── globals.css       # Tailwind layers + base typography
-    ├── tokens.css        # CSS custom properties (colors, fonts, spacing)
-    └── tailwind.theme.js # Maps tokens to Tailwind config
+    ├── globals.css
+    ├── tokens.css
+    └── tailwind.theme.js
 ```
+
+Import via `@/features/...` or `@/shared/...`. Do **not** use `@/components` or `@/pages` (guard: `npm run check:imports`).
 
 ### API Integration
 - Base URL: `/api/v1` (proxied to `http://127.0.0.1:8000` in dev)

@@ -2,7 +2,7 @@
 
 This document captures the high-level architecture, data model, API shape, and cross-cutting concerns for the Facility Management System (FMS).
 
-> **Operational runbooks:** [guides/local-development.md](guides/local-development.md) · [guides/demo-stack.md](guides/demo-stack.md) · [guides/deployment.md](guides/deployment.md)  
+> **Operational runbooks:** [guides/local-development.md](guides/local-development.md) · [guides/environments.md](guides/environments.md) · [guides/pilot-stack.md](guides/pilot-stack.md) · [guides/deployment.md](guides/deployment.md)  
 > **Current delivery:** [phase3-restructure/SPRINT_BACKLOG_NT.md](phase3-restructure/SPRINT_BACKLOG_NT.md)
 
 ---
@@ -20,7 +20,7 @@ What is **implemented today** vs aspirational targets later in this document:
 | **Migrations** | Alembic + frozen `schema_ensure` | [AgDR-SCHEMA-ENSURE.md](decisions/AgDR-SCHEMA-ENSURE.md) |
 | **ORM / API schemas** | Domain packages | `backend/app/models/`, `backend/app/schemas/` |
 | **PDFs** | ReportLab — invoices + maintenance reports | `invoice_pdf.py`, `maintenance_report_pdf.py` |
-| **Feature gates** | `assets`, `invoices` subscription flags | Bypassed when `APP_ENV=development\|demo` |
+| **Feature gates** | `assets`, `invoices` subscription flags | Bypassed when `APP_ENV=development\|pilot` |
 | **i18n** | Arabic default, English, RTL | Monolithic `src/i18n/index.ts` |
 | **Errors** | Bilingual API error catalog (NT-131) | `core/errors.py`, `lib/errors.ts` |
 | **Notifications** | In-app + email stub | `notification_service.py` (not Celery workers) |
@@ -29,7 +29,7 @@ What is **implemented today** vs aspirational targets later in this document:
 | **Mobile** | — | React Native — **Phase 3+ target** |
 | **Tests** | 219+ pytest, Playwright E2E | [guides/testing.md](guides/testing.md) |
 
-**Deploy profiles:** `docker-compose-local.yml` (dev), `docker-compose-demo.yml` (pitch), `deploy/demo/docker-compose.live.yml` (VM).
+**Deploy profiles:** `docker-compose-local.yml` (dev), `docker-compose-pilot.yml` + `deploy/pilot/docker-compose.live.yml` (pilot VM), `docker-compose-prod.yml` (production). See [guides/environments.md](guides/environments.md).
 
 ---
 

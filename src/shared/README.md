@@ -8,4 +8,4 @@ Cross-feature code used by multiple domains.
 | `components/` | Layout, Sidebar, ProtectedRoute, FeatureRoute, … |
 
 Import via `@/lib/...` or `@/shared/components/...`.  
-Legacy `@/components/...` shims remain during migration.
+Legacy `@/components` / `@/pages` shims were removed (CLEAN-003/004). Use `@/shared/...` or `@/features/...`.

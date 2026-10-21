@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Orbit AM — Complete Pitch & Packaging Pack</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; font-size: 10.5pt; line-height: 1.45; color: #0f172a; max-width: 900px; margin: 0 auto; padding: 24px; }
+  h1 { color: #0f766e; font-size: 22pt; border-bottom: 3px solid #0f766e; padding-bottom: 8px; }
+  h2 { color: #0f766e; font-size: 14pt; margin-top: 28px; page-break-after: avoid; }
+  h3 { color: #134e4a; font-size: 11.5pt; page-break-after: avoid; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0 18px; font-size: 9.5pt; page-break-inside: avoid; }
+  th, td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #0f766e; color: white; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  code { background: #f1f5f9; padding: 1px 4px; border-radius: 3px; font-size: 9pt; }
+  pre { background: #f1f5f9; padding: 10px; overflow-x: auto; font-size: 9pt; }
+  hr { border: none; border-top: 1px solid #e2e8f0; margin: 28px 0; }
+  a { color: #0f766e; }
+  ul, ol { padding-left: 1.2em; }
+  strong { color: #134e4a; }
+</style>
+</head>
+<body>
+<h1 id="orbit-am-complete-pitch-packaging-pack">Orbit AM — Complete Pitch &amp; Packaging Pack</h1>
+<p><strong>Product:</strong> Orbit AM — Hospital Asset &amp; Maintenance Management<br />
+<strong>Company suite:</strong> Orbit AM + Orbit QM<br />
+<strong>Market:</strong> Egypt healthcare FM (year 1)<br />
+<strong>Audiences:</strong> Mid–large FM / maintenance companies + partners<br />
+<strong>Document type:</strong> Detailed sales &amp; partner pack (bootstrap — no fundraising ask)<br />
+<strong>Version:</strong> 2026-07-14<br />
+<strong>Currency:</strong> EGP annual, VAT excluded  </p>
+<hr />
+<h2 id="table-of-contents">Table of contents</h2>
+<ol>
+<li><a href="#1-executive-summary">Executive summary</a>  </li>
+<li><a href="#2-product-overview--cmms-definition">Product overview &amp; CMMS definition</a>  </li>
+<li><a href="#3-feature-matrix--implemented-vs-tbd">Feature matrix — implemented vs TBD</a>  </li>
+<li><a href="#4-packaging--pricing-egp-420k35m">Packaging &amp; pricing (EGP 420K–3.5M)</a>  </li>
+<li><a href="#5-hybrid-phase-pricing-rules">Hybrid phase pricing rules</a>  </li>
+<li><a href="#6-cloud-tco--aws-azure-cloudflare">Cloud TCO — AWS, Azure, Cloudflare</a>  </li>
+<li><a href="#7-hidden-costs--full-tco-internal">Hidden costs &amp; full TCO (internal)</a>  </li>
+<li><a href="#8-partner-cost-split-detailed">Partner cost split (detailed)</a>  </li>
+<li><a href="#9-team-plan--founder--2-interns">Team plan — founder + 2 interns</a>  </li>
+<li><a href="#10-go-to-market--partners">Go-to-market &amp; partners</a>  </li>
+<li><a href="#11-orbit-qm--miraco">Orbit QM + Miraco</a>  </li>
+<li><a href="#12-16-slide-deck-outline">16-slide deck outline</a>  </li>
+<li><a href="#13-pilot-offer--next-steps">Pilot offer &amp; next steps</a>  </li>
+</ol>
+<hr />
+<h2 id="1-executive-summary">1. Executive summary</h2>
+<p>Orbit AM is a <strong>multi-tenant CMMS SaaS</strong> for maintenance companies that serve <strong>hospitals</strong> in Egypt. It covers assets, preventive calendars, work orders, structured reports, and invoicing — with Arabic-first RTL UX.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Decision</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Brand</td>
+<td><strong>Orbit AM</strong></td>
+</tr>
+<tr>
+<td>Price band (all tiers)</td>
+<td><strong>EGP 420,000 → 3,500,000</strong> / year</td>
+</tr>
+<tr>
+<td>Tiers</td>
+<td>Clinical · Regional · Network · Enterprise</td>
+</tr>
+<tr>
+<td>Business model</td>
+<td>Hybrid annual subscription (asset-band primary + user caps); setup included</td>
+</tr>
+<tr>
+<td>Cloud</td>
+<td><strong>Not locked</strong> — AWS / Azure / Cloudflare hybrid selection per deal</td>
+</tr>
+<tr>
+<td>Phase pricing</td>
+<td>Hybrid: core + Mobile included; Reporting by tier; <strong>AI</strong> and <strong>Integrations</strong> standalone</td>
+</tr>
+<tr>
+<td>Traction</td>
+<td>Pre-revenue AM; <strong>Orbit QM live at Miraco</strong></td>
+</tr>
+<tr>
+<td>Team burn model</td>
+<td>Founder (~EGP 80K) + 2 student interns</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2-product-overview-cmms-definition">2. Product overview &amp; CMMS definition</h2>
+<h3 id="what-is-cmms">What is CMMS?</h3>
+<p><strong>CMMS</strong> = <strong>Computerized Maintenance Management System</strong> — software to register assets, schedule preventive maintenance (PM), run work orders, keep history/compliance records, and (in Orbit AM) generate invoices from completed work.</p>
+<p>Orbit AM is <strong>hospital-ready CMMS + billing</strong>, not a claim of full IBM Maximo parity on day one.</p>
+<h3 id="actors">Actors</h3>
+<pre><code>Orbit platform  →  Maintenance / FM company  →  Hospital clients (sites)
+   (you)              technicians &amp; admins         biomed / facilities
+</code></pre>
+<h3 id="value-proposition">Value proposition</h3>
+<ul>
+<li>One system for FM company and every hospital it serves  </li>
+<li>Arabic default + English  </li>
+<li>Annual price includes onboarding (no surprise implementation invoice)  </li>
+<li>Scales from <strong>1 hospital / 500 assets</strong> to <strong>85 hospitals / 20,000 assets</strong></li>
+</ul>
+<hr />
+<h2 id="3-feature-matrix-implemented-vs-tbd">3. Feature matrix — implemented vs TBD</h2>
+<h3 id="31-core-platform-sellable-foundation">3.1 Core platform (sellable foundation)</h3>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Status</th>
+<th>Hospital relevance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Multi-tenant SaaS + RBAC</td>
+<td>Done</td>
+<td>FM vs hospital role split</td>
+</tr>
+<tr>
+<td>Companies, sites, locations</td>
+<td>Done</td>
+<td>Multi-hospital per tenant</td>
+</tr>
+<tr>
+<td>Assets + CSV import + lifecycle</td>
+<td>Done</td>
+<td>Biomed + facilities equipment</td>
+</tr>
+<tr>
+<td>Maintenance calendar (M/Q/Y)</td>
+<td>Done</td>
+<td>PM planning</td>
+</tr>
+<tr>
+<td>Work orders (full lifecycle)</td>
+<td>Done</td>
+<td>Corrective + preventive</td>
+</tr>
+<tr>
+<td>Template reports + approval</td>
+<td>Done</td>
+<td>Compliance documentation</td>
+</tr>
+<tr>
+<td>Invoices + branded PDF</td>
+<td>Done</td>
+<td>FM → hospital billing</td>
+</tr>
+<tr>
+<td>Labor / time entries</td>
+<td>Done</td>
+<td>Engineer hours</td>
+</tr>
+<tr>
+<td>WO requests (hospital → FM)</td>
+<td>Done</td>
+<td>Request channel</td>
+</tr>
+<tr>
+<td>Licensing &amp; feature gates</td>
+<td>Done</td>
+<td>Package enforcement</td>
+</tr>
+<tr>
+<td>Arabic + English RTL</td>
+<td>Done</td>
+<td>Egypt differentiator</td>
+</tr>
+<tr>
+<td>Demo pitch seed / reset</td>
+<td>Done</td>
+<td>Sales demos</td>
+</tr>
+<tr>
+<td>Notifications</td>
+<td>Partial</td>
+<td>Needs production SMTP</td>
+</tr>
+<tr>
+<td>Automated PM job runner</td>
+<td>Partial / TBD</td>
+<td>Needed before large contracts</td>
+</tr>
+<tr>
+<td>AI maintenance</td>
+<td>Stub only</td>
+<td>Sold as <strong>standalone</strong> later</td>
+</tr>
+<tr>
+<td>Mobile app</td>
+<td>TBD</td>
+<td><strong>Included in packages</strong> when shipped</td>
+</tr>
+<tr>
+<td>Advanced reporting / KPIs</td>
+<td>TBD</td>
+<td>Network+ included; lower tiers add-on</td>
+</tr>
+<tr>
+<td>Systems integration</td>
+<td>TBD</td>
+<td><strong>Standalone</strong> paid</td>
+</tr>
+</tbody>
+</table>
+<h3 id="32-must-close-before-first-hospital-contract">3.2 Must close before first hospital contract</h3>
+<table>
+<thead>
+<tr>
+<th>Gap</th>
+<th>Effort band</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Invoice / golden-path E2E green</td>
+<td>2–4 weeks</td>
+</tr>
+<tr>
+<td>Wave 5 UAT verification</td>
+<td>2–3 weeks</td>
+</tr>
+<tr>
+<td>Automated PM scheduling jobs</td>
+<td>4–6 weeks</td>
+</tr>
+<tr>
+<td>Production object storage</td>
+<td>2–3 weeks</td>
+</tr>
+<tr>
+<td>Hospital report templates</td>
+<td>2–4 weeks</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Realistic core readiness:</strong> ~8–12 weeks with founder + 2 interns (CMMS-core scope).</p>
+<h3 id="33-maximo-inspired-roadmap-honest-phasing">3.3 Maximo-inspired roadmap (honest phasing)</h3>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Capabilities</th>
+<th>Pricing treatment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pre-launch hardening</td>
+<td>QA, PM jobs, storage, hospital templates</td>
+<td>Included in tiers</td>
+</tr>
+<tr>
+<td>Phase 2 — Reporting</td>
+<td>KPI dashboards, cost-per-asset, compliance exports</td>
+<td><strong>Included Network+</strong>; add-on Clinical/Regional</td>
+</tr>
+<tr>
+<td>Phase 3 — Mobile</td>
+<td>Technician field app</td>
+<td><strong>Included in all packages</strong> when launched</td>
+</tr>
+<tr>
+<td>Phase 3 — Intelligence</td>
+<td>AI recommendations, forecasting</td>
+<td><strong>Standalone — AI Maintenance</strong></td>
+</tr>
+<tr>
+<td>Phase 4 — Enterprise connect</td>
+<td>HIS/ERP/SSO, webhooks</td>
+<td><strong>Standalone — Systems Integration</strong></td>
+</tr>
+<tr>
+<td>Phase 4 — Parts</td>
+<td>Inventory UI</td>
+<td>Future add-on / later decision</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-packaging-pricing-egp-420k35m">4. Packaging &amp; pricing (EGP 420K–3.5M)</h2>
+<h3 id="41-asset-scale-reference">4.1 Asset scale reference</h3>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Hospitals</th>
+<th>Assets</th>
+<th>Users</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pilot</td>
+<td>1</td>
+<td>300–500</td>
+<td>10–20</td>
+</tr>
+<tr>
+<td>Growth</td>
+<td>5–15</td>
+<td>2,000–5,000</td>
+<td>30–60</td>
+</tr>
+<tr>
+<td>Network</td>
+<td>~40</td>
+<td>~10,000</td>
+<td>~100</td>
+</tr>
+<tr>
+<td>Enterprise</td>
+<td>up to 85</td>
+<td>up to 20,000</td>
+<td>80–150+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="42-four-tiers-annual">4.2 Four tiers (annual)</h3>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Assets</th>
+<th>Users</th>
+<th>Hospitals</th>
+<th><strong>Annual EGP</strong></th>
+<th>~USD @ 50</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Orbit Clinical</strong></td>
+<td>500</td>
+<td>20</td>
+<td>1</td>
+<td><strong>420,000</strong></td>
+<td>~$8,400</td>
+</tr>
+<tr>
+<td><strong>Orbit Regional</strong></td>
+<td>5,000</td>
+<td>60</td>
+<td>15</td>
+<td><strong>1,050,000</strong></td>
+<td>~$21,000</td>
+</tr>
+<tr>
+<td><strong>Orbit Network</strong></td>
+<td>10,000</td>
+<td>100</td>
+<td>40</td>
+<td><strong>2,800,000</strong></td>
+<td>~$56,000</td>
+</tr>
+<tr>
+<td><strong>Orbit Enterprise</strong></td>
+<td>20,000</td>
+<td>150</td>
+<td>85</td>
+<td><strong>3,500,000</strong></td>
+<td>~$70,000</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Band check:</strong> Floor <strong>420K</strong> · Ceiling <strong>3.5M</strong> · Network sits <strong>close to Enterprise</strong> (confidence / anchoring).</p>
+<h3 id="43-effective-asset-economics-illustrative">4.3 Effective asset economics (illustrative)</h3>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>EGP / asset / month (at cap)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Clinical (500)</td>
+<td>70</td>
+</tr>
+<tr>
+<td>Regional (5,000)</td>
+<td>17.5</td>
+</tr>
+<tr>
+<td>Network (10,000)</td>
+<td>23.3</td>
+</tr>
+<tr>
+<td>Enterprise (20,000)</td>
+<td>14.6</td>
+</tr>
+</tbody>
+</table>
+<h3 id="44-included-in-every-tier">4.4 Included in every tier</h3>
+<ul>
+<li>Core CMMS modules (assets, WO, calendars, reports, invoices, labor, requests)  </li>
+<li>Arabic + English RTL  </li>
+<li>Onboarding + CSV import assistance + <strong>5 days remote training</strong>  </li>
+<li>Business-hours support (Cairo TZ)  </li>
+<li>Quarterly product updates  </li>
+<li><strong>Mobile app (when launched)</strong> — not sold separately  </li>
+</ul>
+<h3 id="45-pilot-offer-6-month-goal">4.5 Pilot offer (6-month goal)</h3>
+<p><strong>Clinical @ 50% year-1</strong> = <strong>EGP 210,000</strong> for 12 months (1–2 reference logos + UAT feedback).</p>
+<h3 id="46-suggested-overages-order-form-not-public-hero-prices">4.6 Suggested overages (order form, not public hero prices)</h3>
+<table>
+<thead>
+<tr>
+<th>Overage</th>
+<th>Guide</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>+1,000 assets</td>
+<td>+EGP 90,000 / year</td>
+</tr>
+<tr>
+<td>+10 users</td>
+<td>+EGP 45,000 / year</td>
+</tr>
+<tr>
+<td>Dedicated DB</td>
+<td>Custom (+40% infra surcharge on that tenant)</td>
+</tr>
+<tr>
+<td>On-site training travel</td>
+<td>EGP 15–30K per trip (optional, billable)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="5-hybrid-phase-pricing-rules">5. Hybrid phase pricing rules</h2>
+<h3 id="rule-summary">Rule summary</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Treatment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Core CMMS</td>
+<td>Included in <strong>all</strong> tiers forever</td>
+</tr>
+<tr>
+<td>Mobile technician app</td>
+<td><strong>Included</strong> in all packages when shipped (<strong>not</strong> a paid add-on)</td>
+</tr>
+<tr>
+<td>Advanced Reporting &amp; KPIs</td>
+<td><strong>Included</strong> from <strong>Network</strong> and Enterprise; <strong>paid add-on</strong> for Clinical &amp; Regional</td>
+</tr>
+<tr>
+<td><strong>AI Maintenance</strong></td>
+<td><strong>Standalone product</strong> — always separately priced</td>
+</tr>
+<tr>
+<td><strong>Systems Integration</strong></td>
+<td><strong>Standalone product</strong> — always separately priced</td>
+</tr>
+<tr>
+<td>Forecasting</td>
+<td>Packaged inside <strong>AI Maintenance</strong> as capability matures</td>
+</tr>
+</tbody>
+</table>
+<h3 id="advanced-reporting-add-on-clinical-regional">Advanced Reporting add-on (Clinical / Regional)</h3>
+<table>
+<thead>
+<tr>
+<th>Guide price</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>EGP 280,000 / year</strong></td>
+<td>Aligns under Network uplift without breaking 3.5M ceiling story</td>
+</tr>
+</tbody>
+</table>
+<h3 id="standalone-ai-maintenance-quote">Standalone — AI Maintenance (quote)</h3>
+<table>
+<thead>
+<tr>
+<th>Scope</th>
+<th>Pricing posture</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AI PM suggestions, work-planning assistance, forecasting roadmapped</td>
+<td><strong>Custom annual</strong> — typically mid–high six figures EGP; never “free in Enterprise”</td>
+</tr>
+</tbody>
+</table>
+<h3 id="standalone-systems-integration-quote">Standalone — Systems Integration (quote)</h3>
+<table>
+<thead>
+<tr>
+<th>Scope</th>
+<th>Pricing posture</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HIS / ERP connectors, SSO, webhooks</td>
+<td><strong>Custom</strong> — per connector or SOW; year-1 optional</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sales-language-use-on-deck">Sales language (use on deck)</h3>
+<blockquote>
+<p>“Your package includes the full CMMS and, when ready, the mobile app. Advanced reporting is included from Network upward. AI and system integrations are optional modules you can add when you need them.”</p>
+</blockquote>
+<hr />
+<h2 id="6-cloud-tco-aws-azure-cloudflare">6. Cloud TCO — AWS, Azure, Cloudflare</h2>
+<p><strong>Decision state:</strong> Cloud is <strong>selection-based</strong> — not pre-decided. This section is for partner / technical honesty.</p>
+<h3 id="61-fit-for-orbit-am-fastapi-postgresql-react">6.1 Fit for Orbit AM (FastAPI + PostgreSQL + React)</h3>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>AWS</strong></td>
+<td>Excellent primary: RDS Postgres, ALB, S3, ECS/EC2</td>
+</tr>
+<tr>
+<td><strong>Azure</strong></td>
+<td>Excellent primary: Flexible Server, App Service/AKS, Blob; useful if buyer is Microsoft-centric</td>
+</tr>
+<tr>
+<td><strong>Cloudflare</strong></td>
+<td>Best as <strong>edge layer</strong> (CDN, WAF, R2 zero-egress photos). <strong>Not</strong> a full Postgres replacement (D1 = SQLite). Pair with Neon/RDS/Supabase via Hyperdrive if using Workers</td>
+</tr>
+</tbody>
+</table>
+<h3 id="62-how-the-bill-is-triggered">6.2 How the bill is triggered</h3>
+<table>
+<thead>
+<tr>
+<th>Line item</th>
+<th>Trigger</th>
+<th>Scaling note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>API compute</td>
+<td>Instance / vCPU <strong>hours while running</strong></td>
+<td>Scales with concurrent users &amp; jobs</td>
+</tr>
+<tr>
+<td>Managed Postgres</td>
+<td><strong>Provisioned</strong> hours + storage GiB</td>
+<td>Multi-AZ / zone-redundant ≈ <strong>~2× compute</strong></td>
+</tr>
+<tr>
+<td>Extra / dedicated DB</td>
+<td><strong>New instance = new fixed monthly floor</strong></td>
+<td>Only for Network/Enterprise quotes</td>
+</tr>
+<tr>
+<td>Load balancer</td>
+<td>ALB / Azure LB <strong>hourly</strong> + capacity units / processed bytes</td>
+<td>Turn on when HA / multi-instance needed</td>
+</tr>
+<tr>
+<td>Object storage</td>
+<td>GiB stored + requests + <strong>egress</strong></td>
+<td>Hospital photo uploads can dominate</td>
+</tr>
+<tr>
+<td>Backups</td>
+<td>Beyond free allotment</td>
+<td>Grows with DB</td>
+</tr>
+<tr>
+<td>Cloudflare</td>
+<td>Workers requests, R2 storage (often $0 egress), WAF plan</td>
+<td>Cheap edge; <strong>does not cancel</strong> DB bill</td>
+</tr>
+</tbody>
+</table>
+<h3 id="63-indicative-monthly-infra-shared-multi-tenant-usd-egp50">6.3 Indicative monthly infra (shared multi-tenant, USD → ~EGP×50)</h3>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Layout</th>
+<th>USD/mo</th>
+<th>~EGP/mo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pilot (Clinical)</td>
+<td>1 API + small Single-AZ Postgres + storage + CDN</td>
+<td>80–200</td>
+<td>4–10K</td>
+</tr>
+<tr>
+<td>Regional scale</td>
+<td>2 API + Multi-AZ Postgres + ALB + storage</td>
+<td>250–600</td>
+<td>12–30K</td>
+</tr>
+<tr>
+<td>Network / heavy shared</td>
+<td>Autoscale API + HA Postgres (+ optional read replica)</td>
+<td>500–1,200</td>
+<td>25–60K</td>
+</tr>
+<tr>
+<td>Dedicated Enterprise DB add-on</td>
+<td>+ Multi-AZ Postgres per whale</td>
+<td>+200–475</td>
+<td>+10–24K</td>
+</tr>
+</tbody>
+</table>
+<h3 id="64-multi-tenant-economics-important">6.4 Multi-tenant economics (important)</h3>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Cost behavior</th>
+<th>Orbit year-1 default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Shared DB + <code>tenant_id</code></td>
+<td>Cost grows with <strong>load/size</strong>, not tenant count</td>
+<td><strong>Yes — default</strong></td>
+</tr>
+<tr>
+<td>DB-per-tenant</td>
+<td>~$40–150+/tenant/mo baseline</td>
+<td>Only with Enterprise ACV + compliance need</td>
+</tr>
+</tbody>
+</table>
+<h3 id="65-recommended-selection-guide-not-a-lock-in">6.5 Recommended selection guide (not a lock-in)</h3>
+<ol>
+<li>Start <strong>shared multi-tenant</strong> on <strong>AWS or Azure</strong>  </li>
+<li>Put <strong>Cloudflare</strong> in front for CDN/WAF; use <strong>R2</strong> if photo egress hurts  </li>
+<li>Offer <strong>dedicated DB</strong> only on Network/Enterprise custom quotes  </li>
+</ol>
+<hr />
+<h2 id="7-hidden-costs-full-tco-internal">7. Hidden costs &amp; full TCO (internal)</h2>
+<h3 id="71-monthly-burn-pre-revenue-few-customers">7.1 Monthly burn (pre-revenue / few customers)</h3>
+<table>
+<thead>
+<tr>
+<th>Line item</th>
+<th>Low</th>
+<th>Base</th>
+<th>High</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Founder</td>
+<td>70,000</td>
+<td><strong>80,000</strong></td>
+<td>90,000</td>
+</tr>
+<tr>
+<td>2 student interns</td>
+<td>8,000</td>
+<td><strong>9,000</strong></td>
+<td>10,000</td>
+</tr>
+<tr>
+<td>Tools / stipend misc</td>
+<td>2,000</td>
+<td>3,000</td>
+<td>5,000</td>
+</tr>
+<tr>
+<td>Cloud (dev+demo+pilot)</td>
+<td>3,000</td>
+<td><strong>6,000</strong></td>
+<td>12,000</td>
+</tr>
+<tr>
+<td>SaaS tools</td>
+<td>4,000</td>
+<td><strong>8,000</strong></td>
+<td>15,000</td>
+</tr>
+<tr>
+<td>Sales &amp; marketing</td>
+<td>5,000</td>
+<td><strong>12,000</strong></td>
+<td>25,000</td>
+</tr>
+<tr>
+<td>Legal &amp; accounting (amortized)</td>
+<td>2,000</td>
+<td><strong>4,000</strong></td>
+<td>8,000</td>
+</tr>
+<tr>
+<td>Contingency</td>
+<td>5,000</td>
+<td><strong>10,000</strong></td>
+<td>15,000</td>
+</tr>
+<tr>
+<td><strong>Total / month</strong></td>
+<td><strong>99,000</strong></td>
+<td><strong>~132,000</strong></td>
+<td><strong>180,000</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>6-month runway (base):</strong> ~<strong>EGP 790,000</strong></p>
+<h3 id="72-cogs-after-you-sell-what-eats-margin">7.2 COGS after you sell (what eats margin)</h3>
+<table>
+<thead>
+<tr>
+<th>Tenant</th>
+<th>Infra/mo (EGP)</th>
+<th>Support load</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>500 assets</td>
+<td>3–8K</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>5,000 assets</td>
+<td>15–35K</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>10,000 assets</td>
+<td>30–70K</td>
+<td>High</td>
+</tr>
+<tr>
+<td>20,000 assets</td>
+<td>50–120K</td>
+<td>Highest</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Hidden COGS triggers:</strong> WO photo storage, custom integrations (your time), on-site travel, payment fees 2.5–3%, FX 1–3%.</p>
+<h3 id="73-customer-side-hidden-costs-sales-honesty-faq-not-partner-slide">7.3 Customer-side hidden costs (sales honesty — FAQ, not partner slide)</h3>
+<table>
+<thead>
+<tr>
+<th>Their cost</th>
+<th>Typical</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Biomed project owner</td>
+<td>20–40% FTE × 3 months</td>
+</tr>
+<tr>
+<td>Asset data cleanup before import</td>
+<td>Largest delay risk</td>
+</tr>
+<tr>
+<td>Technician adoption</td>
+<td>2–6 months</td>
+</tr>
+<tr>
+<td>Enterprise IT / SSO reviews</td>
+<td>Network/Enterprise deals</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="8-partner-cost-split-detailed">8. Partner cost split (detailed)</h2>
+<p><strong>Audience:</strong> Partners / implementers / referral agents — <strong>not</strong> end-hospital buyers.<br />
+<strong>Purpose:</strong> Show where annual subscription money goes so partners understand margin and commission integrity.</p>
+<h3 id="81-year-1-acv-split-indicative">8.1 Year-1 ACV split (indicative)</h3>
+<table>
+<thead>
+<tr>
+<th>Bucket</th>
+<th>Share of ACV</th>
+<th>What partners should know</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cloud &amp; platform ops</td>
+<td><strong>12–18%</strong></td>
+<td>Hosting, DB, LB when needed, backups, monitoring, CDN/WAF</td>
+</tr>
+<tr>
+<td>Onboarding &amp; delivery</td>
+<td><strong>10–15%</strong></td>
+<td>Included migration/training — partners who implement may earn from this + fee</td>
+</tr>
+<tr>
+<td>Support &amp; success</td>
+<td><strong>8–12%</strong></td>
+<td>Business-hours support, triage</td>
+</tr>
+<tr>
+<td>Product &amp; R&amp;D</td>
+<td><strong>20–25%</strong></td>
+<td>CMMS roadmap, Arabic UX, mobile when shipped</td>
+</tr>
+<tr>
+<td>Sales &amp; partner commission</td>
+<td><strong>10–15%</strong></td>
+<td>Referral commission lives here on partner-sourced deals</td>
+</tr>
+<tr>
+<td>Gross margin / runway</td>
+<td><strong>25–35%</strong></td>
+<td>Company sustainability; cushions Enterprise COGS</td>
+</tr>
+</tbody>
+</table>
+<h3 id="82-worked-examples">8.2 Worked examples</h3>
+<p><strong>Clinical ACV = EGP 420,000</strong></p>
+<table>
+<thead>
+<tr>
+<th>Bucket @ mid</th>
+<th>EGP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cloud 15%</td>
+<td>63,000</td>
+</tr>
+<tr>
+<td>Onboarding 12%</td>
+<td>50,400</td>
+</tr>
+<tr>
+<td>Support 10%</td>
+<td>42,000</td>
+</tr>
+<tr>
+<td>R&amp;D 22%</td>
+<td>92,400</td>
+</tr>
+<tr>
+<td>Sales/partner 12%</td>
+<td>50,400</td>
+</tr>
+<tr>
+<td>Margin 29%</td>
+<td>121,800</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Referral partner at 12% year-1 ACV</strong> → <strong>EGP 50,400</strong> on a full Clinical deal.</p>
+<p><strong>Regional ACV = EGP 1,050,000</strong> → referral 12% = <strong>EGP 126,000</strong><br />
+<strong>Network ACV = EGP 2,800,000</strong> → referral 12% = <strong>EGP 336,000</strong><br />
+<strong>Enterprise ACV = EGP 3,500,000</strong> → referral 12% = <strong>EGP 420,000</strong></p>
+<h3 id="83-partner-programs">8.3 Partner programs</h3>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Model</th>
+<th>Economics</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0–3 customers</td>
+<td>Direct + warm network</td>
+<td>—</td>
+</tr>
+<tr>
+<td>3–10</td>
+<td><strong>Referral</strong></td>
+<td><strong>10–15% of year-1 ACV</strong></td>
+</tr>
+<tr>
+<td>10+</td>
+<td><strong>Certified implementer</strong></td>
+<td><strong>20–25%</strong> + defined implementation fee</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Year-1 ACV</strong> = first-year subscription only (not recurring forever unless contracted).</p>
+<h3 id="84-why-network-is-priced-close-to-enterprise">8.4 Why Network is priced close to Enterprise</h3>
+<p>Anchors confidence: Network at <strong>2.8M</strong> is a serious hospital-network product; Enterprise at <strong>3.5M</strong> is the national/cap tier — not a 4× jump from Regional that looks arbitrary.</p>
+<hr />
+<h2 id="9-team-plan-founder-2-interns">9. Team plan — founder + 2 interns</h2>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Focus</th>
+<th>Mentoring</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Founder</td>
+<td>Architecture, hospital domain, sales demos, reviews</td>
+<td>10+ hrs/week with interns</td>
+</tr>
+<tr>
+<td>Intern A — QA</td>
+<td>Playwright E2E, hospital golden path, Wave regression</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Intern B — Frontend</td>
+<td>Hospital templates, dashboards, Arabic copy</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Stipend:</strong> EGP 4,000–5,000 each / month (included in burn §7.1).</p>
+<hr />
+<h2 id="10-go-to-market-partners">10. Go-to-market &amp; partners</h2>
+<table>
+<thead>
+<tr>
+<th>Channel</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Direct</td>
+<td>FM companies already in hospitals</td>
+</tr>
+<tr>
+<td>Demo-first</td>
+<td>Pitch Docker demo + 30-min golden path</td>
+</tr>
+<tr>
+<td>Mix</td>
+<td>LinkedIn, referrals, associations</td>
+</tr>
+<tr>
+<td>Partners</td>
+<td>Referral 10–15% year-1 ACV</td>
+</tr>
+<tr>
+<td>Timeline</td>
+<td>First paying customer in <strong>6 months</strong> (Clinical pilot)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Support year 1:</strong> Founder-led (cap concurrent customers until partner support or hire).</p>
+<hr />
+<h2 id="11-orbit-qm-miraco">11. Orbit QM + Miraco</h2>
+<h3 id="orbit-qm-suite-sibling">Orbit QM (suite sibling)</h3>
+<p><strong>Orbit QM</strong> is a <strong>Quality Management Dashboard</strong> for manufacturing quality operations.</p>
+<p><strong>Capabilities (from product workspace):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Modules</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Overview</td>
+<td>Dashboard, Traceability</td>
+</tr>
+<tr>
+<td>Inspections</td>
+<td><strong>IQC</strong>, <strong>IPQC</strong>, <strong>FQC</strong></td>
+</tr>
+<tr>
+<td>Quality</td>
+<td><strong>NCR</strong>, <strong>CAPA</strong>, Suppliers, Calibration, Audits, Complaints</td>
+</tr>
+<tr>
+<td>Manager tools</td>
+<td>Part specs, Process flow, <strong>SPC control charts</strong></td>
+</tr>
+<tr>
+<td>System</td>
+<td>Master data, Reports, Notifications, Users / RBAC</td>
+</tr>
+</tbody>
+</table>
+<p>Roles span Data Entry → Supervisor → Engineer → Quality Manager / Admin. Printable QMS documents with company letterhead.</p>
+<h3 id="live-customer-miraco">Live customer — Miraco</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Customer</strong></td>
+<td><strong>Miraco</strong></td>
+</tr>
+<tr>
+<td>Legal / trade context</td>
+<td>Miraco Company for Air Conditioning &amp; Refrigeration</td>
+</tr>
+<tr>
+<td>Geography</td>
+<td><strong>Egypt</strong></td>
+</tr>
+<tr>
+<td>Context</td>
+<td>Manufacturer of <strong>Carrier &amp; Midea</strong> products</td>
+</tr>
+<tr>
+<td>Product used</td>
+<td><strong>Orbit QM</strong> — quality management system</td>
+</tr>
+<tr>
+<td><strong>Pricing</strong></td>
+<td><strong>Not published in this pack</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="cross-sell-narrative">Cross-sell narrative</h3>
+<p>Orbit AM (hospital / facility maintenance) and Orbit QM (manufacturing quality) share SaaS DNA: role-based ops, Arabic-ready UX, printable controlled documents. Different domains — complementary credibility for the Orbit brand.</p>
+<hr />
+<h2 id="12-16-slide-deck-outline">12. 16-slide deck outline</h2>
+<p>Use <code>docs/pitch/ORBIT_AM_SLIDE_PROMPT.md</code> for generator-ready prompts. Summary:</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Slide</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Title</td>
+<td>Orbit AM</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Problem</td>
+<td>Excel / WhatsApp / expensive CMMS</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Solution</td>
+<td>Multi-tenant hospital CMMS</td>
+</tr>
+<tr>
+<td>4</td>
+<td>How it works</td>
+<td>3-tier actors</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Product deep-dive</td>
+<td>Core modules</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Live vs roadmap</td>
+<td>Honest</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Package × features matrix</td>
+<td>Clinical→Enterprise</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Pricing 420K–3.5M</td>
+<td>4 tiers</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Standalone AI + Integrations</td>
+<td>Mobile included</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Why Egypt healthcare</td>
+<td>Scale story</td>
+</tr>
+<tr>
+<td>11</td>
+<td>GTM</td>
+<td>Mix + referral %</td>
+</tr>
+<tr>
+<td>12</td>
+<td><strong>Partner cost split</strong></td>
+<td>Detailed ACV pie</td>
+</tr>
+<tr>
+<td>13</td>
+<td>Cloud options</td>
+<td>AWS/Azure/CF selection</td>
+</tr>
+<tr>
+<td>14</td>
+<td>Orbit suite</td>
+<td>AM + QM</td>
+</tr>
+<tr>
+<td>15</td>
+<td>Customers</td>
+<td><strong>Miraco</strong> (QM); AM pilots</td>
+</tr>
+<tr>
+<td>16</td>
+<td>CTA</td>
+<td>90-day Clinical pilot</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="13-pilot-offer-next-steps">13. Pilot offer &amp; next steps</h2>
+<h3 id="90-day-hospital-pilot">90-day hospital pilot</h3>
+<ol>
+<li>One hospital · ~300–500 assets · Clinical  </li>
+<li>Asset import + PM schedules included  </li>
+<li>Train ≤20 users included  </li>
+<li>KPIs: PM compliance, WO cycle time, invoice accuracy  </li>
+</ol>
+<p><strong>Pilot price option:</strong> EGP <strong>210,000</strong> year-1 (50% Clinical) for reference customers.</p>
+<h3 id="immediate-actions">Immediate actions</h3>
+<ol>
+<li>Freeze v1 sales scope = core CMMS (+ mobile when ready, included)  </li>
+<li>Keep AI &amp; Integrations off the critical path for first logo  </li>
+<li>Select cloud with first serious Network/Enterprise prospect (credits / IT preference)  </li>
+<li>Name first Clinical pilot prospect  </li>
+<li>Generate slides from <code>ORBIT_AM_SLIDE_PROMPT.md</code></li>
+</ol>
+<hr />
+<h2 id="appendix-a-price-card-print">Appendix A — Price card (print)</h2>
+<table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Annual EGP</th>
+<th>Assets</th>
+<th>Users</th>
+<th>Hospitals</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Clinical</td>
+<td>420,000</td>
+<td>500</td>
+<td>20</td>
+<td>1</td>
+</tr>
+<tr>
+<td>Regional</td>
+<td>1,050,000</td>
+<td>5,000</td>
+<td>60</td>
+<td>15</td>
+</tr>
+<tr>
+<td>Network</td>
+<td>2,800,000</td>
+<td>10,000</td>
+<td>100</td>
+<td>40</td>
+</tr>
+<tr>
+<td>Enterprise</td>
+<td>3,500,000</td>
+<td>20,000</td>
+<td>150</td>
+<td>85</td>
+</tr>
+</tbody>
+</table>
+<p>VAT excluded · Setup included · Mobile included when launched · AI &amp; Integrations standalone</p>
+<hr />
+<h2 id="appendix-b-glossary">Appendix B — Glossary</h2>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CMMS</td>
+<td>Computerized Maintenance Management System</td>
+</tr>
+<tr>
+<td>ACV</td>
+<td>Annual Contract Value (one year of subscription)</td>
+</tr>
+<tr>
+<td>Year-1 ACV</td>
+<td>First contract year only (partner commission basis)</td>
+</tr>
+<tr>
+<td>COGS</td>
+<td>Cost to serve a customer (infra + support load)</td>
+</tr>
+<tr>
+<td>TCO</td>
+<td>Total cost of ownership (all parties)</td>
+</tr>
+<tr>
+<td>PM</td>
+<td>Preventive maintenance</td>
+</tr>
+<tr>
+<td>HIS / ERP</td>
+<td>Hospital information / enterprise resource systems</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><em>End of pack. Companion file: <code>ORBIT_AM_SLIDE_PROMPT.md</code></em></p>
+</body>
+</html>

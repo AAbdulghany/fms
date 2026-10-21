@@ -1,6 +1,6 @@
 import { Page } from "@playwright/test";
 
-/** Demo password suffix — matches seed.py / pitch_seed (role prefix + suffix). */
+/** Seed password suffix — must match the stack's SEED_PASSWORD_SUFFIX (role prefix + suffix). */
 const DEMO_PASSWORD_SUFFIX = process.env.E2E_DEMO_PASSWORD_SUFFIX ?? "123";
 
 /** Login form labels/button — AR default UI + EN toggle. */

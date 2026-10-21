@@ -1,14 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { apiFetch } from "@/lib/api";
 import type { Company, Site, WorkOrder, PaginatedWorkOrders, Invoice } from "@/lib/types";
 import { urgencyBadgeClass, workOrderStatusPillClass } from "@/lib/workOrderDisplay";
 import { formatMoneyAmount } from "@/lib/formatCurrency";
-import { EmptyState } from "@/components/EmptyState";
-import { CompanyEditModal } from "@/components/CompanyEditModal";
-import { SiteProvisionModal } from "@/components/SiteProvisionModal";
-import { SiteAssignManagerModal } from "@/components/SiteAssignManagerModal";
+import { EmptyState } from "@/shared/components/EmptyState";
+import { CompanyEditModal } from "@/features/companies/components/CompanyEditModal";
+import { SiteProvisionModal } from "@/features/companies/components/SiteProvisionModal";
+import { SiteAssignManagerModal } from "@/features/companies/components/SiteAssignManagerModal";
 
 type ClientApi = {
   id: string;
@@ -223,11 +223,11 @@ export default function CompanyDetailPage() {
         <Link to="/dashboard" className="hover:text-primary-600">
           {t("dashboard")}
         </Link>
-        <span>›</span>
+        <span>â€º</span>
         <Link to="/companies" className="hover:text-primary-600">
           {t("companies")}
         </Link>
-        <span>›</span>
+        <span>â€º</span>
         <span className="font-medium text-neutral-900">{company.name}</span>
       </nav>
 
@@ -522,7 +522,7 @@ export default function CompanyDetailPage() {
                         className="cursor-pointer transition-colors hover:bg-neutral-50"
                       >
                         <td className="px-6 py-4 text-sm font-medium text-primary-600">{wo.title || wo.id.slice(0, 8)}</td>
-                        <td className="px-6 py-4 text-sm text-neutral-900">{wo.site_name || "—"}</td>
+                        <td className="px-6 py-4 text-sm text-neutral-900">{wo.site_name || "â€”"}</td>
                         <td className="whitespace-nowrap px-6 py-4 text-sm">
                           <span className={workOrderStatusPillClass(wo.status)}>{wo.status}</span>
                         </td>
@@ -541,7 +541,7 @@ export default function CompanyDetailPage() {
                     onClick={() => loadWorkOrders(woPage - 1)}
                     className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm disabled:opacity-40"
                   >
-                    ‹ Prev
+                    â€¹ Prev
                   </button>
                   <span className="px-3 py-1.5 text-sm text-neutral-600">
                     Page {woPage} / {Math.ceil(woTotal / 20)}
@@ -551,7 +551,7 @@ export default function CompanyDetailPage() {
                     onClick={() => loadWorkOrders(woPage + 1)}
                     className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm disabled:opacity-40"
                   >
-                    Next ›
+                    Next â€º
                   </button>
                 </div>
               )}

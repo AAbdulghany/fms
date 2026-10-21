@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "@/lib/api";
 import type { Company } from "@/lib/types";
-import { EmptyState } from "@/components/EmptyState";
-import { CompanyCreateModal } from "@/components/CompanyCreateModal";
+import { EmptyState } from "@/shared/components/EmptyState";
+import { CompanyCreateModal } from "@/features/companies/components/CompanyCreateModal";
 
 type ClientApi = {
   id: string;
@@ -265,7 +265,7 @@ export default function CompaniesPage() {
                 </div>
                 <div className="mt-3 flex gap-4 text-sm text-neutral-600">
                   <span>{company.sites_count ?? 0} {t("sites_count")}</span>
-                  <span>•</span>
+                  <span>â€¢</span>
                   <span>{company.active_wo_count ?? 0} {t("active_wos")}</span>
                 </div>
               </div>

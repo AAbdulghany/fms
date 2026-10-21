@@ -5,7 +5,7 @@ Run from backend folder: python -m app.seed
 
 Canonical: app.cli.seed (shim at app.seed).
 """
-from app.cli._demo_passwords import demo_password
+from app.cli._seed_passwords import seed_password
 from app.core.security import hash_password
 from sqlalchemy import select
 
@@ -42,7 +42,7 @@ def run() -> None:
             exists = db.scalars(select(User).where(User.email == email)).first()
             if exists:
                 continue
-            password = demo_password(pw_local)
+            password = seed_password(pw_local)
             db.add(
                 User(
                     tenant_id=tenant.id,
@@ -64,7 +64,7 @@ def run() -> None:
             print(f"Seed complete — {created} user(s) created.")
         print("Accounts:")
         for email, _, pw_local in SEED_USERS:
-            print(f"  {email} / {demo_password(pw_local)}")
+            print(f"  {email} / {seed_password(pw_local)}")
     finally:
         db.close()
 

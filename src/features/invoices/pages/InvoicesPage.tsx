@@ -1,11 +1,11 @@
-import { useEffect, useState, type MouseEvent } from "react";
+﻿import { useEffect, useState, type MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiFetch, downloadAuthenticatedFile, resolveApiError } from "@/lib/api";
 import type { Invoice } from "@/lib/types";
 import { formatMoneyAmount } from "@/lib/formatCurrency";
-import { InvoicePreviewModal } from "@/components/InvoicePreviewModal";
+import { InvoicePreviewModal } from "@/features/invoices/components/InvoicePreviewModal";
 
 export function InvoicesPage() {
   const { t, i18n } = useTranslation();

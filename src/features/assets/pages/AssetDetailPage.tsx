@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { apiFetch } from "@/lib/api";
 import { urgencyBadgeClass, workOrderStatusPillClass } from "@/lib/workOrderDisplay";
 import type { Asset, AssetLifecycleStatus, WorkOrder, PaginatedWorkOrders } from "@/lib/types";
-import { AssetLifecycleBadge } from "@/components/AssetLifecycleBadge";
-import { AssetLifecycleTimeline } from "@/components/AssetLifecycleTimeline";
-import { AssetEditModal } from "@/components/AssetEditModal";
+import { AssetLifecycleBadge } from "@/features/assets/components/AssetLifecycleBadge";
+import { AssetLifecycleTimeline } from "@/features/assets/components/AssetLifecycleTimeline";
+import { AssetEditModal } from "@/features/assets/components/AssetEditModal";
 
 type AssetOutApi = {
   id: string;
@@ -58,7 +58,7 @@ function mapToAsset(a: AssetOutApi): Asset {
         : undefined;
   return {
     id: a.id,
-    asset_id: a.label_code || a.name || `${a.id.slice(0, 8)}…`,
+    asset_id: a.label_code || a.name || `${a.id.slice(0, 8)}â€¦`,
     name: a.name,
     site_id: a.site_id,
     site_name: a.site_name ?? undefined,
@@ -161,11 +161,11 @@ export default function AssetDetailPage() {
         <Link to="/dashboard" className="hover:text-primary-600">
           {t("dashboard")}
         </Link>
-        <span>›</span>
+        <span>â€º</span>
         <Link to="/assets" className="hover:text-primary-600">
           {t("assets")}
         </Link>
-        <span>›</span>
+        <span>â€º</span>
         <span className="font-medium text-neutral-900">{asset.name || asset.asset_id}</span>
       </nav>
 
@@ -179,7 +179,7 @@ export default function AssetDetailPage() {
             <p className="mt-1 text-sm text-neutral-500">
               {[asset.company_name, asset.site_name, asset.category]
                 .filter(Boolean)
-                .join(" • ")}
+                .join(" â€¢ ")}
             </p>
           </div>
           <div className="flex gap-2">
@@ -255,7 +255,7 @@ export default function AssetDetailPage() {
             </svg>
             <div className="flex-1">
               <p className="text-sm font-medium text-warning-dark">
-                ⚠️ Warning: Asset is {asset.lifespan_percentage}% through expected lifespan.
+                âš ï¸ Warning: Asset is {asset.lifespan_percentage}% through expected lifespan.
               </p>
               <p className="mt-1 text-sm text-warning-dark">Replacement work order recommended.</p>
               <button
@@ -287,7 +287,7 @@ export default function AssetDetailPage() {
             </svg>
             <div className="flex-1">
               <p className="text-sm font-medium text-error-dark">
-                🔴 End of Life: Asset has exceeded expected lifespan.
+                ðŸ”´ End of Life: Asset has exceeded expected lifespan.
               </p>
               {asset.replacement_wo_id ? (
                 <p className="mt-1 text-sm text-error-dark">
@@ -444,7 +444,7 @@ export default function AssetDetailPage() {
             <div>
               <dt className="text-sm font-medium text-neutral-500">{t("installation_date")}</dt>
               <dd className="mt-1 text-sm text-neutral-900">
-                {asset.installation_date ? new Date(asset.installation_date).toLocaleDateString() : "—"}
+                {asset.installation_date ? new Date(asset.installation_date).toLocaleDateString() : "â€”"}
               </dd>
             </div>
             <div>
@@ -471,7 +471,7 @@ export default function AssetDetailPage() {
 
       {activeTab === "maintenance" && (
         <div className="rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm">
-          {/* Shows completed/verified/closed WOs for this asset only — filtered client-side until NT-P5-A01 backend is live */}
+          {/* Shows completed/verified/closed WOs for this asset only â€” filtered client-side until NT-P5-A01 backend is live */}
           {maintenanceWOs.length === 0 ? (
             <div className="p-8 text-center text-neutral-600">
               <p>{t("no_maintenance_history")}</p>

@@ -1,7 +1,7 @@
-import { FormEvent, useState } from "react";
+﻿import { FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "@/lib/api";
-import { ProvisionCredentialsModal } from "@/components/ProvisionCredentialsModal";
+import { ProvisionCredentialsModal } from "@/features/companies/components/ProvisionCredentialsModal";
 
 type Props = {
   open: boolean;

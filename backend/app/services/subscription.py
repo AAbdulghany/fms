@@ -23,8 +23,7 @@ DEFAULT_SUBSCRIPTION: dict[str, Any] = {
 
 
 def _env_bypasses_license() -> bool:
-    env = get_settings().app_env.lower()
-    return env in ("development", "demo")
+    return get_settings().bypasses_license
 
 
 def _tenant_subscription_row(db: Session, tenant_id) -> TenantSubscription | None:

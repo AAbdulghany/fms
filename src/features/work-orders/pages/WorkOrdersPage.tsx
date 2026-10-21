@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
@@ -12,9 +12,10 @@ import type { PaginatedWorkOrders, WorkOrder } from "@/lib/types";
 
 import { urgencyBadgeClass, workOrderStatusPillClass } from "@/lib/workOrderDisplay";
 
-import { FilterBar } from "@/components/FilterBar";
+import { FilterBar } from "@/shared/components/FilterBar";
 
-import { WorkOrderRequestReviewModal } from "@/components/WorkOrderRequestReviewModal";
+import { WorkOrderRequestReviewModal } from "@/features/work-orders/components/WorkOrderRequestReviewModal";
+import { StartNextHero } from "@/features/work-orders/components/StartNextHero";
 
 
 
@@ -815,7 +816,18 @@ export function WorkOrdersPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
 
-        <h1 className="text-2xl font-semibold text-neutral-900">{t("work_orders")}</h1>
+        <h1 className="text-2xl font-semibold text-neutral-900">{t("my_work")}</h1>
+
+      <StartNextHero
+        workOrder={
+          rows.find((w) =>
+            ["assigned", "in_progress", "created", "on_hold"].includes(w.status)
+          ) ?? rows[0] ?? null
+        }
+        canCreate={Boolean(canDirectCreate || canRequest)}
+        onCreate={canDirectCreate ? openCreateModal : canRequest ? openRequestModal : undefined}
+      />
+
 
         <div className="flex flex-wrap gap-2">
 
@@ -1415,7 +1427,7 @@ export function WorkOrdersPage() {
 
                 >
 
-                  {w.company_name || "—"}
+                  {w.company_name || "â€”"}
 
                 </td>
 
@@ -1427,7 +1439,7 @@ export function WorkOrdersPage() {
 
                 >
 
-                  {w.site_name || "—"}
+                  {w.site_name || "â€”"}
 
                 </td>
 
@@ -1439,7 +1451,7 @@ export function WorkOrdersPage() {
 
                 >
 
-                  {w.creator?.full_name || w.creator?.email || "—"}
+                  {w.creator?.full_name || w.creator?.email || "â€”"}
 
                 </td>
 
@@ -1451,7 +1463,7 @@ export function WorkOrdersPage() {
 
                 >
 
-                  {w.assignee?.full_name || w.assignee?.email || "—"}
+                  {w.assignee?.full_name || w.assignee?.email || "â€”"}
 
                 </td>
 
@@ -1493,7 +1505,7 @@ export function WorkOrdersPage() {
 
                     ) : (
 
-                      "—"
+                      "â€”"
 
                     )}
 

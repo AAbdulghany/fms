@@ -11,7 +11,7 @@ Canonical module: app.cli.seed_super (shim at app.seed_super for compatibility).
 
 from sqlalchemy import select
 
-from app.cli._demo_passwords import demo_password
+from app.cli._seed_passwords import seed_password
 from app.core.security import hash_password
 from app.database import Base, SessionLocal, engine
 from app.models import Tenant, User, UserRole
@@ -44,7 +44,7 @@ def run() -> None:
         else:
             print(f"Using existing tenant: {TENANT_NAME}")
 
-        password = demo_password("super")
+        password = seed_password("super")
         user = User(
             tenant_id=tenant.id,
             email=SUPER_EMAIL,

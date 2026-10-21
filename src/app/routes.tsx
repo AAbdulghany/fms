@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { Layout } from "@/shared/components/Layout";
 import { ProtectedRoute } from "@/shared/components/ProtectedRoute";
 import { FeatureRoute } from "@/shared/components/FeatureRoute";
+import { FieldHomeRedirect } from "@/shared/components/FieldHomeRedirect";
 import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
 import { InvoiceDetailPage } from "@/features/invoices/pages/InvoiceDetailPage";
 import { InvoicesPage } from "@/features/invoices/pages/InvoicesPage";
@@ -33,7 +34,7 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <Layout>
-              <Navigate to="/dashboard" replace />
+              <FieldHomeRedirect />
             </Layout>
           </ProtectedRoute>
         }

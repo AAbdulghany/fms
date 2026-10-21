@@ -1,0 +1,103 @@
+# Deploy Orbit Pilot
+#
+# Pulls the pilot branch on the pilot VM and rebuilds the live Docker Compose stack
+# (docker-compose-pilot.yml + deploy/pilot/docker-compose.live.yml).
+# Cloudflare Tunnel provides HTTPS (currently demo.orbittech.co) — one-time host setup.
+#
+# Secrets (PILOT_* preferred; legacy DEMO_* still read until renamed in GitHub):
+#   PILOT_HOST / DEMO_HOST                   — VM hostname or IP
+#   PILOT_USER / DEMO_USER                   — SSH user
+#   PILOT_SSH_PRIVATE_KEY / DEMO_SSH_PRIVATE_KEY
+#   PILOT_PATH / DEMO_PATH (optional)        — clone path on VM (default /opt/fms)
+# Variables (optional):
+#   PILOT_URL / DEMO_URL                     — public URL for the post-deploy health check
+#
+# Branches: pilot/live (canonical). demo/live still deploys until it is retired.
+# Cutover and rollback: docs/engineering/ENV_REORG_PLAN.md
+
+name: Deploy Orbit Pilot
+
+on:
+  push:
+    branches:
+      - pilot/live
+      - demo/live
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-orbit-pilot
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.PILOT_HOST || secrets.DEMO_HOST }}
+          username: ${{ secrets.PILOT_USER || secrets.DEMO_USER }}
+          key: ${{ secrets.PILOT_SSH_PRIVATE_KEY || secrets.DEMO_SSH_PRIVATE_KEY }}
+          script_stop: true
+          envs: DEPLOY_PATH,DEPLOY_REF
+          script: |
+            set -euo pipefail
+            DEPLOY_PATH="${DEPLOY_PATH:-/opt/fms}"
+            cd "$DEPLOY_PATH"
+
+            git fetch origin
+            case "$DEPLOY_REF" in
+              pilot/live|demo/live) BRANCH="$DEPLOY_REF" ;;
+              *)
+                if git ls-remote --exit-code --heads origin pilot/live >/dev/null; then
+                  BRANCH=pilot/live
+                else
+                  BRANCH=demo/live
+                fi
+                ;;
+            esac
+            echo "Deploying branch $BRANCH"
+            git checkout "$BRANCH"
+            git pull --ff-only origin "$BRANCH"
+
+            ENV_FILE=deploy/pilot/.env
+            if [ ! -f "$ENV_FILE" ] && [ -f deploy/demo/.env ]; then
+              echo "::notice::Moving server env file deploy/demo/.env -> $ENV_FILE (one-time cutover)"
+              install -m 600 deploy/demo/.env "$ENV_FILE"
+            fi
+            if [ ! -f "$ENV_FILE" ]; then
+              echo "::error::$ENV_FILE missing — copy deploy/pilot/.env.example and fill it in"
+              exit 1
+            fi
+
+            # The pre-reorg project (fms-demo) holds the same host ports. Stop it, keep its volume.
+            docker compose -p fms-demo down --remove-orphans || true
+
+            docker compose \
+              -f docker-compose-pilot.yml \
+              -f deploy/pilot/docker-compose.live.yml \
+              --env-file "$ENV_FILE" \
+              up -d --build --remove-orphans
+
+            WEB_PORT=$(grep -E '^WEB_PORT=' "$ENV_FILE" | cut -d= -f2- | tr -d "\"'" || true)
+            WEB_PORT="${WEB_PORT:-8080}"
+
+            echo "Waiting for API health via nginx on 127.0.0.1:${WEB_PORT}…"
+            timeout 180 bash -c "until curl -sf http://127.0.0.1:${WEB_PORT}/api/v1/health; do sleep 5; done"
+            echo "Local health check OK"
+        env:
+          DEPLOY_PATH: ${{ secrets.PILOT_PATH || secrets.DEMO_PATH }}
+          DEPLOY_REF: ${{ github.ref_name }}
+
+      - name: Verify public pilot URL
+        if: ${{ vars.PILOT_URL != '' || vars.DEMO_URL != '' }}
+        env:
+          PUBLIC_URL: ${{ vars.PILOT_URL || vars.DEMO_URL }}
+        run: |
+          echo "Checking ${PUBLIC_URL}/api/v1/health"
+          timeout 60 bash -c 'until curl -fsS "${PUBLIC_URL}/api/v1/health"; do sleep 5; done'
+          echo "Public health check OK"

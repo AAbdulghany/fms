@@ -17,4 +17,4 @@ Feature-oriented UI modules. Each domain has `pages/` and optionally `components
 | `labor/` | LaborPage | — |
 | `shared/` | FeatureUnavailablePage | — |
 
-Shell components live in `src/shared/components/`. Import via `@/features/...` or `@/shared/...`. Legacy `src/pages/` and `src/components/` shims remain for one release cycle.
+Shell components live in `src/shared/components/`. Import via `@/features/...` or `@/shared/...`.

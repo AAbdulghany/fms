@@ -5,12 +5,13 @@ on:
     branches:
       - dev
       - main
+      - pilot/live
       - demo/live
-      - "feature/phase-3-restructure/**"
+      - "feature/**"
   push:
     branches:
       - dev
-      - "feature/phase-3-restructure/**"
+      - "feature/**"
 
 jobs:
   backend:
@@ -40,4 +41,6 @@ jobs:
           node-version: "20"
           cache: npm
       - run: npm ci
+      - name: Legacy import guard (CLEAN-002)
+        run: npm run check:imports
       - run: npm run build

@@ -36,4 +36,20 @@
   .fms-page {
     @apply min-h-screen bg-neutral-50 text-neutral-600;
   }
+
+  /* Concept D — Dot grid pattern (Pat2). Swap class for Pat1/3/4 later. */
+  .orbit-app-shell {
+    background-color: var(--color-neutral-50);
+    background-image: radial-gradient(
+      var(--color-neutral-300) 1px,
+      transparent 1px
+    );
+    background-size: 18px 18px;
+  }
+
+  .orbit-app-shell header,
+  .orbit-app-shell aside,
+  .orbit-app-shell nav {
+    background-image: none;
+  }
 }

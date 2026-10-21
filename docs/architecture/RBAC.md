@@ -11,7 +11,7 @@
 
 | Role | Code | Capabilities |
 |------|------|--------------|
-| Super user | `super_user` | Full platform: tenants, packages, licenses, demo reset, provision maintenance companies |
+| Super user | `super_user` | Full platform: tenants, packages, licenses, pilot reset, provision maintenance companies |
 | SW dev | `sw_dev` | Same as super_user **except** cannot remove/deactivate members |
 
 **UI:** `/platform/maintenance-companies`, `/platform/packages`, `/subscription`
@@ -54,7 +54,7 @@
 
 ## Feature gates (subscription)
 
-Modules gated by package features (bypassed when `APP_ENV=development|demo`):
+Modules gated by package features (bypassed when `APP_ENV=development|pilot`):
 
 | Feature key | Routes / UI |
 |-------------|-------------|
@@ -84,17 +84,17 @@ Detailed Phase 2 matrix (historical): [../archive/phase2/RBAC_Matrix.md](../arch
 
 ```powershell
 cd backend
-$env:DATABASE_URL="postgresql+psycopg2://fms:fms@localhost:5432/fms_demo"
+$env:DATABASE_URL="postgresql+psycopg2://fms:fms@localhost:9543/fms_pilot"
 python -m scripts.migrate_roles
 ```
 
-Docker demo migrate runs this after seed.
+Docker pilot migrate runs this after seed.
 
 ---
 
-## Demo logins
+## Seed logins
 
-See [../guides/demo-stack.md](../guides/demo-stack.md).
+See [../guides/pilot-stack.md](../guides/pilot-stack.md#seed-accounts).
 
 ---
 

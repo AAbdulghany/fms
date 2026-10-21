@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 /**
  * E2E base URL must match a running web UI:
- *   Demo Docker:      http://localhost:9081  (docker compose -f docker-compose-demo.yml up -d --build)
+ *   Pilot Docker:     http://localhost:9081  (docker compose -f docker-compose-pilot.yml up -d --build)
  *   Local full Docker: http://localhost:9080  (docker compose -f docker-compose-local.yml up -d --build)
  *   Hybrid (Vite):    http://localhost:5173  (hybrid compose + npm run dev + uvicorn)
  */

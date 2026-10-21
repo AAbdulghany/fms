@@ -16,9 +16,9 @@ Wave-scoped end-to-end tests for Phase 3 restructure.
 
 
 ```powershell
-# Local run (demo stack must be up)
+# Local run (pilot stack must be up: docker compose -f docker-compose-pilot.yml up -d --build)
 $env:E2E_BASE_URL="http://localhost:9081"
-# Demo passwords: {role} prefix + suffix (matches pitch seed; default suffix below)
+# Seed passwords: {role} prefix + suffix (matches pilot seed SEED_PASSWORD_SUFFIX; default below)
 $env:E2E_DEMO_PASSWORD_SUFFIX="123"
 npx playwright test tests/e2e/
 ```

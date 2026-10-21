@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -11,7 +11,7 @@ import type {
   DashboardSummary,
   WorkOrder,
 } from "@/lib/types";
-import { StatsCard } from "@/components/StatsCard";
+import { StatsCard } from "@/shared/components/StatsCard";
 
 export function DashboardPage() {
   const { t } = useTranslation();
@@ -112,7 +112,7 @@ export function DashboardPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatsCard
             label={t("companies")}
-            value={stats.companies_count ?? "—"}
+            value={stats.companies_count ?? "â€”"}
             onClick={() => navigate("/companies")}
           />
           <StatsCard
@@ -122,7 +122,7 @@ export function DashboardPage() {
           />
           <StatsCard
             label={t("assets")}
-            value={stats.assets_count ?? "—"}
+            value={stats.assets_count ?? "â€”"}
             subtitle={stats.assets_at_eol_count ? `${stats.assets_at_eol_count} at EOL` : undefined}
             onClick={() => navigate("/assets")}
           />
@@ -156,7 +156,7 @@ export function DashboardPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <StatsCard
             label={t("sites_count")}
-            value={stats.sites_count ?? "—"}
+            value={stats.sites_count ?? "â€”"}
             onClick={() => navigate("/sites")}
           />
           <StatsCard
@@ -176,7 +176,7 @@ export function DashboardPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <StatsCard
             label={t("assets")}
-            value={stats.assets_count ?? "—"}
+            value={stats.assets_count ?? "â€”"}
             subtitle={stats.assets_at_eol_count ? `${stats.assets_at_eol_count} at EOL` : undefined}
             onClick={() => navigate("/assets")}
           />
@@ -203,7 +203,7 @@ export function DashboardPage() {
               to="/work-orders"
               className="text-sm font-medium text-primary-600 hover:text-primary-700"
             >
-              {t("view_all")} →
+              {t("view_all")} â†’
             </Link>
           </div>
           
@@ -236,7 +236,7 @@ export function DashboardPage() {
                       {wo.title || wo.id.slice(0, 8)}
                     </td>
                     <td className="px-6 py-4 text-sm text-neutral-900">
-                      {wo.company_name || "—"}
+                      {wo.company_name || "â€”"}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm">
                       <span className={workOrderStatusPillClass(wo.status)}>{wo.status}</span>

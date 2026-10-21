@@ -380,26 +380,28 @@ def assign_tenant_license(
     return SubscriptionOut.model_validate(get_subscription(db, tenant))
 
 
-@router.post("/demo/reset")
-def demo_reset(
+# `/demo/reset` is the pre-reorg path; kept for existing cron jobs, hidden from OpenAPI.
+@router.post("/demo/reset", include_in_schema=False)
+@router.post("/pilot/reset")
+def pilot_reset(
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, _platform],
 ) -> dict[str, str]:
-    if get_settings().app_env.lower() != "demo":
-        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="DEMO_ENV_ONLY")
-    from app.pitch_seed import seed_pitch_demo
+    if not get_settings().is_pilot:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="PILOT_ENV_ONLY")
+    from app.cli.pilot_seed import seed_pilot
 
-    info = seed_pitch_demo(db)
+    info = seed_pilot(db)
     actor = db.scalar(select(User).where(User.email == "super@demo.com"))
     if actor:
         write_audit(
             db,
             tenant_id=actor.tenant_id,
             actor=actor,
-            action="demo_reset",
+            action="pilot_reset",
             entity_type="platform",
-            entity_id="demo",
+            entity_id="pilot",
         )
     db.commit()
     str_info = {k: str(v) for k, v in info.items()}
-    return {"status": "ok", "message": "Demo database reset complete", **str_info}
+    return {"status": "ok", "message": "Pilot database reset complete", **str_info}

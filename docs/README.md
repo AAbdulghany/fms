@@ -16,11 +16,12 @@
 | I want to… | Read |
 |------------|------|
 | Run locally (Vite + uvicorn) | [guides/local-development.md](./guides/local-development.md) |
-| Run the pitch demo (Docker) | [guides/demo-stack.md](./guides/demo-stack.md) |
-| Share demo via Cloudflare Tunnel | [guides/demo-stack.md](./guides/demo-stack.md#part-2--share-the-demo-with-cloudflare-tunnel) |
+| Pick env (dev / pilot / production) | [guides/environments.md](./guides/environments.md) |
+| Choose an environment (dev / pilot / production) | [guides/environments.md](./guides/environments.md) |
+| Run the pilot stack (Docker) | [guides/pilot-stack.md](./guides/pilot-stack.md) |
 | Understand Docker seed profiles | [guides/docker-seed-profiles.md](./guides/docker-seed-profiles.md) |
 | Run tests (pytest & Playwright) | [guides/testing.md](./guides/testing.md) |
-| Deploy demo to a server | [guides/deployment.md](./guides/deployment.md) |
+| Deploy | [guides/deployment.md](./guides/deployment.md) |
 | Understand architecture | [ARCHITECTURE.md](./ARCHITECTURE.md) |
 | See current wave tickets | [phase3-restructure/SPRINT_BACKLOG_NT.md](./phase3-restructure/SPRINT_BACKLOG_NT.md) |
 
@@ -32,9 +33,9 @@
 |------|---------|-----|-----|----------|------|
 | **Local hybrid DEV** | hybrid compose + Vite + uvicorn | `:5173` | `:8000` | `fms_local` **:9432** | `test_seed` |
 | **Docker DEV** | `docker compose -f docker-compose-local.yml up --build` | `:9080` | `:9000` | `fms_local` **:9432** | `test_seed` |
-| **Docker DEMO** | `docker compose -f docker-compose-demo.yml up --build` | `:9081` | `:9001` | `fms_demo` **:9543** | `pitch_seed` |
+| **Docker PILOT** | `docker compose -f docker-compose-pilot.yml up --build` | `:9081` | `:9001` | `fms_pilot` **:9543** | `pilot_seed` |
 
-Compose projects are isolated: **`fms-local`** vs **`fms-demo`** (separate `name:` in each file). Do not mix `.env` ports.
+Compose projects are isolated: **`fms-local`** vs **`fms-pilot`** (separate `name:` in each file). Do not mix `.env` ports. `docker-compose-demo.yml` was removed; see [ENV_REORG_PLAN.md](./engineering/ENV_REORG_PLAN.md).
 
 ---
 
