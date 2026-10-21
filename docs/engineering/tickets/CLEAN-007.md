@@ -1,7 +1,7 @@
-﻿# [Feature] CLEAN-007: Wire `InstallOrbitBanner` + AR/EN copy
+# [Feature] CLEAN-007: Wire `InstallOrbitBanner` + AR/EN copy
 
 **Labels:** `type:feature` `area:frontend` `area:pwa` `area:i18n` `wave:2C` · **Estimate:** S · **Depends on:** CLEAN-005, CLEAN-006 · **PR:** PR3 (commit 2)  
-**Tests:** [TC-CLEAN-007-*](../CLEANUP_TEST_CASES.md#clean-007-wire-installorbitbanner)
+**Tests:** [TC-CLEAN-007-*](../CLEANUP_TEST_CASES.md)
 
 ## User story
 

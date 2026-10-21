@@ -1,7 +1,7 @@
-﻿# [Feature] CLEAN-006: Web app manifest + icon/theme meta
+# [Feature] CLEAN-006: Web app manifest + icon/theme meta
 
 **Labels:** `type:feature` `area:frontend` `area:pwa` `wave:2C` · **Estimate:** S · **Depends on:** — · **PR:** PR3 (commit 1)  
-**Tests:** [TC-CLEAN-006-*](../CLEANUP_TEST_CASES.md#clean-006-manifest--meta)
+**Tests:** [TC-CLEAN-006-*](../CLEANUP_TEST_CASES.md)
 
 ## User story
 

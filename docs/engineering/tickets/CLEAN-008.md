@@ -1,7 +1,7 @@
-﻿# [Feature] CLEAN-008: App-shell service worker (no API caching)
+# [Feature] CLEAN-008: App-shell service worker (no API caching)
 
 **Labels:** `type:feature` `area:frontend` `area:pwa` `security-review` `wave:2C` · **Estimate:** M · **Depends on:** CLEAN-006 · **PR:** PR3 (commit 3)  
-**Tests:** [TC-CLEAN-008-*](../CLEANUP_TEST_CASES.md#clean-008-app-shell-service-worker)
+**Tests:** [TC-CLEAN-008-*](../CLEANUP_TEST_CASES.md)
 
 ## User story
 

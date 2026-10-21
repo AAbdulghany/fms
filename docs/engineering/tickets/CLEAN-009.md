@@ -1,7 +1,7 @@
-﻿# [Feature] CLEAN-009: `MobileBottomNav` + More sheet below `lg`
+# [Feature] CLEAN-009: `MobileBottomNav` + More sheet below `lg`
 
 **Labels:** `type:feature` `area:frontend` `area:mobile` `area:a11y` `wave:2C` · **Estimate:** L · **Depends on:** CLEAN-005, CLEAN-007 · **PR:** PR3 (commit 4). Split into PR3b if over ~600 changed lines  
-**Tests:** [TC-CLEAN-009-*](../CLEANUP_TEST_CASES.md#clean-009-mobilebottomnav--more-sheet)  
+**Tests:** [TC-CLEAN-009-*](../CLEANUP_TEST_CASES.md)  
 **Design:** layout concepts in `designs/` (UI Designer) · **PRD:** [MOBILE_FIRST_PILOT_PRD.md](../../product/MOBILE_FIRST_PILOT_PRD.md)
 
 ## User story

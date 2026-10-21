@@ -1,7 +1,7 @@
-﻿# [Task] CLEAN-003: Delete `src/pages/` shim directory
+# [Task] CLEAN-003: Delete `src/pages/` shim directory
 
 **Labels:** `type:task` `area:frontend` `wave:2B` `cleanup` · **Estimate:** S · **Depends on:** CLEAN-002 · **PR:** PR2 (commit 3 of 5)  
-**Tests:** [TC-CLEAN-003-*](../CLEANUP_TEST_CASES.md#clean-003-delete-srcpages)
+**Tests:** [TC-CLEAN-003-*](../CLEANUP_TEST_CASES.md)
 
 ## Driver
 

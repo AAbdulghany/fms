@@ -1,7 +1,7 @@
-﻿# [Task] CLEAN-005: Add Vitest + Testing Library harness
+# [Task] CLEAN-005: Add Vitest + Testing Library harness
 
 **Labels:** `type:task` `area:frontend` `area:testing` `wave:2B` · **Estimate:** M · **Depends on:** — · **PR:** PR2 (commit 5 of 5). Move to PR2b if review stalls  
-**Tests:** [TC-CLEAN-005-*](../CLEANUP_TEST_CASES.md#clean-005-vitest-harness)
+**Tests:** [TC-CLEAN-005-*](../CLEANUP_TEST_CASES.md)
 
 ## Driver
 

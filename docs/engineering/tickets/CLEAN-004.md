@@ -1,7 +1,7 @@
-﻿# [Task] CLEAN-004: Delete `src/components/` shims, correct docs, untrack build info
+# [Task] CLEAN-004: Delete `src/components/` shims, correct docs, untrack build info
 
 **Labels:** `type:task` `area:frontend` `area:docs` `wave:2B` `cleanup` · **Estimate:** S · **Depends on:** CLEAN-001, CLEAN-002 · **PR:** PR2 (commit 4 of 5)  
-**Tests:** [TC-CLEAN-004-*](../CLEANUP_TEST_CASES.md#clean-004-delete-srccomponents-shims--docs--build-info)
+**Tests:** [TC-CLEAN-004-*](../CLEANUP_TEST_CASES.md)
 
 ## Driver
 
