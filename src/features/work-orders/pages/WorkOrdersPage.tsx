@@ -15,6 +15,7 @@ import { urgencyBadgeClass, workOrderStatusPillClass } from "@/lib/workOrderDisp
 import { FilterBar } from "@/shared/components/FilterBar";
 
 import { WorkOrderRequestReviewModal } from "@/features/work-orders/components/WorkOrderRequestReviewModal";
+import { StartNextHero } from "@/features/work-orders/components/StartNextHero";
 
 
 
@@ -815,7 +816,18 @@ export function WorkOrdersPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
 
-        <h1 className="text-2xl font-semibold text-neutral-900">{t("work_orders")}</h1>
+        <h1 className="text-2xl font-semibold text-neutral-900">{t("my_work")}</h1>
+
+      <StartNextHero
+        workOrder={
+          rows.find((w) =>
+            ["assigned", "in_progress", "created", "on_hold"].includes(w.status)
+          ) ?? rows[0] ?? null
+        }
+        canCreate={Boolean(canDirectCreate || canRequest)}
+        onCreate={canDirectCreate ? openCreateModal : canRequest ? openRequestModal : undefined}
+      />
+
 
         <div className="flex flex-wrap gap-2">
 

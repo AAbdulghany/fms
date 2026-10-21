@@ -1,44 +1,58 @@
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { User } from "@/lib/types";
-import { hasAnyRole, isPlatformStaff } from "@/lib/roles";
+import { hasAnyRole } from "@/lib/roles";
 import { hasFeature } from "@/lib/features";
-import { NAV_ITEMS } from "@/shared/navigation/navItems";
 
 interface MobileBottomNavProps {
   user: User | null;
   onMore: () => void;
 }
 
-const MORE_ICON =
-  "M4 6h16M4 12h16M4 18h7";
+/** Concept D field shell — Queue / Scan / Time / More (menu contents TBD). */
+const FIELD_TABS = [
+  {
+    path: "/work-orders",
+    labelKey: "nav_queue",
+    icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2",
+    roles: ["super_admin", "company_admin", "client_admin", "site_manager", "technician", "manager"] as const,
+  },
+  {
+    path: "/assets",
+    labelKey: "nav_scan",
+    icon: "M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2M7 8h10v8H7V8z",
+    roles: ["super_admin", "company_admin", "client_admin", "site_manager", "technician"] as const,
+    requiredFeature: "assets",
+  },
+  {
+    path: "/labor",
+    labelKey: "nav_time",
+    icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
+    roles: ["super_admin", "company_admin", "manager", "technician"] as const,
+  },
+] as const;
 
 export function MobileBottomNav({ user, onMore }: MobileBottomNavProps) {
   const { t } = useTranslation();
   const location = useLocation();
 
-  const primary = NAV_ITEMS.filter((item) => {
-    if (!item.mobilePrimary) return false;
-    if (!user || !hasAnyRole(user.role, item.allowedRoles)) return false;
-    if (item.platformAdminOnly && !isPlatformStaff(user)) return false;
-    if (item.requiredFeature && !hasFeature(user, item.requiredFeature)) return false;
-    return true;
-  }).slice(0, 3);
-
-  const isActive = (path: string) => {
-    if (path === "/dashboard") {
-      return location.pathname === "/" || location.pathname === "/dashboard";
+  const tabs = FIELD_TABS.filter((tab) => {
+    if (!user || !hasAnyRole(user.role, [...tab.roles])) return false;
+    if ("requiredFeature" in tab && tab.requiredFeature && !hasFeature(user, tab.requiredFeature)) {
+      return false;
     }
-    return location.pathname.startsWith(path);
-  };
+    return true;
+  });
+
+  const isActive = (path: string) => location.pathname.startsWith(path);
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-neutral-0 pb-[env(safe-area-inset-bottom)] lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-neutral-0/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm lg:hidden"
       aria-label={t("primary_navigation")}
     >
       <ul className="mx-auto flex max-w-lg items-stretch justify-around px-1 pt-1">
-        {primary.map((item) => {
+        {tabs.map((item) => {
           const active = isActive(item.path);
           return (
             <li key={item.path} className="flex-1">
@@ -59,7 +73,7 @@ export function MobileBottomNav({ user, onMore }: MobileBottomNavProps) {
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
                 </svg>
-                <span className="truncate max-w-[4.5rem]">{t(item.labelKey)}</span>
+                <span className="max-w-[4.5rem] truncate">{t(item.labelKey)}</span>
               </Link>
             </li>
           );
@@ -78,7 +92,7 @@ export function MobileBottomNav({ user, onMore }: MobileBottomNavProps) {
               viewBox="0 0 24 24"
               aria-hidden="true"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d={MORE_ICON} />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7" />
             </svg>
             <span>{t("nav_more")}</span>
           </button>

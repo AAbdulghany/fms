@@ -1,42 +1,42 @@
 /* FMS design tokens — source of truth for hex/radius/shadow; referenced by tailwind.theme.js */
 
 :root {
-  /* Primary — Industrial Teal */
-  --color-primary-50: #e6f4f7;
-  --color-primary-100: #b3dee6;
-  --color-primary-200: #80c8d5;
-  --color-primary-300: #4db2c4;
-  --color-primary-400: #269cb3;
-  --color-primary-500: #0d7c8c;
-  --color-primary-600: #0a6270;
-  --color-primary-700: #074954;
-  --color-primary-800: #042f38;
-  --color-primary-900: #02161c;
+  /* Primary — Harbor Navy (Concept D · P1 recommended; swap after palette pick) */
+  --color-primary-50: #e8eef7;
+  --color-primary-100: #c5d4eb;
+  --color-primary-200: #9bb6db;
+  --color-primary-300: #6f96ca;
+  --color-primary-400: #4a78b8;
+  --color-primary-500: #1d4e89;
+  --color-primary-600: #184074;
+  --color-primary-700: #13335d;
+  --color-primary-800: #0e2545;
+  --color-primary-900: #09172c;
 
-  /* Secondary — Warm Orange */
-  --color-secondary-50: #fff4e6;
-  --color-secondary-100: #ffe0b3;
-  --color-secondary-200: #ffcc80;
-  --color-secondary-300: #ffb74d;
-  --color-secondary-400: #ffa726;
-  --color-secondary-500: #f57c00;
-  --color-secondary-600: #e65100;
-  --color-secondary-700: #bf360c;
-  --color-secondary-800: #8c2703;
-  --color-secondary-900: #5c1a02;
+  /* Secondary — Signal Orange (field CTAs / urgency) */
+  --color-secondary-50: #fff1e8;
+  --color-secondary-100: #ffd8c2;
+  --color-secondary-200: #ffb894;
+  --color-secondary-300: #ff925c;
+  --color-secondary-400: #f5742e;
+  --color-secondary-500: #e85d04;
+  --color-secondary-600: #c44c03;
+  --color-secondary-700: #9a3b02;
+  --color-secondary-800: #702c02;
+  --color-secondary-900: #471c01;
 
-  /* Neutrals — warm gray */
+  /* Neutrals — cool slate (Harbor companion) */
   --color-neutral-0: #ffffff;
-  --color-neutral-50: #fafaf9;
-  --color-neutral-100: #f5f5f4;
-  --color-neutral-200: #e7e5e4;
-  --color-neutral-300: #d6d3d1;
-  --color-neutral-400: #a8a29e;
-  --color-neutral-500: #78716c;
-  --color-neutral-600: #57534e;
-  --color-neutral-700: #44403c;
-  --color-neutral-800: #292524;
-  --color-neutral-900: #1c1917;
+  --color-neutral-50: #f7f9fc;
+  --color-neutral-100: #f1f5f9;
+  --color-neutral-200: #e2e8f0;
+  --color-neutral-300: #cbd5e1;
+  --color-neutral-400: #94a3b8;
+  --color-neutral-500: #64748b;
+  --color-neutral-600: #475569;
+  --color-neutral-700: #334155;
+  --color-neutral-800: #1e293b;
+  --color-neutral-900: #0f172a;
 
   /* Semantic (align with design: success #10B981, warning #F59E0B, error #EF4444, info #3B82F6) */
   --color-success-light: #d1fae5;

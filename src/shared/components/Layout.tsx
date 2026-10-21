@@ -52,7 +52,7 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div
-      className="grid min-h-screen min-h-dvh grid-rows-[auto_minmax(0,1fr)] overflow-x-hidden bg-neutral-50"
+      className="orbit-app-shell grid min-h-screen min-h-dvh grid-rows-[auto_minmax(0,1fr)] overflow-x-hidden bg-neutral-50"
       dir={isRTL ? "rtl" : "ltr"}
     >
       <header className="relative z-40 shrink-0 border-b border-neutral-200 bg-neutral-0 shadow-sm">
