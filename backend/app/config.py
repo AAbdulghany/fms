@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     app_env: str = "development"
     # Server-side exports (e.g. maintenance report PDF snapshots)
     data_dir: str = "data"
+    # A2 sticker defaults — size_mm is side (A) or width (C); design a|c
+    asset_label_size_mm: float = 70.0
+    asset_label_design: str = "a"
 
     @field_validator("app_env", mode="before")
     @classmethod

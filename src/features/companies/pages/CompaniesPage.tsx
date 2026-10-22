@@ -97,6 +97,7 @@ export default function CompaniesPage() {
         <h1 className="text-3xl font-semibold text-neutral-900">{t("companies")}</h1>
         <button
           type="button"
+          data-testid="add-company-button"
           className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
           onClick={() => setCreateOpen(true)}
         >
@@ -265,7 +266,7 @@ export default function CompaniesPage() {
                 </div>
                 <div className="mt-3 flex gap-4 text-sm text-neutral-600">
                   <span>{company.sites_count ?? 0} {t("sites_count")}</span>
-                  <span>â€¢</span>
+                  <span>•</span>
                   <span>{company.active_wo_count ?? 0} {t("active_wos")}</span>
                 </div>
               </div>

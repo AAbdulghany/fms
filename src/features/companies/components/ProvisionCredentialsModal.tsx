@@ -73,6 +73,7 @@ export function ProvisionCredentialsModal({
         <div className="mt-6 flex justify-end">
           <button
             type="button"
+            data-testid="credentials-confirm"
             className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
             onClick={onClose}
           >

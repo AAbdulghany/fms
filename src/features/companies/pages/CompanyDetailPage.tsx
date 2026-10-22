@@ -226,11 +226,11 @@ export default function CompanyDetailPage() {
         <Link to="/dashboard" className="hover:text-primary-600">
           {t("dashboard")}
         </Link>
-        <span>â€º</span>
+        <span>›</span>
         <Link to="/companies" className="hover:text-primary-600">
           {t("companies")}
         </Link>
-        <span>â€º</span>
+        <span>›</span>
         <span className="font-medium text-neutral-900">{company.name}</span>
       </nav>
 
@@ -525,7 +525,7 @@ export default function CompanyDetailPage() {
                         className="cursor-pointer transition-colors hover:bg-neutral-50"
                       >
                         <td className="px-6 py-4 text-sm font-medium text-primary-600">{wo.title || wo.id.slice(0, 8)}</td>
-                        <td className="px-6 py-4 text-sm text-neutral-900">{wo.site_name || "â€”"}</td>
+                        <td className="px-6 py-4 text-sm text-neutral-900">{wo.site_name || "—"}</td>
                         <td className="whitespace-nowrap px-6 py-4 text-sm">
                           <span className={workOrderStatusPillClass(wo.status)}>{wo.status}</span>
                         </td>
@@ -544,7 +544,7 @@ export default function CompanyDetailPage() {
                     onClick={() => loadWorkOrders(woPage - 1)}
                     className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm disabled:opacity-40"
                   >
-                    â€¹ Prev
+                    ‹ Prev
                   </button>
                   <span className="px-3 py-1.5 text-sm text-neutral-600">
                     Page {woPage} / {Math.ceil(woTotal / 20)}
@@ -554,7 +554,7 @@ export default function CompanyDetailPage() {
                     onClick={() => loadWorkOrders(woPage + 1)}
                     className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm disabled:opacity-40"
                   >
-                    Next â€º
+                    Next ›
                   </button>
                 </div>
               )}

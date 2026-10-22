@@ -152,6 +152,7 @@ export function SiteProvisionModal({
             <label className="mb-1 block text-sm font-medium text-neutral-700">{t("site_name")} *</label>
             <input
               required
+              data-testid="site-name-input"
               className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -181,6 +182,7 @@ export function SiteProvisionModal({
             <div>
               <label className="mb-1 block text-sm font-medium text-neutral-700">{t("city")}</label>
               <input
+                data-testid="site-city-input"
                 className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
@@ -190,6 +192,7 @@ export function SiteProvisionModal({
             <div>
               <label className="mb-1 block text-sm font-medium text-neutral-700">{t("country")}</label>
               <input
+                data-testid="site-country-input"
                 className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
@@ -204,6 +207,7 @@ export function SiteProvisionModal({
             </button>
             <button
               type="submit"
+              data-testid="site-add-submit"
               disabled={loading}
               className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
             >

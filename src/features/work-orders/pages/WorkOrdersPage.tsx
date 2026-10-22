@@ -1427,7 +1427,7 @@ export function WorkOrdersPage() {
 
                 >
 
-                  {w.company_name || "â€”"}
+                  {w.company_name || "—"}
 
                 </td>
 
@@ -1439,7 +1439,7 @@ export function WorkOrdersPage() {
 
                 >
 
-                  {w.site_name || "â€”"}
+                  {w.site_name || "—"}
 
                 </td>
 
@@ -1451,7 +1451,7 @@ export function WorkOrdersPage() {
 
                 >
 
-                  {w.creator?.full_name || w.creator?.email || "â€”"}
+                  {w.creator?.full_name || w.creator?.email || "—"}
 
                 </td>
 
@@ -1463,7 +1463,7 @@ export function WorkOrdersPage() {
 
                 >
 
-                  {w.assignee?.full_name || w.assignee?.email || "â€”"}
+                  {w.assignee?.full_name || w.assignee?.email || "—"}
 
                 </td>
 
@@ -1505,7 +1505,7 @@ export function WorkOrdersPage() {
 
                     ) : (
 
-                      "â€”"
+                      "—"
 
                     )}
 

@@ -224,7 +224,8 @@ export function AssetRegisterModal({
       } else if (siteData.length === 1) {
         setSiteId(siteData[0].id);
       } else {
-        setSiteId("");
+        // Keep current site if it still belongs to this client (avoids racing user/E2E selection).
+        setSiteId((prev) => (prev && siteData.some((s) => s.id === prev) ? prev : ""));
       }
     });
   }, [open, canPickClient, clientId, initialSiteId]);
@@ -332,7 +333,10 @@ export function AssetRegisterModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-neutral-0 p-6 shadow-xl">
+      <div
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-neutral-0 p-6 shadow-xl"
+        data-testid="asset-register-modal"
+      >
         <h2 className="mb-4 text-xl font-bold">{t("register_asset")}</h2>
         <form onSubmit={onSubmit} className="space-y-4">
           {showClientPicker && (
@@ -340,6 +344,7 @@ export function AssetRegisterModal({
               <label className="mb-1 block text-sm font-medium">{t("company")} *</label>
               <select
                 required
+                data-testid="asset-register-company"
                 className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
                 value={clientId}
                 onChange={(e) => setClientId(e.target.value)}
@@ -370,6 +375,7 @@ export function AssetRegisterModal({
               <label className="mb-1 block text-sm font-medium">{t("site")} *</label>
               <select
                 required
+                data-testid="asset-register-site"
                 className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
                 value={siteId}
                 onChange={(e) => setSiteId(e.target.value)}
@@ -400,6 +406,7 @@ export function AssetRegisterModal({
             <label className="mb-1 block text-sm font-medium">{t("name")} *</label>
             <input
               required
+              data-testid="asset-register-name"
               className="w-full rounded-md border px-3 py-2 text-sm"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -423,7 +430,7 @@ export function AssetRegisterModal({
               required
             />
             {selectedType && hasTypeDefaults(selectedType) && (
-              <p className="mt-1 text-xs text-neutral-500">
+              <p className="mt-1 text-xs text-neutral-500" data-testid="type-defaults-applied">
                 {t("type_defaults_applied", { name: localizedName(selectedType, lang) })}
               </p>
             )}
@@ -461,6 +468,7 @@ export function AssetRegisterModal({
           <div>
             <label className="mb-1 block text-sm font-medium">{t("criticality")}</label>
             <select
+              data-testid="asset-register-criticality"
               className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
               value={criticality}
               onChange={(e) => {
@@ -523,6 +531,7 @@ export function AssetRegisterModal({
                 type="number"
                 min={1}
                 max={50}
+                data-testid="asset-register-max-age"
                 className="w-full rounded-md border px-3 py-2 text-sm"
                 value={maxAgeYears}
                 onChange={(e) => {
@@ -615,6 +624,7 @@ export function AssetRegisterModal({
             </button>
             <button
               type="submit"
+              data-testid="asset-register-submit"
               disabled={loading}
               className="rounded-md bg-primary-600 px-4 py-2 text-sm text-white disabled:opacity-50"
             >
