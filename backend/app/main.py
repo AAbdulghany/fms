@@ -16,6 +16,7 @@ from app.api.routes import (
     labor,
     locations,
     notifications,
+    public_asset_tags,
     reports,
     sites,
     templates,
@@ -76,6 +77,7 @@ app.include_router(dashboard.router, prefix=api)
 app.include_router(notifications.router, prefix=api)
 app.include_router(tenants.router, prefix=api)
 app.include_router(platform.router, prefix=api)
+app.include_router(public_asset_tags.router, prefix=api)
 
 
 @app.get(f"{api}/server-time")

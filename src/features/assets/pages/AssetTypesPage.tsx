@@ -146,7 +146,10 @@ function TypeFormModal({ open, editId, initialData, verticals, onClose, onSaved 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-neutral-0 p-6 shadow-xl">
+      <div
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-neutral-0 p-6 shadow-xl"
+        data-testid="asset-type-form-modal"
+      >
         <h2 className="mb-4 text-xl font-bold">
           {isEdit ? t("edit") : t("custom_type")} — {t("asset_type")}
         </h2>
@@ -158,6 +161,7 @@ function TypeFormModal({ open, editId, initialData, verticals, onClose, onSaved 
               </label>
               <input
                 required
+                data-testid="asset-type-code"
                 className="w-full rounded-md border px-3 py-2 text-sm font-mono"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
@@ -176,6 +180,7 @@ function TypeFormModal({ open, editId, initialData, verticals, onClose, onSaved 
               </label>
               <input
                 required
+                data-testid="asset-type-name-en"
                 className="w-full rounded-md border px-3 py-2 text-sm"
                 value={nameEn}
                 onChange={(e) => setNameEn(e.target.value)}
@@ -189,6 +194,7 @@ function TypeFormModal({ open, editId, initialData, verticals, onClose, onSaved 
               <input
                 required
                 dir="rtl"
+                data-testid="asset-type-name-ar"
                 className="w-full rounded-md border px-3 py-2 text-sm"
                 value={nameAr}
                 onChange={(e) => setNameAr(e.target.value)}
@@ -204,6 +210,7 @@ function TypeFormModal({ open, editId, initialData, verticals, onClose, onSaved 
                 type="number"
                 min={1}
                 max={100}
+                data-testid="asset-type-max-age"
                 className="w-full rounded-md border px-3 py-2 text-sm"
                 value={maxAge}
                 onChange={(e) => setMaxAge(e.target.value === "" ? "" : Number(e.target.value))}
@@ -230,6 +237,7 @@ function TypeFormModal({ open, editId, initialData, verticals, onClose, onSaved 
             <div>
               <label className="mb-1 block text-sm font-medium">{t("criticality")}</label>
               <select
+                data-testid="asset-type-criticality"
                 className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
                 value={criticality}
                 onChange={(e) => setCriticality(e.target.value)}
@@ -293,6 +301,7 @@ function TypeFormModal({ open, editId, initialData, verticals, onClose, onSaved 
             </button>
             <button
               type="submit"
+              data-testid="asset-type-form-submit"
               disabled={loading}
               className="rounded-md bg-primary-600 px-4 py-2 text-sm text-white disabled:opacity-50"
             >
@@ -438,6 +447,7 @@ export default function AssetTypesPage() {
         </div>
         {tab === "library" && (
           <button
+            data-testid="asset-type-create-button"
             onClick={() => setShowCreateModal(true)}
             className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
           >

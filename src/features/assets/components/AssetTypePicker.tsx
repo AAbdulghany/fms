@@ -84,6 +84,7 @@ export function AssetTypePicker({
       <select
         required={required && types.length > 0}
         disabled={loading}
+        data-testid="asset-type-picker"
         className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm disabled:bg-neutral-100"
         value={value}
         onChange={(e) => onChange(e.target.value)}

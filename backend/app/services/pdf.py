@@ -27,23 +27,19 @@ def render_invoice_pdf(
     return render_invoice_pdf_branded(db, invoice=invoice)
 
 
-def render_asset_label_pdf(asset: Asset) -> bytes:
-    buf = BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4, rightMargin=2 * cm, leftMargin=2 * cm, topMargin=2 * cm, bottomMargin=2 * cm)
-    styles = getSampleStyleSheet()
-    story: list[Any] = []
-    label = asset.label_code or str(asset.id)[:8]
-    story.append(Paragraph(f"<b>{reshape_text(label)}</b>", styles["Title"]))
-    story.append(Paragraph(reshape_text(asset.name), styles["Normal"]))
-    story.append(Spacer(1, 0.5 * cm))
-    if asset.qr_payload:
-        story.append(Paragraph(reshape_text(f"QR: {asset.qr_payload}"), styles["Normal"]))
-    active = [s for s in (asset.schedules or []) if s.is_active]
-    if active:
-        next_due = min(s.next_due_at for s in active)
-        story.append(Paragraph(reshape_text(f"Next maintenance: {next_due.date()}"), styles["Normal"]))
-    doc.build(story)
-    return buf.getvalue()
+def render_asset_label_pdf(
+    asset: Asset,
+    *,
+    client_name: str | None = None,
+    size_mm: float | None = None,
+    design: str | None = None,
+) -> bytes:
+    """A2 sticker PDF — Design A (square) or C (field tag); size configurable in mm."""
+    from app.services.asset_label_sticker import render_asset_sticker_pdf
+
+    return render_asset_sticker_pdf(
+        asset, client_name=client_name, size_mm=size_mm, design=design
+    )
 
 
 def render_report_summary_pdf(

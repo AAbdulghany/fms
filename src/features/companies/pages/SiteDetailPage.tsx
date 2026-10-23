@@ -29,7 +29,7 @@ function mapToDisplayAsset(a: AssetOutApi): Asset {
   }
   return {
     id: a.id,
-    asset_id: a.name || `${a.id.slice(0, 8)}â€¦`,
+    asset_id: a.name || `${a.id.slice(0, 8)}…`,
     site_id: a.site_id,
     company_id: "",
     type: a.name || a.category,
@@ -129,13 +129,13 @@ export default function SiteDetailPage() {
         <Link to="/dashboard" className="hover:text-primary-600">
           {t("dashboard")}
         </Link>
-        <span>â€º</span>
+        <span>›</span>
         {site.company_name && (
           <>
             <Link to={`/companies/${site.company_id}`} className="hover:text-primary-600">
               {site.company_name}
             </Link>
-            <span>â€º</span>
+            <span>›</span>
           </>
         )}
         <span className="font-medium text-neutral-900">{site.name}</span>

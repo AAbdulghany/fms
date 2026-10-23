@@ -7,6 +7,7 @@ import type { Asset, AssetLifecycleStatus, WorkOrder, PaginatedWorkOrders } from
 import { AssetLifecycleBadge } from "@/features/assets/components/AssetLifecycleBadge";
 import { AssetLifecycleTimeline } from "@/features/assets/components/AssetLifecycleTimeline";
 import { AssetEditModal } from "@/features/assets/components/AssetEditModal";
+import { AssetQrModal } from "@/features/assets/components/AssetQrModal";
 
 type AssetOutApi = {
   id: string;
@@ -15,6 +16,7 @@ type AssetOutApi = {
   company_name?: string | null;
   name: string;
   category: string;
+  qr_payload?: string | null;
   label_code?: string | null;
   model?: string | null;
   serial?: string | null;
@@ -58,7 +60,7 @@ function mapToAsset(a: AssetOutApi): Asset {
         : undefined;
   return {
     id: a.id,
-    asset_id: a.label_code || a.name || `${a.id.slice(0, 8)}â€¦`,
+    asset_id: a.label_code || a.name || `${a.id.slice(0, 8)}…`,
     name: a.name,
     site_id: a.site_id,
     site_name: a.site_name ?? undefined,
@@ -98,6 +100,8 @@ export default function AssetDetailPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"details" | "maintenance" | "work-orders">("details");
   const [editOpen, setEditOpen] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
+  const [qrPayload, setQrPayload] = useState<string | null>(null);
   const [retireConfirm, setRetireConfirm] = useState(false);
   const [retiring, setRetiring] = useState(false);
 
@@ -106,6 +110,7 @@ export default function AssetDetailPage() {
       try {
         const assetData = await apiFetch<AssetOutApi>(`/assets/${id}`);
         setAsset(mapToAsset(assetData));
+        setQrPayload(assetData.qr_payload ?? null);
         const woData = await apiFetch<PaginatedWorkOrders>(`/work-orders?asset_id=${id}&page_size=50`);
         setWorkOrders(woData.data);
       } catch (error) {
@@ -161,11 +166,11 @@ export default function AssetDetailPage() {
         <Link to="/dashboard" className="hover:text-primary-600">
           {t("dashboard")}
         </Link>
-        <span>â€º</span>
+        <span>›</span>
         <Link to="/assets" className="hover:text-primary-600">
           {t("assets")}
         </Link>
-        <span>â€º</span>
+        <span>›</span>
         <span className="font-medium text-neutral-900">{asset.name || asset.asset_id}</span>
       </nav>
 
@@ -179,10 +184,17 @@ export default function AssetDetailPage() {
             <p className="mt-1 text-sm text-neutral-500">
               {[asset.company_name, asset.site_name, asset.category]
                 .filter(Boolean)
-                .join(" â€¢ ")}
+                .join(" • ")}
             </p>
           </div>
           <div className="flex gap-2">
+            <button
+              data-testid="asset-qr-button"
+              className="rounded-lg border border-neutral-300 bg-neutral-0 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
+              onClick={() => setQrOpen(true)}
+            >
+              {t("qr_code")}
+            </button>
             <button
               className="rounded-lg border border-neutral-300 bg-neutral-0 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
               onClick={() => setEditOpen(true)}
@@ -255,7 +267,7 @@ export default function AssetDetailPage() {
             </svg>
             <div className="flex-1">
               <p className="text-sm font-medium text-warning-dark">
-                âš ï¸ Warning: Asset is {asset.lifespan_percentage}% through expected lifespan.
+                Warning: Asset is {asset.lifespan_percentage}% through expected lifespan.
               </p>
               <p className="mt-1 text-sm text-warning-dark">Replacement work order recommended.</p>
               <button
@@ -287,7 +299,7 @@ export default function AssetDetailPage() {
             </svg>
             <div className="flex-1">
               <p className="text-sm font-medium text-error-dark">
-                ðŸ”´ End of Life: Asset has exceeded expected lifespan.
+                End of Life: Asset has exceeded expected lifespan.
               </p>
               {asset.replacement_wo_id ? (
                 <p className="mt-1 text-sm text-error-dark">
@@ -444,7 +456,7 @@ export default function AssetDetailPage() {
             <div>
               <dt className="text-sm font-medium text-neutral-500">{t("installation_date")}</dt>
               <dd className="mt-1 text-sm text-neutral-900">
-                {asset.installation_date ? new Date(asset.installation_date).toLocaleDateString() : "â€”"}
+                {asset.installation_date ? new Date(asset.installation_date).toLocaleDateString() : "—"}
               </dd>
             </div>
             <div>
@@ -471,7 +483,7 @@ export default function AssetDetailPage() {
 
       {activeTab === "maintenance" && (
         <div className="rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm">
-          {/* Shows completed/verified/closed WOs for this asset only â€” filtered client-side until NT-P5-A01 backend is live */}
+          {/* Shows completed/verified/closed WOs for this asset only — filtered client-side until NT-P5-A01 backend is live */}
           {maintenanceWOs.length === 0 ? (
             <div className="p-8 text-center text-neutral-600">
               <p>{t("no_maintenance_history")}</p>
@@ -531,6 +543,19 @@ export default function AssetDetailPage() {
           assetId={id}
           onClose={() => setEditOpen(false)}
           onSaved={() => { setEditOpen(false); loadAsset(); }}
+        />
+      )}
+
+      {id && (
+        <AssetQrModal
+          open={qrOpen}
+          assetId={id}
+          assetName={asset.name || asset.asset_id}
+          companyName={asset.company_name}
+          labelCode={asset.asset_id}
+          serial={asset.serial_number}
+          qrPayload={qrPayload}
+          onClose={() => setQrOpen(false)}
         />
       )}
 

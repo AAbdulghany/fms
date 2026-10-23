@@ -43,7 +43,7 @@ function mapToDisplayAsset(a: AssetOutApi): Asset {
   const eolDate = a.expected_eol_date ?? computeEolDate(a.installed_on, a.max_age_years);
   return {
     id: a.id,
-    asset_id: a.label_code || `${a.id.slice(0, 8)}â€¦`,
+    asset_id: a.label_code || `${a.id.slice(0, 8)}…`,
     name: a.name,
     site_id: a.site_id,
     site_name: a.site_name ?? undefined,
@@ -168,6 +168,7 @@ export default function AssetsPage() {
           </button>
           <button
             type="button"
+            data-testid="register-asset-button"
             className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
             onClick={() => setRegisterOpen(true)}
           >
@@ -350,14 +351,14 @@ export default function AssetsPage() {
                   >
                     <td className="px-6 py-4">
                       <div className="text-sm font-semibold text-neutral-900">
-                        {asset.name || "â€”"}
+                        {asset.name || "—"}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-neutral-700">
                       {asset.category}
                     </td>
                     <td className="px-6 py-4 text-sm text-neutral-900">
-                      {asset.site_name || "â€”"}
+                      {asset.site_name || "—"}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm">
                       <AssetLifecycleBadge status={asset.lifecycle_status} />
@@ -368,7 +369,7 @@ export default function AssetsPage() {
                           {t(wb.label === "Active" ? "warranty_active" : "warranty_expired") || wb.label}
                         </span>
                       ) : (
-                        <span className="text-neutral-400">â€”</span>
+                        <span className="text-neutral-400">—</span>
                       )}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm">
@@ -387,7 +388,7 @@ export default function AssetsPage() {
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-700">
                       {asset.expected_eol_date
                         ? new Date(asset.expected_eol_date).toLocaleDateString()
-                        : "â€”"}
+                        : "—"}
                     </td>
                   </tr>
                   );

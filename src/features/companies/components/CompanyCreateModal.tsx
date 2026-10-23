@@ -169,6 +169,7 @@ export function CompanyCreateModal({ open, onClose, onCreated }: Props) {
           className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-neutral-0 p-6 shadow-xl"
           role="dialog"
           aria-modal
+          data-testid="company-create-modal"
         >
           <h2 className="mb-2 text-xl font-bold text-neutral-900">{t("create_company")}</h2>
           <p className="mb-4 text-sm text-neutral-600">{t("company_provision_blurb")}</p>
@@ -181,6 +182,7 @@ export function CompanyCreateModal({ open, onClose, onCreated }: Props) {
               </label>
               <input
                 required
+                data-testid="company-legal-name"
                 className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
                 value={legalName}
                 onChange={(e) => setLegalName(e.target.value)}
@@ -192,6 +194,7 @@ export function CompanyCreateModal({ open, onClose, onCreated }: Props) {
               </label>
               <input
                 required
+                data-testid="company-manager-name"
                 className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
                 value={managerFullName}
                 onChange={(e) => setManagerFullName(e.target.value)}
@@ -258,6 +261,7 @@ export function CompanyCreateModal({ open, onClose, onCreated }: Props) {
                 </label>
                 <input
                   required
+                  data-testid="company-first-site-name"
                   className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
                   value={siteName}
                   onChange={(e) => setSiteName(e.target.value)}
@@ -271,6 +275,7 @@ export function CompanyCreateModal({ open, onClose, onCreated }: Props) {
                   </label>
                   <input
                     required
+                    data-testid="company-first-site-city"
                     className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
@@ -283,6 +288,7 @@ export function CompanyCreateModal({ open, onClose, onCreated }: Props) {
                   </label>
                   <input
                     required
+                    data-testid="company-first-site-country"
                     className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
@@ -315,6 +321,7 @@ export function CompanyCreateModal({ open, onClose, onCreated }: Props) {
               </button>
               <button
                 type="submit"
+                data-testid="company-create-submit"
                 disabled={loading || !verticalCode}
                 className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
               >

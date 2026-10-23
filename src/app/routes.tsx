@@ -23,12 +23,14 @@ import { MaintenanceCompaniesPage } from "@/features/platform/pages/MaintenanceC
 import { ProfilePage } from "@/features/users/pages/ProfilePage";
 import ReportTemplatesPage from "@/features/reports/pages/ReportTemplatesPage";
 import AssetTypesPage from "@/features/assets/pages/AssetTypesPage";
+import AssetTagLandingPage from "@/features/assets/pages/AssetTagLandingPage";
 
 /** Application route table — pages live under src/features/…/pages/. */
 export function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/a/:token" element={<AssetTagLandingPage />} />
 
       <Route
         path="/"

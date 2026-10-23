@@ -17,7 +17,16 @@ from app.api.deps import ensure_site_access, get_current_user, require_feature, 
 
 from app.database import get_db
 
-from app.models import Asset, AssetLifecycleStatus, MaintenanceSchedule, Site, User, UserRole, UserSiteScope
+from app.models import (
+    Asset,
+    AssetLifecycleStatus,
+    Client,
+    MaintenanceSchedule,
+    Site,
+    User,
+    UserRole,
+    UserSiteScope,
+)
 
 from app.schemas import (
 
@@ -467,7 +476,9 @@ def create_asset(
         is_spare=body.is_spare if body.is_spare else None,
     )
 
-    a.qr_payload = qr_payload_for_asset(a.id)
+    from app.services.asset_tags import ensure_active_tag
+
+    ensure_active_tag(db, a)
 
     if body.schedule:
 
@@ -782,6 +793,17 @@ def asset_label_sheet(
 
     current: Annotated[User, Depends(get_current_user)],
 
+    size_mm: float | None = Query(
+        default=None,
+        ge=40,
+        le=120,
+        description="Primary size in mm: side for Design A, width for Design C.",
+    ),
+    design: str | None = Query(
+        default=None,
+        description="Sticker design: a (docked square) or c (field tag).",
+    ),
+
 ) -> Response:
 
     asset = _access_asset(db, current, asset_id)
@@ -790,7 +812,38 @@ def asset_label_sheet(
 
     _ = asset.schedules
 
-    pdf = render_asset_label_pdf(asset)
+    from app.services.asset_tags import ensure_active_tag
+    from app.services.asset_label_sticker import (
+        DESIGN_A,
+        LABEL_SIZE_MM_DEFAULT,
+        clamp_label_size_mm,
+        normalize_label_design,
+    )
+    from app.config import get_settings
+
+    ensure_active_tag(db, asset)
+    db.flush()
+
+    client_name = None
+    site = db.get(Site, asset.site_id)
+    if site:
+        client = db.get(Client, site.client_id) if site.client_id else None
+        if client:
+            client_name = client.legal_name
+
+    settings = get_settings()
+    sticker_design = normalize_label_design(
+        design if design is not None else getattr(settings, "asset_label_design", DESIGN_A)
+    )
+    default_mm = getattr(settings, "asset_label_size_mm", LABEL_SIZE_MM_DEFAULT)
+    sticker_mm = clamp_label_size_mm(
+        size_mm if size_mm is not None else default_mm,
+        design=sticker_design,
+    )
+    pdf = render_asset_label_pdf(
+        asset, client_name=client_name, size_mm=sticker_mm, design=sticker_design
+    )
+    db.commit()
 
     return Response(
 
@@ -801,6 +854,30 @@ def asset_label_sheet(
         headers={"Content-Disposition": f'inline; filename="label-{asset.label_code or asset.id}.pdf"'},
 
     )
+
+
+@router.post("/{asset_id}/qr/rotate")
+def rotate_asset_qr(
+    asset_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current: Annotated[User, Depends(get_current_user)],
+    _: Annotated[
+        User,
+        Depends(require_roles(UserRole.super_admin, UserRole.company_admin)),
+    ],
+) -> dict:
+    """Revoke active tag and mint a new opaque token (compromised label)."""
+    asset = _access_asset(db, current, asset_id)
+    from app.services.asset_tags import public_tag_url, revoke_and_mint
+
+    tag = revoke_and_mint(db, asset)
+    db.commit()
+    db.refresh(asset)
+    return {
+        "token": tag.token,
+        "qr_payload": asset.qr_payload or public_tag_url(tag.token),
+        "status": tag.status,
+    }
 
 
 
