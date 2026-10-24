@@ -45,10 +45,73 @@ export function AssetQrModal({
   const [design, setDesign] = useState<StickerDesign>("a");
   const [sizeMm, setSizeMm] = useState<number>(70);
   const [printing, setPrinting] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewFailed, setPreviewFailed] = useState(false);
 
   useEffect(() => {
     setSizeMm(design === "c" ? 80 : 70);
   }, [design]);
+
+  // WYSIWYG: preview is a PNG of the exact print PDF (same renderer as طباعة الملصق)
+  useEffect(() => {
+    if (!open) {
+      setPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+      return;
+    }
+
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    const ctrl = new AbortController();
+
+    async function loadPreview() {
+      setPreviewLoading(true);
+      setPreviewFailed(false);
+      try {
+        const token = getAccessToken();
+        const qs = new URLSearchParams({
+          size_mm: String(sizeMm),
+          design,
+          format: "png",
+          t: String(Date.now()),
+        });
+        const res = await fetch(`/api/v1/assets/${assetId}/label-sheet?${qs}`, {
+          cache: "no-store",
+          signal: ctrl.signal,
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok) throw new Error(`preview ${res.status}`);
+        const blob = await res.blob();
+        objectUrl = URL.createObjectURL(blob);
+        if (cancelled) {
+          URL.revokeObjectURL(objectUrl);
+          return;
+        }
+        setPreviewUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev);
+          return objectUrl;
+        });
+      } catch (err) {
+        if (cancelled || (err instanceof DOMException && err.name === "AbortError")) return;
+        setPreviewFailed(true);
+        setPreviewUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev);
+          return null;
+        });
+      } finally {
+        if (!cancelled) setPreviewLoading(false);
+      }
+    }
+
+    void loadPreview();
+    return () => {
+      cancelled = true;
+      ctrl.abort();
+    };
+  }, [open, assetId, design, sizeMm]);
 
   if (!open) return null;
 
@@ -63,14 +126,18 @@ export function AssetQrModal({
       const qs = new URLSearchParams({
         size_mm: String(sizeMm),
         design,
+        format: "pdf",
+        t: String(Date.now()),
       });
       const res = await fetch(`/api/v1/assets/${assetId}/label-sheet?${qs}`, {
+        cache: "no-store",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) return;
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } finally {
       setPrinting(false);
     }
@@ -102,14 +169,40 @@ export function AssetQrModal({
         </div>
 
         <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
-          <AssetStickerPreview
-            design={design}
-            deepLink={deepLink}
-            companyName={companyName}
-            assetName={assetName}
-            labelCode={labelCode}
-            serial={serial}
-          />
+          {previewUrl ? (
+            <img
+              src={previewUrl}
+              alt={t("qr_sticker_preview")}
+              className={`mx-auto w-full bg-white ${
+                design === "c" ? "max-w-[340px]" : "max-w-[280px]"
+              }`}
+              data-testid="asset-sticker-preview-print"
+            />
+          ) : previewLoading ? (
+            <div
+              className={`mx-auto flex items-center justify-center bg-white text-sm text-neutral-500 ${
+                design === "c" ? "aspect-[60/35] max-w-[340px]" : "aspect-square max-w-[280px]"
+              }`}
+              data-testid="asset-sticker-preview-loading"
+            >
+              {t("loading")}
+            </div>
+          ) : (
+            // Fallback approximation only if PNG preview fails
+            <AssetStickerPreview
+              design={design}
+              deepLink={deepLink}
+              companyName={companyName}
+              assetName={assetName}
+              labelCode={labelCode}
+              serial={serial}
+            />
+          )}
+          {previewFailed ? (
+            <p className="mt-2 text-center text-xs text-amber-700">
+              {t("sticker_preview_fallback") || "Showing approximate preview — print uses the exact label."}
+            </p>
+          ) : null}
         </div>
 
         <p

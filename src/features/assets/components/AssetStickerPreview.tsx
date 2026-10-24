@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { QRCodeSVG } from "qrcode.react";
 
 type Design = "a" | "c";
@@ -15,6 +16,22 @@ const NAVY = "#123056";
 const COPPER = "#e85d04";
 const INK = "#0f172a";
 const MUTED = "#5b6b7c";
+
+const ARABIC_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/;
+const STICKER_FONT =
+  '"Noto Sans Arabic", "IBM Plex Sans Arabic", "Segoe UI", system-ui, sans-serif';
+
+function hasArabic(text: string): boolean {
+  return ARABIC_RE.test(text);
+}
+
+function stickerTextStyle(extra?: CSSProperties): CSSProperties {
+  return {
+    fontFamily: STICKER_FONT,
+    // Let the browser shape Arabic; do not pre-bidi (that caused reversed glyphs in PDF viewers).
+    ...extra,
+  };
+}
 
 /** Inline periapsis mark (vector) for QR center eye. */
 function PeriapsisMark({ size }: { size: number }) {
@@ -62,6 +79,7 @@ export function AssetStickerPreview({
   const sn = (serial || "—").trim();
 
   if (design === "c") {
+    // Layout mirrors PDF Design C: copper spine · QR · stacked copy (no hang hole)
     return (
       <div
         className="relative mx-auto w-full max-w-[340px] overflow-hidden rounded-[14px] border-[3.5px] bg-white"
@@ -69,30 +87,41 @@ export function AssetStickerPreview({
         data-testid="asset-sticker-preview"
       >
         <div className="absolute inset-y-0 left-0 w-[3.5%]" style={{ background: COPPER }} />
-        <div
-          className="absolute right-[6%] top-1/2 h-[16%] w-[9%] -translate-y-1/2 rounded-full border-2 bg-[#f7f9fc]"
-          style={{ borderColor: NAVY }}
-        />
-        <div className="flex h-full items-center gap-2 py-2 pl-[7%] pr-[14%]">
+        <div className="flex h-full items-center gap-3 py-2.5 pl-[7%] pr-[5%]">
           <QrWithMark value={deepLink} size={112} />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[9px] font-bold uppercase tracking-wide" style={{ color: COPPER }}>
+          <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
+            <p
+              className={`truncate text-[9px] font-bold leading-snug tracking-wide ${
+                hasArabic(company) ? "" : "uppercase"
+              }`}
+              style={stickerTextStyle({ color: COPPER })}
+              dir="auto"
+            >
               {company}
             </p>
-            <p className="mt-0.5 line-clamp-2 text-[13px] font-bold leading-tight" style={{ color: NAVY }}>
+            <p
+              className="line-clamp-2 text-[13px] font-bold leading-snug"
+              style={stickerTextStyle({ color: NAVY })}
+              dir="auto"
+            >
               {assetName}
             </p>
-            <p className="mt-1.5 truncate text-[10px]" style={{ color: MUTED }}>
-              ID {id}
-            </p>
-            <p className="truncate text-[10px]" style={{ color: MUTED }}>
-              SN {sn}
-            </p>
+            <div className="mt-1.5 flex flex-col gap-1">
+              <p className="truncate text-[10px] leading-normal" style={stickerTextStyle({ color: MUTED })} dir="auto">
+                ID {id}
+              </p>
+              <p className="truncate text-[10px] leading-normal" style={stickerTextStyle({ color: MUTED })} dir="auto">
+                SN {sn}
+              </p>
+            </div>
           </div>
         </div>
       </div>
     );
   }
+
+  const companyUpper = !hasArabic(company);
+  const qrSize = 156;
 
   return (
     <div
@@ -105,19 +134,29 @@ export function AssetStickerPreview({
         style={{ background: COPPER, clipPath: "polygon(0 0, 100% 0, 100% 100%)" }}
       />
       <p
-        className="truncate text-center text-[10px] font-bold uppercase tracking-wide"
-        style={{ color: NAVY }}
+        className={`truncate text-center text-[10px] font-bold tracking-wide ${
+          companyUpper ? "uppercase" : ""
+        }`}
+        style={stickerTextStyle({ color: NAVY })}
+        dir="auto"
       >
         {company}
       </p>
-      <div className="mt-2 flex justify-center">
-        <QrWithMark value={deepLink} size={168} />
+      <div className="mt-1.5 flex justify-center">
+        <QrWithMark value={deepLink} size={qrSize} />
       </div>
-      <p className="mt-2 truncate text-center text-[13px] font-semibold" style={{ color: INK }}>
+      <p
+        className="mt-1.5 line-clamp-2 text-center text-[12px] font-semibold leading-tight"
+        style={stickerTextStyle({ color: INK })}
+        dir="auto"
+      >
         {assetName}
       </p>
-      <p className="mt-0.5 truncate text-center text-[10px]" style={{ color: MUTED }}>
-        ID {id} · SN {sn}
+      <p className="mt-1 truncate text-center text-[10px]" style={stickerTextStyle({ color: MUTED })} dir="auto">
+        ID {id}
+      </p>
+      <p className="truncate text-center text-[10px]" style={stickerTextStyle({ color: MUTED })} dir="auto">
+        SN {sn}
       </p>
     </div>
   );

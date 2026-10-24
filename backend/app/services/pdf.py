@@ -33,12 +33,17 @@ def render_asset_label_pdf(
     client_name: str | None = None,
     size_mm: float | None = None,
     design: str | None = None,
+    qr_payload: str | None = None,
 ) -> bytes:
     """A2 sticker PDF — Design A (square) or C (field tag); size configurable in mm."""
     from app.services.asset_label_sticker import render_asset_sticker_pdf
 
     return render_asset_sticker_pdf(
-        asset, client_name=client_name, size_mm=size_mm, design=design
+        asset,
+        client_name=client_name,
+        size_mm=size_mm,
+        design=design,
+        qr_payload=qr_payload,
     )
 
 

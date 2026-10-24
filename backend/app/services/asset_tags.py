@@ -31,6 +31,25 @@ def public_tag_url(token: str) -> str:
     return f"/a/{token}"
 
 
+def absolute_qr_payload(payload: str | None, *, app_base: str | None) -> str:
+    """Normalize tag payload to an absolute URL so preview and print encode the same bytes.
+
+    When ``PUBLIC_APP_URL`` is unset, ``app_base`` should be the Vite origin
+    (e.g. ``http://127.0.0.1:5173``) from the browser Origin/Referer.
+    """
+    raw = (payload or "").strip()
+    base = (app_base or "").rstrip("/")
+    if not raw:
+        return base
+    if raw.startswith("http://") or raw.startswith("https://"):
+        return raw
+    if not base:
+        return raw
+    if raw.startswith("/"):
+        return f"{base}{raw}"
+    return f"{base}/{raw}"
+
+
 def get_active_tag(db: Session, asset_id: UUID) -> AssetTag | None:
     return db.scalar(
         select(AssetTag).where(
