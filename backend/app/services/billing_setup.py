@@ -8,12 +8,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Client, Contract, PricingProfile
+from app.services.tax_profiles import ensure_default_tax_profile
 
 DEFAULT_PROFILE_NAME = "Standard rates"
 DEFAULT_CONTRACT_NAME = "Default service contract"
 
 
 def ensure_tenant_pricing_profile(db: Session, tenant_id: UUID) -> PricingProfile:
+    ensure_default_tax_profile(db, tenant_id)
     profile = db.scalar(
         select(PricingProfile)
         .where(PricingProfile.tenant_id == tenant_id, PricingProfile.name == DEFAULT_PROFILE_NAME)

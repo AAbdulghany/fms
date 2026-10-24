@@ -18,10 +18,12 @@ from app.models import (
     User,
     Urgency,
     WorkOrder,
+    WorkOrderPart,
     WorkOrderSource,
     WorkOrderStatus,
 )
 from app.services.report_context import merge_report_answers
+from app.services.tax_profiles import apply_tax, apply_tax_rates, get_default_tax_profile
 
 
 def _d(x: Any) -> Decimal:
@@ -106,12 +108,59 @@ def _work_summary_from_answers(answers: dict[str, Any], wo: WorkOrder) -> str:
     return (wo.description or "")[:500]
 
 
+def _wo_part_lines(
+    db: Session,
+    tenant_id: UUID,
+    work_order_id: UUID,
+    markup_percent: Decimal,
+) -> list[dict[str, Any]]:
+    lines: list[dict[str, Any]] = []
+    rows = db.scalars(
+        select(WorkOrderPart).where(
+            WorkOrderPart.tenant_id == tenant_id,
+            WorkOrderPart.work_order_id == work_order_id,
+        )
+    ).all()
+    for row in rows:
+        part = db.get(Part, row.part_id)
+        base = _d(row.unit_cost_sar) if row.unit_cost_sar is not None else (
+            _d(part.unit_cost_sar) if part else Decimal("0")
+        )
+        qty = _d(row.quantity)
+        unit_with_markup = (base * (Decimal("1") + markup_percent / Decimal("100"))).quantize(
+            Decimal("0.01")
+        )
+        amount = (qty * unit_with_markup).quantize(Decimal("0.01"))
+        sku = part.sku if part else str(row.part_id)
+        name = part.name if part else sku
+        lines.append(
+            {
+                "line_type": "parts",
+                "description": f"{name} ({sku})",
+                "quantity": qty,
+                "unit_price_sar": unit_with_markup,
+                "amount_sar": amount,
+                "source_ref": {
+                    "field": "work_order_parts",
+                    "work_order_part_id": str(row.id),
+                    "part_id": str(row.part_id),
+                },
+            }
+        )
+    return lines
+
+
 def _parts_lines(
     db: Session,
     tenant_id: UUID,
     answers: dict[str, Any],
     markup_percent: Decimal,
+    work_order_id: Optional[UUID] = None,
 ) -> list[dict[str, Any]]:
+    if work_order_id is not None:
+        wo_lines = _wo_part_lines(db, tenant_id, work_order_id, markup_percent)
+        if wo_lines:
+            return wo_lines
     lines: list[dict[str, Any]] = []
     raw = answers.get("parts_used")
     if not raw or not isinstance(raw, list):
@@ -189,12 +238,19 @@ def _compute_invoice_lines(
             Contract.status == "active",
         )
     )
-    if not contract:
+    # Custom client term → else General pricing profile (tenant-wide default)
+    profile: PricingProfile | None = None
+    if contract:
+        profile = db.get(PricingProfile, contract.pricing_profile_id)
+    if profile is None:
+        profile = db.scalar(
+            select(PricingProfile).where(
+                PricingProfile.tenant_id == wo.tenant_id,
+                PricingProfile.name == "General",
+            )
+        )
+    if profile is None:
         raise ValueError("NO_ACTIVE_CONTRACT")
-
-    profile = db.get(PricingProfile, contract.pricing_profile_id)
-    if not profile:
-        raise ValueError("PRICING_NOT_FOUND")
 
     hourly = _d(profile.hourly_rate_sar)
     markup = _d(profile.parts_markup_percent)
@@ -223,7 +279,9 @@ def _compute_invoice_lines(
                 },
             }
         )
-    line_payloads.extend(_parts_lines(db, wo.tenant_id, answers, markup))
+    line_payloads.extend(
+        _parts_lines(db, wo.tenant_id, answers, markup, work_order_id=wo.id)
+    )
 
     if service_fee > 0:
         line_payloads.append(
@@ -262,10 +320,29 @@ def _compute_invoice_lines(
         subtotal += sur
 
     subtotal = subtotal.quantize(Decimal("0.01"))
-    tax = Decimal("0")
-    total = (subtotal + tax).quantize(Decimal("0.01"))
+    # Per-client Commercial Terms tax override on the contract; else tenant default (General)
+    if contract is not None and contract.tax_rate_percent is not None:
+        tax, total, tax_snapshot = apply_tax_rates(
+            subtotal,
+            rate_percent=Decimal(str(contract.tax_rate_percent)),
+            tax_inclusive=bool(contract.tax_inclusive),
+            snapshot={
+                "source": "contract",
+                "contract_id": str(contract.id),
+                "rate_percent": str(contract.tax_rate_percent),
+                "tax_inclusive": bool(contract.tax_inclusive),
+                "rounding": "HALF_UP",
+            },
+        )
+    else:
+        tax_profile = get_default_tax_profile(db, wo.tenant_id)
+        tax, total, tax_snapshot = apply_tax(subtotal, tax_profile)
 
-    cur = (currency_override or contract.currency or "SAR").strip().upper()
+    cur = (
+        currency_override
+        or (contract.currency if contract is not None else None)
+        or "SAR"
+    ).strip().upper()
     if cur not in ALLOWED_INVOICE_CURRENCIES:
         raise ValueError("INVALID_CURRENCY")
 
@@ -295,6 +372,7 @@ def _compute_invoice_lines(
         "line_payloads": line_payloads,
         "parts": parts_preview,
         "work_summary": summary,
+        "tax_profile_snapshot": tax_snapshot,
     }
 
 
@@ -333,7 +411,7 @@ def build_invoice_for_work_order(
         tenant_id=wo.tenant_id,
         client_id=wo.client_id,
         work_order_id=wo.id,
-        contract_id=contract.id,
+        contract_id=contract.id if contract is not None else None,
         number=next_invoice_number(db, wo.tenant_id),
         status=InvoiceStatus.draft,
         subtotal_sar=computed["subtotal_sar"],
@@ -345,6 +423,7 @@ def build_invoice_for_work_order(
             "work_order_id": str(wo.id),
             "work_order_title": wo.title or "",
             "notes": "",
+            "tax_profile": computed.get("tax_profile_snapshot") or {},
         },
     )
     db.add(inv)

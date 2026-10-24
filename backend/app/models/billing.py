@@ -58,6 +58,9 @@ class Contract(Base):
     effective_to: Mapped[Optional[date]] = mapped_column(Date)
     currency: Mapped[str] = mapped_column(String(8), default="SAR")
     status: Mapped[str] = mapped_column(String(32), default="active")
+    # Per-client tax override (Commercial Terms) — null → tenant default TaxProfile
+    tax_rate_percent: Mapped[Optional[Any]] = mapped_column(Numeric(6, 3), nullable=True)
+    tax_inclusive: Mapped[bool] = mapped_column(Boolean, default=False)
 
     client: Mapped["Client"] = relationship(back_populates="contracts")
 
@@ -67,8 +70,13 @@ class Part(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     sku: Mapped[str] = mapped_column(String(64), nullable=False)
-    name: Mapped[str] = mapped_column(String(255), default="")
+    name: Mapped[str] = mapped_column(String(255), default="")  # legacy / display fallback
+    name_en: Mapped[str] = mapped_column(String(255), default="")
+    name_ar: Mapped[str] = mapped_column(String(255), default="")  # Egyptian Arabic preferred
     unit_cost_sar: Mapped[Any] = mapped_column(Numeric(12, 2), default=0)
+    # Inventory: spare part for repairs vs raw material consumed by assets
+    kind: Mapped[str] = mapped_column(String(32), default="part")  # part | raw_material
+    qty_on_hand: Mapped[Any] = mapped_column(Numeric(14, 4), default=0)
 
     __table_args__ = (UniqueConstraint("tenant_id", "sku", name="uq_part_tenant_sku"),)
 
@@ -113,4 +121,35 @@ class InvoiceLineItem(Base):
     source_ref: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
 
     invoice: Mapped["Invoice"] = relationship(back_populates="line_items")
+
+
+class TaxProfile(Base):
+    """Per-tenant VAT / tax policy (AgDR-A3)."""
+
+    __tablename__ = "tax_profiles"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, default="Standard VAT")
+    rate_percent: Mapped[Any] = mapped_column(Numeric(6, 3), default=15)
+    tax_inclusive: Mapped[bool] = mapped_column(Boolean, default=False)
+    rounding: Mapped[str] = mapped_column(String(16), default="HALF_UP")
+    is_default: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class WorkOrderPart(Base):
+    """Catalog part consumption on a work order (A3)."""
+
+    __tablename__ = "work_order_parts"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    work_order_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("work_orders.id"), nullable=False
+    )
+    part_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("parts_catalog.id"), nullable=False
+    )
+    quantity: Mapped[Any] = mapped_column(Numeric(14, 4), default=1)
+    unit_cost_sar: Mapped[Any] = mapped_column(Numeric(12, 2), default=0)
 

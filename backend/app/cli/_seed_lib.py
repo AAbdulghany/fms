@@ -29,11 +29,14 @@ _TRUNCATE_PG = (
     "labor_entries, "
     "comments, work_order_documents, "
     "maintenance_reports, work_orders, "
+    "work_order_parts, "
     "maintenance_schedules, "
+    "asset_tags, "
     "assets, locations, "
+    "asset_type_verticals, asset_types, "
     "user_site_scopes, "
     "technician_schedules, technician_profiles, "
-    "contracts, pricing_profiles, parts_catalog, "
+    "contracts, pricing_profiles, parts_catalog, tax_profiles, "
     "report_templates, "
     "sites, clients, "
     "users, "
@@ -59,6 +62,9 @@ def truncate_tenant_data(db: Session) -> None:
         from app.models import (
             AuditLog,
             Asset,
+            AssetTag,
+            AssetType,
+            AssetTypeVertical,
             Client,
             Contract,
             Invoice,
@@ -72,6 +78,7 @@ def truncate_tenant_data(db: Session) -> None:
             PricingProfile,
             ReportTemplate,
             Site,
+            TaxProfile,
             TechnicianProfile,
             TechnicianSchedule,
             Tenant,
@@ -79,6 +86,7 @@ def truncate_tenant_data(db: Session) -> None:
             UserSiteScope,
             WorkOrder,
             WorkOrderDocument,
+            WorkOrderPart,
             Comment,
         )
         # Delete in child→parent order to satisfy FK constraints.
@@ -93,16 +101,21 @@ def truncate_tenant_data(db: Session) -> None:
             Comment,
             WorkOrderDocument,
             MaintenanceReport,
+            WorkOrderPart,
             WorkOrder,
             MaintenanceSchedule,
+            AssetTag,
             TechnicianSchedule,
             TechnicianProfile,
             Asset,
+            AssetTypeVertical,
+            AssetType,
             Location,
             UserSiteScope,
             Contract,
             PricingProfile,
             Part,
+            TaxProfile,
             ReportTemplate,
             Site,
             User,

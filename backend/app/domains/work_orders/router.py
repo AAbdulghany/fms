@@ -5,7 +5,7 @@ from fastapi import APIRouter
 router = APIRouter(prefix="/work-orders", tags=["work-orders"])
 
 # Side-effect: register handlers on `router`
-from . import collaboration, crud, reports, requests  # noqa: E402, F401
+from . import collaboration, crud, parts, reports, requests  # noqa: E402, F401
 
 from ._common import (  # noqa: F401
     REPORT_PDF_DOC_DESCRIPTION,

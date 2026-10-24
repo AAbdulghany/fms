@@ -22,6 +22,7 @@ __all__ = [
     "Asset", "MaintenanceSchedule", "ReportTemplate",
     "WorkOrder", "MaintenanceReport", "Comment", "WorkOrderDocument",
     "PricingProfile", "Contract", "Part", "Invoice", "InvoiceLineItem",
+    "TaxProfile", "WorkOrderPart",
     "TechnicianProfile", "LaborEntry", "TechnicianSchedule",
     "Notification", "AuditLog",
     # A1
