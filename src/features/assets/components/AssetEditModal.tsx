@@ -34,13 +34,14 @@ type Props = {
 };
 
 export function AssetEditModal({ open, assetId, onClose, onSaved }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const [me, setMe] = useState<User | null>(null);
   const [assetTypes, setAssetTypes] = useState<AssetType[]>([]);
   const [assetTypesLoading, setAssetTypesLoading] = useState(false);
 
   const [assetTypeId, setAssetTypeId] = useState("");
+  const [assetTypeName, setAssetTypeName] = useState("");
   const [name, setName] = useState("");
   const [model, setModel] = useState("");
   const [serial, setSerial] = useState("");
@@ -88,6 +89,13 @@ export function AssetEditModal({ open, assetId, onClose, onSaved }: Props) {
       .then((a) => {
         setName(a.name || "");
         setAssetTypeId(a.asset_type_id || "");
+        setAssetTypeName(
+          a.asset_type
+            ? i18n.language.startsWith("ar")
+              ? a.asset_type.name_ar || a.asset_type.name_en
+              : a.asset_type.name_en || a.asset_type.name_ar
+            : a.category || ""
+        );
         setOriginalTypeId(a.asset_type_id || null);
         setClientId(a.client_id || null);
         setModel(a.model || "");
@@ -194,6 +202,8 @@ export function AssetEditModal({ open, assetId, onClose, onSaved }: Props) {
                 types={assetTypes}
                 value={assetTypeId}
                 onChange={(id) => setAssetTypeId(id)}
+                typeName={assetTypeName}
+                onTypeNameChange={setAssetTypeName}
                 loading={assetTypesLoading}
                 userRole={me?.role}
               />

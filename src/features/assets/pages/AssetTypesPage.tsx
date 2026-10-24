@@ -90,6 +90,7 @@ function TypeFormModal({ open, editId, initialData, verticals, onClose, onSaved 
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [applyPm, setApplyPm] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -101,6 +102,7 @@ function TypeFormModal({ open, editId, initialData, verticals, onClose, onSaved 
       setCriticality(initialData?.default_criticality ?? "");
       setFrequency(initialData?.default_frequency ?? "");
       setSelectedVerticals(initialData?.vertical_codes ?? []);
+      setApplyPm(false);
       setError(null);
     }
   }, [open, initialData]);
@@ -129,7 +131,8 @@ function TypeFormModal({ open, editId, initialData, verticals, onClose, onSaved 
         vertical_codes: selectedVerticals,
       };
       if (isEdit) {
-        await apiFetch(`/asset-types/${editId}`, { method: "PATCH", json: body });
+        const qs = applyPm ? "?apply_schedules=true" : "";
+        await apiFetch(`/asset-types/${editId}${qs}`, { method: "PATCH", json: body });
       } else {
         await apiFetch("/asset-types", { method: "POST", json: body });
       }
@@ -259,10 +262,28 @@ function TypeFormModal({ open, editId, initialData, verticals, onClose, onSaved 
                 <option value="">{t("optional")}</option>
                 <option value="monthly">{t("frequency_monthly")}</option>
                 <option value="quarterly">{t("frequency_quarterly")}</option>
+                <option value="semi_annual">{t("frequency_semi_annual")}</option>
                 <option value="yearly">{t("frequency_yearly")}</option>
               </select>
             </div>
           </div>
+
+          {isEdit && (
+            <label className="flex items-start gap-2 text-sm text-neutral-800">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={applyPm}
+                onChange={(e) => setApplyPm(e.target.checked)}
+              />
+              <span>
+                <span className="font-medium">{t("apply_pm_schedules")}</span>
+                <span className="mt-0.5 block text-xs text-neutral-500">
+                  {t("apply_pm_schedules_help")}
+                </span>
+              </span>
+            </label>
+          )}
 
           {verticals.length > 0 && (
             <div>
@@ -446,15 +467,37 @@ export default function AssetTypesPage() {
           <p className="mt-1 text-sm text-neutral-500">{t("asset_types_page_desc")}</p>
         </div>
         {tab === "library" && (
-          <button
-            data-testid="asset-type-create-button"
-            onClick={() => setShowCreateModal(true)}
-            className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
-          >
-            + {t("custom_type")}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {import.meta.env.DEV && (
+              <button
+                type="button"
+                data-testid="asset-type-archive-all"
+                title="Dev only — wipe library during local setup"
+                className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 hover:bg-amber-100"
+                onClick={() => {
+                  if (!window.confirm(t("archive_all_types_confirm"))) return;
+                  void apiFetch<{ archived: number }>("/asset-types/archive-all", {
+                    method: "POST",
+                  }).then(() => loadLibrary());
+                }}
+              >
+                {t("archive_all_types")} (DEV)
+              </button>
+            )}
+            <button
+              data-testid="asset-type-create-button"
+              onClick={() => setShowCreateModal(true)}
+              className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+            >
+              + {t("custom_type")}
+            </button>
+          </div>
         )}
       </div>
+      <p className="mb-4 text-xs text-neutral-500">
+        {t("asset_types_catalog_help") ||
+          "Catalog = platform starter templates you can adopt. Your library is what appears when registering assets; edit or archive individual rows below. Typing a new name on Register also creates a type."}
+      </p>
 
       {/* Tabs */}
       <div className="mb-4 flex gap-0 border-b border-neutral-200">

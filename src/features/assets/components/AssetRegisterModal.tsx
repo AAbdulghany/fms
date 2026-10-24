@@ -4,7 +4,6 @@ import { apiFetch } from "@/lib/api";
 import type { AssetCriticality, AssetType, User, UserRole } from "@/lib/types";
 import { AssetTypePicker } from "@/features/assets/components/AssetTypePicker";
 import { localizedName } from "@/features/assets/hooks/useAssetTypes";
-import { useVerticals, verticalName } from "@/shared/hooks/useVerticals";
 
 function hasTypeDefaults(ty: AssetType): boolean {
   return (
@@ -50,15 +49,13 @@ export function AssetRegisterModal({
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
   const [assetTypes, setAssetTypes] = useState<AssetType[]>([]);
   const [assetTypesLoading, setAssetTypesLoading] = useState(false);
-  const { verticals } = useVerticals(open);
-
   const [clientId, setClientId] = useState(initialClientId || "");
   const [siteId, setSiteId] = useState(initialSiteId || "");
   const [name, setName] = useState("");
 
-  // A1: type picker state
+  // Type: free-text create-if-missing (id optional when picking existing)
   const [assetTypeId, setAssetTypeId] = useState("");
-  const [freeTextCategory, setFreeTextCategory] = useState("general");
+  const [assetTypeName, setAssetTypeName] = useState("");
 
   const [model, setModel] = useState("");
   const [serial, setSerial] = useState("");
@@ -111,20 +108,18 @@ export function AssetRegisterModal({
   const showLockedClient = !canPickClient || clients.length === 1;
   const showSitePicker = siteOptions.length !== 1;
 
-  // Effective client for vertical lookups
   const effectiveClientId =
     lockedClientId ||
     clientId ||
     lockedClient?.id ||
     (clients.length === 1 ? clients[0].id : "");
-  const effectiveClient = clients.find((c) => c.id === effectiveClientId);
 
   // ── Load asset types whenever effective client changes ──────────────────
   useEffect(() => {
     if (!open) return;
     setAssetTypesLoading(true);
     const url = effectiveClientId
-      ? `/asset-types?client_id=${encodeURIComponent(effectiveClientId)}`
+      ? `/asset-types?client_id=${encodeURIComponent(effectiveClientId)}&match_vertical=true`
       : "/asset-types";
     void apiFetch<AssetType[]>(url)
       .then(setAssetTypes)
@@ -235,7 +230,7 @@ export function AssetRegisterModal({
   function resetForm() {
     setName("");
     setAssetTypeId("");
-    setFreeTextCategory("general");
+    setAssetTypeName("");
     touched.current = new Set();
     setModel("");
     setSerial("");
@@ -270,8 +265,7 @@ export function AssetRegisterModal({
       setError(t("template_required"));
       return;
     }
-    // Require asset type when library is non-empty
-    if (assetTypes.length > 0 && !assetTypeId) {
+    if (!assetTypeName.trim() && !assetTypeId) {
       setError(t("select_asset_type"));
       return;
     }
@@ -301,11 +295,10 @@ export function AssetRegisterModal({
         schedule: scheduleEnabled ? { template_id: templateId, frequency } : undefined,
       };
 
-      // A1: prefer asset_type_id; fall back to free-text category for pre-backfill tenants
       if (assetTypeId) {
         body.asset_type_id = assetTypeId;
       } else {
-        body.category = freeTextCategory.trim() || "general";
+        body.asset_type_name = assetTypeName.trim();
       }
 
       await apiFetch("/assets", { method: "POST", json: body });
@@ -324,11 +317,6 @@ export function AssetRegisterModal({
     (clients.length === 1 ? clients[0] : null) ||
     (clientId ? clients.find((c) => c.id === clientId) : null);
 
-  // Vertical label for the "Recommended for …" optgroup
-  const vertical = verticals.find((v) => v.code === effectiveClient?.vertical_code);
-  const verticalLabel = vertical
-    ? verticalName(vertical, lang)
-    : (effectiveClient?.vertical_code ?? undefined);
   const selectedType = assetTypes.find((ty) => ty.id === assetTypeId);
 
   return (
@@ -413,7 +401,6 @@ export function AssetRegisterModal({
             />
           </div>
 
-          {/* ── A1: Asset Type Picker ──────────────────────────────────── */}
           <div>
             <label className="mb-1 block text-sm font-medium">{t("asset_type")} *</label>
             <AssetTypePicker
@@ -421,12 +408,23 @@ export function AssetRegisterModal({
               value={assetTypeId}
               onChange={(id) => {
                 setAssetTypeId(id);
+                const ty = assetTypes.find((x) => x.id === id);
+                if (ty) {
+                  if (!touched.current.has("maxAgeYears") && ty.default_max_age_years != null) {
+                    setMaxAgeYears(ty.default_max_age_years);
+                  }
+                  if (!touched.current.has("criticality") && ty.default_criticality != null) {
+                    setCriticality(ty.default_criticality as AssetCriticality);
+                  }
+                  if (!touched.current.has("frequency") && ty.default_frequency != null) {
+                    setFrequency(ty.default_frequency);
+                  }
+                }
               }}
+              typeName={assetTypeName}
+              onTypeNameChange={setAssetTypeName}
               loading={assetTypesLoading}
               userRole={me?.role}
-              verticalLabel={verticalLabel}
-              freeTextCategory={freeTextCategory}
-              onFreeTextChange={setFreeTextCategory}
               required
             />
             {selectedType && hasTypeDefaults(selectedType) && (
@@ -589,6 +587,7 @@ export function AssetRegisterModal({
                   <option value="weekly">{t("frequency_weekly")}</option>
                   <option value="monthly">{t("frequency_monthly")}</option>
                   <option value="quarterly">{t("frequency_quarterly")}</option>
+                  <option value="semi_annual">{t("frequency_semi_annual")}</option>
                   <option value="yearly">{t("frequency_yearly")}</option>
                 </select>
               </div>

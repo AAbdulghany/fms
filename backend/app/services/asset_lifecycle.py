@@ -127,26 +127,34 @@ def trigger_replacement(db: Session, asset: Asset) -> WorkOrder:
 def on_work_order_completed(db: Session, work_order: WorkOrder) -> None:
     """
     Hook to call when a work order is completed.
-    Increments asset repair count and checks lifecycle.
+    Increments asset repair count (corrective only) and checks lifecycle.
+    Automation Plan #1: finishing a preventive WO opens the next scheduled action.
     """
     if not work_order.asset_id:
         return
-    
+
+    # Automation Plan #1 — advance PM series / seed next open WO
+    if work_order.source == WorkOrderSource.preventive:
+        from app.services.maintenance_schedules import on_preventive_work_order_finished
+
+        on_preventive_work_order_finished(db, work_order)
+        return
+
     asset = db.get(Asset, work_order.asset_id)
     if not asset:
         return
-    
+
     # Skip if this is a replacement work order
     if work_order.category == "replacement":
         return
-    
-    # Increment repair count
+
+    # Increment repair count (CM / other non-PM work only)
     asset.current_repair_count += 1
     db.add(asset)
-    
+
     # Check lifecycle
     status = check_lifecycle(db, asset.id)
-    
+
     # If end of life, trigger replacement
     if status == AssetLifecycleStatus.end_of_life:
         trigger_replacement(db, asset)

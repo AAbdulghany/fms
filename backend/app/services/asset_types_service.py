@@ -27,7 +27,7 @@ from app.models.asset_types import (
 )
 
 # Allowed frequency values for tenant types (locked A1 decision)
-ALLOWED_FREQUENCIES = frozenset({"monthly", "quarterly", "yearly"})
+ALLOWED_FREQUENCIES = frozenset({"monthly", "quarterly", "semi_annual", "yearly"})
 
 
 def _utcnow() -> datetime:
@@ -228,6 +228,107 @@ def _find_report_template(
 # ---------------------------------------------------------------------------
 # Create custom type
 # ---------------------------------------------------------------------------
+
+
+def _slug_code(label: str) -> str:
+    """Build an immutable code slug from a free-text type label."""
+    raw = (label or "").strip().lower()
+    out = []
+    prev_us = False
+    for ch in raw:
+        if ch.isalnum():
+            out.append(ch)
+            prev_us = False
+        elif not prev_us:
+            out.append("_")
+            prev_us = True
+    code = "".join(out).strip("_")[:64]
+    return code or "general"
+
+
+def find_or_create_asset_type_by_label(
+    db: Session,
+    tenant_id: UUID,
+    label: str,
+    *,
+    name_ar: str | None = None,
+) -> AssetType:
+    """Match by code / name_en (case-insensitive) or create a custom type.
+
+    Used when registering an asset by typing the type name.
+    """
+    label = (label or "").strip()
+    if not label:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="ASSET_TYPE_REQUIRED")
+
+    existing = db.scalar(
+        select(AssetType).where(
+            AssetType.tenant_id == tenant_id,
+            AssetType.is_active.is_(True),
+            func.lower(AssetType.name_en) == label.lower(),
+        )
+    )
+    if existing:
+        return existing
+
+    code = _slug_code(label)
+    by_code = db.scalar(
+        select(AssetType).where(
+            AssetType.tenant_id == tenant_id,
+            func.lower(AssetType.code) == code.lower(),
+        )
+    )
+    if by_code:
+        if not by_code.is_active:
+            by_code.is_active = True
+            by_code.updated_at = _utcnow()
+        return by_code
+
+    # Unique-ify code if a soft-conflict exists with different name
+    base = code
+    n = 2
+    while True:
+        clash = db.scalar(
+            select(AssetType).where(
+                AssetType.tenant_id == tenant_id,
+                func.lower(AssetType.code) == code.lower(),
+            )
+        )
+        if not clash:
+            break
+        code = f"{base}_{n}"[:64]
+        n += 1
+
+    return create_asset_type(
+        db,
+        tenant_id,
+        code=code,
+        name_en=label,
+        name_ar=(name_ar or label).strip() or label,
+        vertical_codes=[],
+        default_max_age_years=None,
+        default_max_repair_count=None,
+        default_criticality=None,
+        default_frequency=None,
+        default_report_template_id=None,
+    )
+
+
+def archive_all_asset_types(db: Session, tenant_id: UUID) -> int:
+    """Soft-archive every tenant asset type (library reset)."""
+    rows = list(
+        db.scalars(
+            select(AssetType).where(
+                AssetType.tenant_id == tenant_id,
+                AssetType.is_active.is_(True),
+            )
+        ).all()
+    )
+    for at in rows:
+        at.is_active = False
+        at.updated_at = _utcnow()
+    db.flush()
+    return len(rows)
 
 
 def create_asset_type(

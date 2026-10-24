@@ -145,6 +145,13 @@ def list_asset_types(
     vertical: str | None = Query(None),
     include_inactive: bool = Query(False),
     asset_type_id: UUID | None = Query(None),
+    match_vertical: bool = Query(
+        False,
+        description=(
+            "When true with client_id or vertical, return only types tagged for that "
+            "vertical (plus untagged/universal types). Recommended always true for matches."
+        ),
+    ),
 ) -> list[AssetTypeOut]:
     # client_id scope check
     if client_id:
@@ -165,11 +172,18 @@ def list_asset_types(
     elif vertical:
         recommended_codes = {vertical}
 
+    def _type_codes(at: AssetType) -> set[str]:
+        return {tv.vertical.code for tv in at.asset_type_verticals if tv.vertical}
+
     def _is_recommended(at: AssetType) -> bool:
         if not recommended_codes:
             return False
-        type_codes = {tv.vertical.code for tv in at.asset_type_verticals if tv.vertical}
-        return bool(type_codes & recommended_codes)
+        codes = _type_codes(at)
+        # Untagged types are treated as universal (usable for any vertical)
+        return (not codes) or bool(codes & recommended_codes)
+
+    if match_vertical and recommended_codes:
+        rows = [at for at in rows if _is_recommended(at)]
 
     # Sort: recommended first, then by name_en
     rows.sort(key=lambda at: (not _is_recommended(at), at.name_en))
@@ -182,6 +196,37 @@ def list_asset_types(
 # ---------------------------------------------------------------------------
 # POST /asset-types
 # ---------------------------------------------------------------------------
+
+
+@router.post("/archive-all")
+def archive_all_types(
+    db: Annotated[Session, Depends(get_db)],
+    current: Annotated[User, Depends(get_current_user)],
+    _: Annotated[User, _write],
+) -> dict:
+    """Soft-archive every active tenant asset type (library reset).
+
+    Intended for local/dev wipe only — blocked when APP_ENV is production.
+    """
+    from app.config import settings
+    from app.services.asset_types_service import archive_all_asset_types
+
+    env = str(getattr(settings, "app_env", "") or "").lower()
+    if env in ("production", "pilot"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="ARCHIVE_ALL_DEV_ONLY")
+
+    n = archive_all_asset_types(db, current.tenant_id)
+    write_audit(
+        db,
+        tenant_id=current.tenant_id,
+        actor=current,
+        action="archive_all",
+        entity_type="asset_type",
+        entity_id=str(current.tenant_id),
+        after={"archived": n},
+    )
+    db.commit()
+    return {"archived": n}
 
 
 @router.post("", response_model=AssetTypeOut, status_code=status.HTTP_201_CREATED)
@@ -238,6 +283,42 @@ def get_asset_type(
 # ---------------------------------------------------------------------------
 
 
+@router.post("/{asset_type_id}/apply-pm-schedules")
+def apply_pm_schedules(
+    asset_type_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current: Annotated[User, Depends(get_current_user)],
+    _: Annotated[User, _write],
+    only_missing: bool = Query(
+        False,
+        description="If true, only create schedules for assets that have none.",
+    ),
+) -> dict:
+    """Push AssetType default_frequency + template onto all assets of this type."""
+    at = get_asset_type_or_404(db, current.tenant_id, asset_type_id)
+    from app.services.asset_type_pm import apply_type_pm_to_assets
+
+    result = apply_type_pm_to_assets(
+        db, tenant_id=current.tenant_id, asset_type=at, only_missing=only_missing
+    )
+    if not result.get("ok"):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail=result.get("reason") or "APPLY_PM_FAILED",
+        )
+    write_audit(
+        db,
+        tenant_id=current.tenant_id,
+        actor=current,
+        action="apply_pm_schedules",
+        entity_type="asset_type",
+        entity_id=str(at.id),
+        after=result,
+    )
+    db.commit()
+    return result
+
+
 @router.patch("/{asset_type_id}", response_model=AssetTypeOut)
 def update_asset_type_endpoint(
     asset_type_id: UUID,
@@ -245,6 +326,10 @@ def update_asset_type_endpoint(
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
     _: Annotated[User, _write],
+    apply_schedules: bool = Query(
+        False,
+        description="After saving PM defaults, sync MaintenanceSchedule on linked assets.",
+    ),
 ) -> AssetTypeOut:
     # Guard: code in body → immutable (check model_fields_set, not dump, to catch explicit code)
     raw = body.model_dump(exclude_unset=True)
@@ -283,6 +368,16 @@ def update_asset_type_endpoint(
     at.updated_at = datetime.now(timezone.utc)
     db.flush()
 
+    pm_result = None
+    if apply_schedules and (
+        "default_frequency" in raw or "default_report_template_id" in raw
+    ):
+        from app.services.asset_type_pm import apply_type_pm_to_assets
+
+        pm_result = apply_type_pm_to_assets(
+            db, tenant_id=current.tenant_id, asset_type=at, only_missing=False
+        )
+
     write_audit(
         db,
         tenant_id=current.tenant_id,
@@ -290,7 +385,7 @@ def update_asset_type_endpoint(
         action="update",
         entity_type="asset_type",
         entity_id=str(at.id),
-        after={"code": at.code},
+        after={"code": at.code, "pm_apply": pm_result},
     )
     db.commit()
     db.refresh(at)

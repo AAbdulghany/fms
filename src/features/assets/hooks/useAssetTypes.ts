@@ -26,26 +26,32 @@ interface UseAssetTypesResult {
 /**
  * Load `/asset-types`.  When `clientId` is provided the server marks
  * types recommended for that client's vertical and sorts them first.
+ * Pass `matchVertical` to exclude types not tagged for the client vertical.
  */
-export function useAssetTypes(clientId?: string): UseAssetTypesResult {
+export function useAssetTypes(
+  clientId?: string,
+  options?: { matchVertical?: boolean }
+): UseAssetTypesResult {
   const { i18n } = useTranslation();
   const [types, setTypes] = useState<AssetType[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const matchVertical = options?.matchVertical ?? false;
 
   const reload = useCallback(() => {
     setLoading(true);
     setError(null);
-    const url = clientId
-      ? `/asset-types?client_id=${encodeURIComponent(clientId)}`
-      : "/asset-types";
+    const qs = new URLSearchParams();
+    if (clientId) qs.set("client_id", clientId);
+    if (matchVertical) qs.set("match_vertical", "true");
+    const url = qs.toString() ? `/asset-types?${qs}` : "/asset-types";
     void apiFetch<AssetType[]>(url)
       .then((data) => setTypes(data))
       .catch((e: unknown) =>
         setError(e instanceof Error ? e.message : "Failed to load asset types")
       )
       .finally(() => setLoading(false));
-  }, [clientId]);
+  }, [clientId, matchVertical]);
 
   useEffect(() => {
     reload();

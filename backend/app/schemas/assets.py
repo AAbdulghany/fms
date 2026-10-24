@@ -52,6 +52,8 @@ class AssetCreate(BaseModel):
     name: str
     category: str = "general"
     asset_type_id: Optional[UUID] = None
+    """Free-text type label — creates the type if missing."""
+    asset_type_name: Optional[str] = None
     parent_asset_id: Optional[UUID] = None
     location_id: Optional[UUID] = None
     model: Optional[str] = None

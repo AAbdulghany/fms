@@ -89,15 +89,14 @@ def resolve_asset_type_for_write(
     tenant_id: UUID,
     asset_type_id: Optional[UUID],
     category: str,
+    asset_type_name: Optional[str] = None,
 ) -> ResolvedAssetType:
     """Resolve asset type and enforce I1 for an asset create operation.
 
-    Resolution order (§5.3):
-    1. If ``asset_type_id`` is set: load the type; validate tenant, active.
-       If body also sends a non-default ``category`` that differs → 400.
-       category = type.code.
-    2. Else: look up tenant type by exact code match and link silently.
-       category stays as-is.
+    Resolution order:
+    1. ``asset_type_id`` if set (existing library pick).
+    2. ``asset_type_name`` — find or create by typed label (preferred register path).
+    3. Else silent link by ``category`` code.
     """
     if asset_type_id is not None:
         at = db.get(AssetType, asset_type_id)
@@ -105,14 +104,19 @@ def resolve_asset_type_for_write(
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_ASSET_TYPE")
         if not at.is_active:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="ASSET_TYPE_ARCHIVED")
-        # Category mismatch: caller sent a category that differs from the type code
         if category and category != "general" and category != at.code:
             raise HTTPException(
                 status.HTTP_400_BAD_REQUEST, detail="ASSET_TYPE_CATEGORY_MISMATCH"
             )
         return ResolvedAssetType(category=at.code, asset_type=at)
 
-    # Step 2: silent link by code
+    label = (asset_type_name or "").strip()
+    if label:
+        from app.services.asset_types_service import find_or_create_asset_type_by_label
+
+        at = find_or_create_asset_type_by_label(db, tenant_id, label)
+        return ResolvedAssetType(category=at.code, asset_type=at)
+
     linked = get_tenant_asset_type_by_code(db, tenant_id, category)
     return ResolvedAssetType(category=category, asset_type=linked)
 

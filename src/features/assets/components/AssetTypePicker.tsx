@@ -1,11 +1,7 @@
 /**
- * A1 — Asset Type Picker.
- *
- * A native <select> that groups types into "Recommended" and "All types".
- * When the tenant library is empty, it renders an empty-state hint and
- * (for admins) a link to the asset-type library.  A free-text fallback
- * is provided so registration is never blocked pre-backfill.
+ * Asset type field — type a name (creates if new) or pick an existing one.
  */
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import type { AssetType, UserRole } from "@/lib/types";
@@ -13,16 +9,15 @@ import { localizedName } from "@/features/assets/hooks/useAssetTypes";
 
 interface AssetTypePickerProps {
   types: AssetType[];
+  /** Selected existing type id (optional when using free text) */
   value: string;
   onChange: (typeId: string) => void;
+  /** Free-text label sent as asset_type_name */
+  typeName: string;
+  onTypeNameChange: (name: string) => void;
   loading?: boolean;
   error?: string | null;
   userRole?: UserRole;
-  /** Shown as the "Recommended for …" group label when vertical is known */
-  verticalLabel?: string;
-  /** Free-text fallback when library is empty */
-  freeTextCategory?: string;
-  onFreeTextChange?: (v: string) => void;
   required?: boolean;
 }
 
@@ -30,100 +25,101 @@ export function AssetTypePicker({
   types,
   value,
   onChange,
+  typeName,
+  onTypeNameChange,
   loading,
   error,
   userRole,
-  verticalLabel,
-  freeTextCategory,
-  onFreeTextChange,
   required,
 }: AssetTypePickerProps) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
+  const [open, setOpen] = useState(false);
 
   const isAdmin =
     userRole === "company_admin" || userRole === "super_admin" || userRole === "super_user";
 
-  const recommended = types.filter((ty) => ty.recommended);
-  const rest = types.filter((ty) => !ty.recommended);
+  const suggestions = useMemo(() => {
+    const q = typeName.trim().toLowerCase();
+    if (!q) return types.slice(0, 12);
+    return types
+      .filter(
+        (ty) =>
+          ty.name_en.toLowerCase().includes(q) ||
+          ty.name_ar.toLowerCase().includes(q) ||
+          ty.code.toLowerCase().includes(q)
+      )
+      .slice(0, 12);
+  }, [types, typeName]);
 
-  // ── Empty library ─────────────────────────────────────────────────────────
-  if (!loading && types.length === 0) {
-    return (
-      <div className="space-y-2">
-        <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-sm text-neutral-600">
-          <p>{t("no_asset_types_user")}</p>
-          {isAdmin && (
-            <Link
-              to="/asset-types"
-              className="mt-1 inline-block text-primary-600 underline hover:text-primary-700"
-            >
-              {t("no_asset_types_admin")}
-            </Link>
-          )}
-        </div>
-        {/* Free-text fallback so registration is never blocked */}
-        {onFreeTextChange && (
-          <div>
-            <label className="mb-1 block text-xs text-neutral-500">{t("category")}</label>
-            <input
-              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
-              value={freeTextCategory ?? ""}
-              onChange={(e) => onFreeTextChange(e.target.value)}
-              placeholder={t("asset_category_placeholder")}
-            />
-          </div>
-        )}
-      </div>
-    );
+  function pick(ty: AssetType) {
+    onChange(ty.id);
+    onTypeNameChange(localizedName(ty, lang));
+    setOpen(false);
   }
 
-  // ── Normal picker ─────────────────────────────────────────────────────────
+  function onInput(v: string) {
+    onTypeNameChange(v);
+    // Typing a new name clears a previous id pick so find-or-create runs
+    if (value) {
+      const selected = types.find((t) => t.id === value);
+      if (!selected || localizedName(selected, lang) !== v) {
+        onChange("");
+      }
+    }
+    setOpen(true);
+  }
+
   return (
     <div className="space-y-1">
-      <select
-        required={required && types.length > 0}
-        disabled={loading}
-        data-testid="asset-type-picker"
-        className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm disabled:bg-neutral-100"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        aria-label={t("select_asset_type")}
-      >
-        <option value="">{loading ? t("loading") : t("select_asset_type")}</option>
-
-        {/* Recommended group */}
-        {recommended.length > 0 && (
-          <optgroup
-            label={
-              verticalLabel
-                ? `${t("recommended_for_vertical")} ${verticalLabel}`
-                : t("recommended_for_vertical")
-            }
-          >
-            {recommended.map((ty) => (
-              <option key={ty.id} value={ty.id}>
-                {localizedName(ty, lang)}
-              </option>
+      <div className="relative">
+        <input
+          required={required}
+          disabled={loading}
+          list="asset-type-suggestions"
+          data-testid="asset-type-picker"
+          className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm disabled:bg-neutral-100"
+          value={typeName}
+          onChange={(e) => onInput(e.target.value)}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          placeholder={t("asset_type_placeholder") || "e.g. Chiller, Elevator, Pump…"}
+          aria-label={t("select_asset_type")}
+          autoComplete="off"
+        />
+        <datalist id="asset-type-suggestions">
+          {types.map((ty) => (
+            <option key={ty.id} value={localizedName(ty, lang)} />
+          ))}
+        </datalist>
+        {open && suggestions.length > 0 && (
+          <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-md border border-neutral-200 bg-white py-1 shadow-lg">
+            {suggestions.map((ty) => (
+              <li key={ty.id}>
+                <button
+                  type="button"
+                  className="w-full px-3 py-1.5 text-start text-sm hover:bg-primary-50"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => pick(ty)}
+                >
+                  {localizedName(ty, lang)}
+                  <span className="ms-2 text-xs text-neutral-400">{ty.code}</span>
+                </button>
+              </li>
             ))}
-          </optgroup>
+          </ul>
         )}
-
-        {/* All types */}
-        {rest.length > 0 && (
-          <optgroup label={t("all_asset_types")}>
-            {rest.map((ty) => (
-              <option key={ty.id} value={ty.id}>
-                {localizedName(ty, lang)}
-              </option>
-            ))}
-          </optgroup>
-        )}
-      </select>
-
-      {error && (
-        <p className="text-xs text-error-main">{error}</p>
+      </div>
+      <p className="text-xs text-neutral-500">
+        {t("asset_type_create_hint") ||
+          "Type a name — if it doesn’t exist yet, it will be created for next time."}
+      </p>
+      {isAdmin && (
+        <Link to="/asset-types" className="text-xs text-primary-600 underline hover:text-primary-700">
+          {t("manage_asset_types") || "Manage asset types"}
+        </Link>
       )}
+      {error && <p className="text-xs text-error-main">{error}</p>}
     </div>
   );
 }
