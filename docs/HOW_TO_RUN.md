@@ -21,12 +21,15 @@
 ## Minimal local start
 
 ```powershell
+cd E:\03Workset\fms
 docker compose -f docker-compose-local.yml -f docker-compose-hybrid.yml up -d
 uv sync
 uv run alembic -c backend/alembic.ini upgrade head
-$env:PYTHONPATH = "backend"; uv run python -m app.seed_super
-cd backend; $env:PYTHONPATH = "."; uv run uvicorn app.main:app --reload --port 8000
-# second terminal: npm install && npm run dev  →  http://localhost:5173
+# Clean Program A seed (1 hospital client + roles):
+cd backend; $env:PYTHONPATH = "."; ..\.venv\Scripts\python.exe -m app.cli.clean_dev_seed
+..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+# second terminal (repo root): npm install && npm run dev  →  http://127.0.0.1:5173
+# Login: admin@demo.com / admin123
 ```
 
 Architecture: [ARCHITECTURE.md](./ARCHITECTURE.md)

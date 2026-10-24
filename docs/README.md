@@ -24,6 +24,8 @@
 | Deploy | [guides/deployment.md](./guides/deployment.md) |
 | Understand architecture | [ARCHITECTURE.md](./ARCHITECTURE.md) |
 | See current wave tickets | [phase3-restructure/SPRINT_BACKLOG_NT.md](./phase3-restructure/SPRINT_BACKLOG_NT.md) |
+| Customer redesign programs (A/B/C) | [redesign/README.md](./redesign/README.md) |
+| Active slice A3–A4 (Parts + VAT) | [redesign/A3_A4_PARTS_VAT.md](./redesign/A3_A4_PARTS_VAT.md) |
 
 ---
 
