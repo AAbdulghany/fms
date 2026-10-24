@@ -7,6 +7,7 @@ import { resolveEffectiveReportSchema } from "@/lib/reportSchema";
 import type { AuditLog, Comment, MaintenanceReport, ReportTemplate, WorkOrder, WorkOrderDocument, WorkOrderStatus, WorkOrderUserBrief } from "@/lib/types";
 import { workOrderStatusPillClass } from "@/lib/workOrderDisplay";
 import { WorkOrderRequestReviewModal } from "@/features/work-orders/components/WorkOrderRequestReviewModal";
+import { WorkOrderPartsPanel } from "@/features/work-orders/components/WorkOrderPartsPanel";
 
 interface UserMe {
   id: string;
@@ -664,6 +665,13 @@ export function WorkOrderDetailPage() {
           )}
         </dl>
       </div>
+
+      {id && (
+        <WorkOrderPartsPanel
+          workOrderId={id}
+          canEdit={!!canAdminWO}
+        />
+      )}
 
       {canReviewRequest && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3">
