@@ -1,4 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
@@ -10,7 +11,7 @@ import { apiFetch } from "@/lib/api";
 
 import type { PaginatedWorkOrders, WorkOrder } from "@/lib/types";
 
-import { urgencyBadgeClass, workOrderStatusPillClass } from "@/lib/workOrderDisplay";
+import { displayWorkOrderTitle, urgencyBadgeClass, workOrderStatusPillClass } from "@/lib/workOrderDisplay";
 
 import { FilterBar } from "@/shared/components/FilterBar";
 
@@ -63,6 +64,12 @@ interface AssetOption {
 
   category: string;
 
+  site_id?: string;
+
+  site_name?: string | null;
+
+  company_name?: string | null;
+
 }
 
 
@@ -72,6 +79,8 @@ type WoView = "all" | "requests" | "my_requests";
 
 
 const ADMIN_ROLES = new Set(["super_admin", "company_admin"]);
+
+const CREATE_ROLES = new Set(["super_admin", "company_admin", "company_engineer"]);
 
 const REQUESTER_ROLES = new Set(["client_admin", "site_manager"]);
 
@@ -111,7 +120,7 @@ function statusLabel(status: string, t: (key: string) => string): string {
 
 export function WorkOrdersPage() {
 
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -134,6 +143,16 @@ export function WorkOrdersPage() {
   const [sites, setSites] = useState<Site[]>([]);
 
   const [assets, setAssets] = useState<AssetOption[]>([]);
+
+  const [assetQuery, setAssetQuery] = useState("");
+
+  const [assetHits, setAssetHits] = useState<AssetOption[]>([]);
+
+  const [pickedAssetLabel, setPickedAssetLabel] = useState("");
+
+  const [pickedAssetMeta, setPickedAssetMeta] = useState("");
+
+  const [autoTitle, setAutoTitle] = useState("");
 
   const [requestSites, setRequestSites] = useState<Site[]>([]);
 
@@ -163,11 +182,11 @@ export function WorkOrdersPage() {
 
   const woView = (searchParams.get("view") as WoView) || "all";
 
-  const canDirectCreate = me ? ADMIN_ROLES.has(me.role) : false;
+  const canDirectCreate = me ? CREATE_ROLES.has(me.role) : false;
 
   const canRequest = me ? REQUESTER_ROLES.has(me.role) : false;
 
-  const canApproveRequests = canDirectCreate;
+  const canApproveRequests = me ? ADMIN_ROLES.has(me.role) : false;
 
   const showFilters = me && ["client_admin", "company_admin", "super_admin", "site_manager"].includes(me.role);
 
@@ -427,17 +446,25 @@ export function WorkOrdersPage() {
   }, [me, canRequest, searchParams]);
 
   useEffect(() => {
-    if (searchParams.get("open") !== "create" || !me || !canDirectCreate) return;
+    if (searchParams.get("open") !== "create") return;
+    if (me && !canDirectCreate) return;
 
     setModalMode("create");
+    setIsModalOpen(true);
+    if (!me) return;
     const assetIdParam = searchParams.get("asset_id");
 
     if (assetIdParam) {
       void (async () => {
         try {
-          const asset = await apiFetch<{ id: string; site_id: string }>(`/assets/${assetIdParam}`);
+          const asset = await apiFetch<{ id: string; name?: string; site_id: string }>(`/assets/${assetIdParam}`);
           const siteList = await apiFetch<Site[]>("/sites");
           const site = siteList.find((s) => s.id === asset.site_id);
+          if (asset.name) {
+            setAssetQuery(asset.name);
+            setPickedAssetLabel(asset.name);
+            setPickedAssetMeta(site?.name || "");
+          }
           if (site) {
             setForm((f) => ({
               ...f,
@@ -456,12 +483,6 @@ export function WorkOrdersPage() {
       })();
     }
 
-    setIsModalOpen(true);
-
-    const next = new URLSearchParams(searchParams);
-    next.delete("open");
-    next.delete("asset_id");
-    setSearchParams(next, { replace: true });
   }, [me, canDirectCreate, searchParams]);
 
 
@@ -528,13 +549,106 @@ export function WorkOrdersPage() {
 
 
 
+  const clearCreateQuery = () => {
+    if (searchParams.get("open") === "create" || searchParams.get("asset_id")) {
+      const next = new URLSearchParams(searchParams);
+      next.delete("open");
+      next.delete("asset_id");
+      setSearchParams(next, { replace: true });
+    }
+  };
+
+  const closeWorkOrderModal = () => {
+    setIsModalOpen(false);
+    clearCreateQuery();
+  };
+
+  const dismissCreate = () => {
+    setIsModalOpen(false);
+    if (searchParams.get("open") === "create" && window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    clearCreateQuery();
+  };
+
   const openCreateModal = () => {
 
     setModalMode("create");
 
+    setForm((f) => ({ ...f, source: f.source === "request" ? "corrective" : f.source }));
+
+    void fetchSites();
+
     setIsModalOpen(true);
 
   };
+
+  useEffect(() => {
+    if (!isModalOpen) return;
+    const q = assetQuery.trim();
+    if (q.length < 2 || q === pickedAssetLabel) {
+      setAssetHits([]);
+      return;
+    }
+    const handle = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const res = await apiFetch<AssetOption[]>(`/assets?search=${encodeURIComponent(q)}`);
+          setAssetHits(res.slice(0, 6));
+        } catch {
+          setAssetHits([]);
+        }
+      })();
+    }, 250);
+    return () => window.clearTimeout(handle);
+  }, [assetQuery, isModalOpen, pickedAssetLabel]);
+
+  useEffect(() => {
+    const assetName = pickedAssetLabel.trim();
+    if (!isModalOpen || !assetName) {
+      setAutoTitle("");
+      return;
+    }
+    const source = modalMode === "request" ? "request" : form.source || "corrective";
+    const ar = i18n.language?.startsWith("ar");
+    const phrase = ar
+      ? source === "preventive"
+        ? "صيانة وقائية"
+        : source === "corrective"
+          ? "صيانة تصحيحية"
+          : "صيانة"
+      : source === "preventive"
+        ? "Preventive maintenance"
+        : source === "corrective"
+          ? "Corrective maintenance"
+          : t(source);
+    setAutoTitle(`${phrase} — ${assetName}`);
+  }, [isModalOpen, pickedAssetLabel, form.source, modalMode, i18n.language, t]);
+
+  async function pickAsset(hit: AssetOption) {
+    let clientId = sites.find((s) => s.id === hit.site_id)?.client_id || "";
+    if (!clientId && hit.site_id) {
+      try {
+        const siteList = await apiFetch<Site[]>("/sites");
+        setSites(siteList);
+        clientId = siteList.find((s) => s.id === hit.site_id)?.client_id || "";
+      } catch {
+        clientId = "";
+      }
+    }
+    setPickedAssetLabel(hit.name);
+    setPickedAssetMeta([hit.company_name, hit.site_name].filter(Boolean).join(" · "));
+    setAssetQuery(hit.name);
+    setAssetHits([]);
+    setForm((f) => ({
+      ...f,
+      asset_id: hit.id,
+      site_id: hit.site_id || f.site_id,
+      client_id: clientId || f.client_id,
+      title: f.title || hit.name,
+    }));
+  }
 
 
 
@@ -592,10 +706,11 @@ export function WorkOrdersPage() {
     }
 
     try {
-      await apiFetch(endpoint, {
+      const lang = i18n.language?.startsWith("ar") ? "ar" : "en";
+      await apiFetch(`${endpoint}?lang=${lang}`, {
         method: "POST",
         json: {
-          title: form.title,
+          title: autoTitle,
           description: form.description,
           urgency: form.urgency,
           client_id: clientId,
@@ -606,7 +721,7 @@ export function WorkOrdersPage() {
         },
       });
 
-      setIsModalOpen(false);
+      closeWorkOrderModal();
 
       setForm({
 
@@ -798,6 +913,15 @@ export function WorkOrdersPage() {
     }
   }, [isModalOpen, modalMode, lockedRequestCompany, lockedRequestSite, form.client_id, form.site_id]);
 
+  useEffect(() => {
+    if (!isModalOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [isModalOpen]);
+
   const viewTabs: { id: WoView; label: string; show: boolean }[] = [
 
     { id: "all", label: t("wo_tab_all"), show: true },
@@ -808,28 +932,21 @@ export function WorkOrdersPage() {
 
   ];
 
-
+  const nextWo =
+    rows.find((w) =>
+      ["assigned", "in_progress", "created", "on_hold"].includes(w.status)
+    ) ?? rows[0] ?? null;
+  const upNextRows = nextWo ? rows.filter((w) => w.id !== nextWo.id) : rows;
 
   return (
 
-    <div className="space-y-4">
+    <div className="space-y-3 lg:space-y-4">
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 lg:gap-3">
 
-        <h1 className="text-2xl font-semibold text-neutral-900">{t("my_work")}</h1>
+        <h1 className="text-xl font-semibold text-neutral-900 lg:text-2xl">{t("my_work")}</h1>
 
-      <StartNextHero
-        workOrder={
-          rows.find((w) =>
-            ["assigned", "in_progress", "created", "on_hold"].includes(w.status)
-          ) ?? rows[0] ?? null
-        }
-        canCreate={Boolean(canDirectCreate || canRequest)}
-        onCreate={canDirectCreate ? openCreateModal : canRequest ? openRequestModal : undefined}
-      />
-
-
-        <div className="flex flex-wrap gap-2">
+        <div className="hidden flex-wrap gap-2 lg:flex">
 
           {canDirectCreate && (
 
@@ -867,9 +984,15 @@ export function WorkOrdersPage() {
 
       </div>
 
+      <StartNextHero
+        workOrder={nextWo}
+        canCreate={Boolean(canDirectCreate || canRequest)}
+        onCreate={canDirectCreate ? openCreateModal : canRequest ? openRequestModal : undefined}
+      />
 
 
-      <div className="flex flex-wrap gap-2 border-b border-neutral-200 pb-1">
+
+      <div className="hidden flex-wrap gap-2 border-b border-neutral-200 pb-1 lg:flex">
 
         {viewTabs
 
@@ -913,61 +1036,194 @@ export function WorkOrdersPage() {
 
       {showFilters && (
 
-        <FilterBar
+        <div className="hidden lg:block">
 
-          showStatusFilter={woView === "all"}
+          <FilterBar
 
-          showUrgencyFilter
+            showStatusFilter={woView === "all"}
 
-          showDateRange
+            showUrgencyFilter
 
-          showSearch
+            showDateRange
 
-          showCompanyFilter={canDirectCreate || me?.role === "company_admin" || me?.role === "super_admin"}
+            showSearch
 
-          showSiteFilter
+            showCompanyFilter={Boolean(me && ADMIN_ROLES.has(me.role))}
 
-          companies={companies}
+            showSiteFilter
 
-          sites={sites}
+            companies={companies}
 
-          availableStatuses={statusOptions}
+            sites={sites}
 
-        />
+            availableStatuses={statusOptions}
+
+          />
+
+        </div>
 
       )}
 
 
 
-      {isModalOpen && (
+      {isModalOpen && createPortal(
 
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[80] flex h-dvh w-full overflow-hidden overscroll-none bg-[#F7F9FC] lg:items-center lg:justify-center lg:bg-black/50 lg:backdrop-blur-sm">
 
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+          <div className="flex h-dvh w-full flex-col overflow-hidden bg-[#F7F9FC] lg:h-auto lg:max-h-[90vh] lg:max-w-md lg:overflow-y-auto lg:rounded-xl lg:bg-white lg:p-6 lg:shadow-xl">
 
-            <h2 className="mb-4 text-xl font-bold text-neutral-900">
+            <header className="flex items-center gap-2 border-b border-neutral-200 bg-white px-3 py-3 lg:hidden">
+              <button
+                type="button"
+                className="min-h-11 min-w-11 text-lg text-neutral-900"
+                onClick={dismissCreate}
+                aria-label={t("back") || "Back"}
+              >
+                ‹
+              </button>
+              <h2 className="min-w-0 flex-1 truncate text-base font-bold text-neutral-900">
+                {modalMode === "request" ? t("request_work_order") : t("new_work_order")}
+              </h2>
+            </header>
+
+            <h2 className="mb-4 hidden text-xl font-bold text-neutral-900 lg:block">
 
               {modalMode === "request" ? t("request_work_order") : t("create_work_order")}
 
             </h2>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col lg:block lg:space-y-4">
+
+              <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:hidden">
+                <div className="rounded-xl border border-neutral-200 bg-white px-3 py-2.5">
+                  <label className="block text-sm font-bold text-neutral-900" htmlFor="phone-asset-search">
+                    {t("asset")}
+                  </label>
+                  <input
+                    id="phone-asset-search"
+                    type="search"
+                    className="mt-1 w-full bg-transparent text-base text-neutral-900 outline-none placeholder:text-neutral-500"
+                    placeholder={t("scan_or_search")}
+                    value={assetQuery}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setAssetQuery(next);
+                      if (next !== pickedAssetLabel) {
+                        setForm((f) => ({ ...f, asset_id: "" }));
+                      }
+                    }}
+                    autoComplete="off"
+                  />
+                  {form.asset_id && pickedAssetLabel === assetQuery && pickedAssetMeta && (
+                    <p className="mt-1 text-xs text-neutral-500">{pickedAssetMeta}</p>
+                  )}
+                  {assetHits.length > 0 && (
+                    <ul className="mt-2 max-h-40 overflow-auto rounded-lg border border-neutral-200">
+                      {assetHits.map((hit) => (
+                        <li key={hit.id}>
+                          <button
+                            type="button"
+                            className="w-full px-3 py-2 text-start text-sm hover:bg-neutral-50"
+                            onClick={() => void pickAsset(hit)}
+                          >
+                            <span className="font-medium text-neutral-900">{hit.name}</span>
+                            {(hit.site_name || hit.company_name) && (
+                              <span className="mt-0.5 block text-xs text-neutral-500">
+                                {[hit.company_name, hit.site_name].filter(Boolean).join(" · ")}
+                              </span>
+                            )}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-neutral-200 bg-white px-3 py-2.5">
+                  <p className="text-sm font-bold text-neutral-900">{t("priority")}</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {(["normal", "urgent", "emergency"] as const).map((level) => {
+                      const on = form.urgency === level;
+                      return (
+                        <button
+                          key={level}
+                          type="button"
+                          className={
+                            on
+                              ? "rounded-lg bg-primary-700 px-3 py-1.5 text-sm font-semibold text-white"
+                              : "rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-800"
+                          }
+                          onClick={() => setForm((f) => ({ ...f, urgency: level }))}
+                        >
+                          {t(level)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {modalMode === "create" && (
+                  <div className="rounded-xl border border-neutral-200 bg-white px-3 py-2.5">
+                    <p className="text-sm font-bold text-neutral-900">{t("source")}</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {(["corrective", "preventive"] as const).map((src) => {
+                        const on = form.source === src;
+                        return (
+                          <button
+                            key={src}
+                            type="button"
+                            className={
+                              on
+                                ? "rounded-lg bg-primary-700 px-3 py-1.5 text-sm font-semibold text-white"
+                                : "rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-800"
+                            }
+                            onClick={() => setForm((f) => ({ ...f, source: src }))}
+                          >
+                            {t(src)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <label className="rounded-xl border border-neutral-200 bg-white px-3 py-2.5">
+                  <span className="block text-sm font-bold text-neutral-900">{t("description")}</span>
+                  <textarea
+                    className="mt-1 w-full resize-none bg-transparent text-base text-neutral-900 outline-none placeholder:text-neutral-500"
+                    rows={3}
+                    placeholder={t("description")}
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  />
+                </label>
+
+                <div className="rounded-xl border border-dashed border-neutral-300 bg-white px-3 py-2.5">
+                  <p className="text-xs font-semibold text-neutral-500">{t("title")}</p>
+                  <p className="mt-1 text-sm font-semibold text-neutral-900">
+                    {autoTitle || t("wo_title_needs_asset")}
+                  </p>
+                </div>
+
+                <button
+                  type="submit"
+                  className="mt-auto min-h-11 w-full shrink-0 rounded-xl bg-primary-700 text-sm font-bold text-white"
+                >
+                  {modalMode === "request" ? t("submit_request") : t("create_work_order")}
+                </button>
+              </div>
+
+              <div className="hidden space-y-4 lg:block">
 
               <div>
 
-                <label className="block text-sm font-medium text-neutral-700">{t("title")}</label>
+                <p className="block text-sm font-medium text-neutral-700">{t("title")}</p>
 
-                <input
+                <p className="mt-1 rounded-md border border-neutral-200 bg-neutral-50 p-2 text-sm text-neutral-900">
 
-                  className="w-full rounded-md border border-neutral-300 p-2"
+                  {autoTitle || t("wo_title_needs_asset")}
 
-                  value={form.title}
-
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-
-                  required
-
-                />
+                </p>
 
               </div>
 
@@ -1297,7 +1553,7 @@ export function WorkOrdersPage() {
 
                   type="button"
 
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={dismissCreate}
 
                   className="rounded-md px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100"
 
@@ -1321,11 +1577,15 @@ export function WorkOrdersPage() {
 
               </div>
 
+              </div>
+
             </form>
 
           </div>
 
-        </div>
+        </div>,
+
+        document.body
 
       )}
 
@@ -1349,7 +1609,54 @@ export function WorkOrdersPage() {
 
 
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm">
+      {/* D FINAL · F Queue — phone card stack */}
+      <div className="space-y-2 lg:hidden">
+        <p className="text-xs font-semibold text-neutral-500">{t("up_next")}</p>
+        <ul className="space-y-2">
+          {upNextRows.length === 0 && (
+            <li className="rounded-xl border border-neutral-200 bg-neutral-0 px-4 py-6 text-center text-sm text-neutral-500">
+              {rows.length === 0 ? t("no_results") : t("queue_empty_title")}
+            </li>
+          )}
+          {upNextRows.map((w) => {
+            return (
+              <li key={w.id}>
+                <Link
+                  to={`/work-orders/${w.id}`}
+                  className="block rounded-xl border border-neutral-200 bg-neutral-0 px-3 py-3 shadow-sm active:bg-neutral-50"
+                >
+                  <p className="truncate text-sm font-bold text-neutral-900">
+                    {displayWorkOrderTitle(w, i18n.language)}
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-neutral-500">
+                    {w.asset_name || w.asset_category || w.site_name || ""}
+                  </p>
+                  <span className="mt-1.5 flex flex-wrap gap-1.5">
+                    <span className={workOrderStatusPillClass(w.status)}>{statusLabel(w.status, t)}</span>
+                    <span className={urgencyBadgeClass(w.urgency)}>{t(w.urgency)}</span>
+                  </span>
+                  {canApproveRequests && woView === "requests" && w.status === "requested" ? (
+                    <button
+                      type="button"
+                      className="mt-2 min-h-10 w-full rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setReviewTarget(w);
+                      }}
+                    >
+                      {t("review") || t("actions") || "Review"}
+                    </button>
+                  ) : null}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm lg:block">
 
         <table className="min-w-full text-start text-sm">
 
@@ -1407,7 +1714,7 @@ export function WorkOrdersPage() {
 
                   <Link className="text-primary-600 hover:underline" to={`/work-orders/${w.id}`}>
 
-                    {w.title || w.id.slice(0, 8)}
+                    {displayWorkOrderTitle(w, i18n.language)}
 
                   </Link>
 

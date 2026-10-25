@@ -9,7 +9,7 @@
 | Tab | Route (v1) | Job |
 |-----|------------|-----|
 | Queue | `/work-orders` | Start next, create WO, change status |
-| Scan | `/assets` | Find/open asset (QR later) |
+| Scan | `/scan` | Camera QR + enter code → asset (list still under More / browse) |
 | Time | `/labor` | Log time |
 | More | opens sidebar | Overflow — TBD |
 

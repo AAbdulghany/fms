@@ -13,8 +13,6 @@ from app.schemas import MaintenanceReportOut, RejectReportBody
 from app.services.audit import write_audit
 from app.services.maintenance_report_pdf import resolve_report_locale
 from app.services.pdf import render_report_summary_pdf
-from app.services.platform_bootstrap import DEFAULT_BRANDING
-from app.services.report_context import merge_report_answers, resolve_report_inspector
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -30,7 +28,11 @@ _approvers = Depends(
 
 def _assert_wo_access(db: Session, current: User, wo: WorkOrder) -> None:
     """Mirror work_orders._access_wo RBAC for report endpoints."""
-    if current.role == UserRole.technician and wo.assignee_user_id != current.id:
+    if (
+        current.role == UserRole.technician
+        and wo.assignee_user_id != current.id
+        and getattr(wo, "return_assignee_user_id", None) != current.id
+    ):
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
     if current.role == UserRole.client_admin and current.client_id and wo.client_id != current.client_id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
@@ -38,6 +40,26 @@ def _assert_wo_access(db: Session, current: User, wo: WorkOrder) -> None:
         scoped = db.scalars(select(UserSiteScope.site_id).where(UserSiteScope.user_id == current.id)).all()
         if scoped and wo.site_id not in scoped:
             raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
+
+
+def _restore_return_assignee(db: Session, current: User, wo: WorkOrder | None) -> None:
+    """After approval or rejection, give the work order back to the person who sent it."""
+    if wo is None or wo.return_assignee_user_id is None:
+        return
+    previous = wo.return_assignee_user_id
+    old = wo.assignee_user_id
+    wo.assignee_user_id = previous
+    wo.return_assignee_user_id = None
+    write_audit(
+        db,
+        tenant_id=current.tenant_id,
+        actor=current,
+        action="assign",
+        entity_type="work_order",
+        entity_id=str(wo.id),
+        before={"assignee_user_id": str(old) if old else None},
+        after={"assignee_user_id": str(previous)},
+    )
 
 
 def _get_report(db: Session, current: User, report_id: UUID) -> MaintenanceReport:
@@ -64,6 +86,7 @@ def approve_report(
     r.approved_at = datetime.now(timezone.utc)
     r.approved_by_user_id = current.id
     r.rejection_reason = None
+    _restore_return_assignee(db, current, r.work_order)
     write_audit(
         db,
         tenant_id=current.tenant_id,
@@ -90,6 +113,7 @@ def reject_report(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="REPORT_NOT_SUBMITTED")
     r.status = ReportStatus.rejected
     r.rejection_reason = body.reason
+    _restore_return_assignee(db, current, r.work_order)
     write_audit(
         db,
         tenant_id=current.tenant_id,
@@ -110,6 +134,9 @@ def report_pdf(
     current: Annotated[User, Depends(get_current_user)],
     lang: str | None = Query(None, description="Report language: ar or en"),
 ) -> Response:
+    """Always regenerate the PDF from current report + WO data (any WO status, incl. verified/closed)."""
+    from app.domains.work_orders._common import _sync_maintenance_report_pdf_export
+
     r = _get_report(db, current, report_id)
     wo = db.scalars(
         select(WorkOrder)
@@ -118,30 +145,42 @@ def report_pdf(
             joinedload(WorkOrder.site),
             joinedload(WorkOrder.asset),
             joinedload(WorkOrder.assignee_user),
+            joinedload(WorkOrder.client),
+            joinedload(WorkOrder.documents),
         )
     ).first()
     tenant = db.get(Tenant, r.tenant_id)
-    inspector = resolve_report_inspector(db, wo, current) if wo else current
-    merged = (
-        merge_report_answers(db, wo, inspector, r.answers_json or {})
-        if wo and inspector
-        else (r.answers_json or {})
-    )
-    lang_code, dir_ = resolve_report_locale(tenant.settings_json if tenant else {}, lang)
-    pdf_bytes = render_report_summary_pdf(
-        tenant_name=tenant.name if tenant else "",
-        work_order_title=wo.title if wo else "",
-        work_order_id=str(wo.id) if wo else "",
-        answers=merged,
-        template_schema=dict(r.template_snapshot_json or {}),
-        platform_company_name=DEFAULT_BRANDING["company_name"],
-        platform_copyright=DEFAULT_BRANDING.get("copyright_watermark", ""),
-        lang=lang_code,
-        dir_=dir_,
-    )
+    lang_code, _dir = resolve_report_locale(tenant.settings_json if tenant else {}, lang)
+
+    if wo is None:
+        company = tenant.name if tenant else ""
+        pdf_bytes = render_report_summary_pdf(
+            tenant_name=company,
+            work_order_title="",
+            work_order_id="",
+            answers=r.answers_json or {},
+            template_schema=dict(r.template_snapshot_json or {}),
+            platform_company_name=company,
+            client_name="",
+            lang=lang_code,
+            dir_=_dir,
+        )
+    else:
+        pdf_bytes = _sync_maintenance_report_pdf_export(
+            db, wo=wo, report=r, current=current, pdf_lang=lang_code
+        )
+        db.commit()
+
     suffix = lang_code if lang else "report"
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="report-{suffix}-{report_id}.pdf"'},
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="maintenance-report-{suffix}-{stamp}.pdf"'
+            ),
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+        },
     )

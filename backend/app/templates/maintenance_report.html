@@ -8,6 +8,7 @@
     :root {
       --color-primary: {{ primary }};
       --color-primary-light: {{ primary_light }};
+      --color-secondary: {{ secondary }};
       --color-neutral-0: {{ neutral_0 }};
       --color-neutral-50: {{ neutral_50 }};
       --color-neutral-100: {{ neutral_100 }};
@@ -32,26 +33,60 @@
       gap: 16px;
       align-items: end;
       padding-block-end: 12px;
-      margin-block-end: 16px;
-      border-block-end: 3px solid var(--color-primary);
+      margin-block-end: 12px;
+      border-block-end: 2px solid var(--color-primary);
     }
-    .brand-block { display: flex; align-items: center; gap: 12px; }
-    .brand-block img { height: 36px; width: auto; }
-    .tenant-name { font-size: 11pt; font-weight: 600; color: var(--color-neutral-700); margin-block-start: 4px; }
+    .brand-block { display: flex; align-items: center; gap: 10px; }
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      border-radius: 3px;
+      background: var(--color-primary);
+      color: #fff;
+      font-weight: 700;
+      font-size: 11pt;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .company-name { font-size: 12pt; font-weight: 700; color: var(--color-primary); margin: 0; }
+    .company-tagline { font-size: 8pt; color: var(--color-neutral-700); margin-block-start: 2px; }
+    .prepared-for { font-size: 8pt; color: var(--color-neutral-700); margin-block-start: 4px; }
     .doc-meta { text-align: end; }
-    .doc-title { font-size: 16pt; font-weight: 700; color: var(--color-primary); margin: 0; }
+    .doc-title { font-size: 14pt; font-weight: 700; color: var(--color-primary); margin: 0; }
     .wo-id { font-size: 9pt; color: var(--color-neutral-700); margin-block-start: 4px; }
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-block-end: 12px;
+      font-size: 9pt;
+      color: var(--color-neutral-700);
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+    }
+    .chip {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 2px;
+      background: var(--color-secondary);
+      color: #fff;
+      font-weight: 700;
+      font-size: 8pt;
+      font-family: var(--font-body);
+      letter-spacing: 0.04em;
+    }
     .grid-2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
+      gap: 10px;
       margin-block-end: 12px;
     }
     .panel {
       background: var(--color-neutral-50);
       border: 1px solid var(--color-neutral-200);
-      border-radius: 8px;
-      padding: 12px;
+      border-radius: 2px;
+      padding: 10px;
     }
     .panel-title {
       font-size: 8pt;
@@ -66,28 +101,46 @@
     .field-value { font-size: 10pt; font-weight: 500; }
     .section { margin-block-end: 14px; }
     .section-title {
-      font-size: 11pt;
+      font-size: 9pt;
       font-weight: 700;
       color: var(--color-primary);
       margin-block: 0 8px;
-      padding-block-end: 4px;
-      border-block-end: 1px solid var(--color-neutral-200);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .obs-field { margin-block-end: 10px; }
+    .obs-field:last-child { margin-block-end: 0; }
+    .obs-label {
+      font-size: 8pt;
+      font-weight: 700;
+      color: var(--color-neutral-900);
+      margin-block-end: 3px;
+    }
+    .obs-condition {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-block-end: 10px;
     }
     .condition-badge {
       display: inline-block;
-      padding: 4px 12px;
-      border-radius: 9999px;
+      padding: 3px 10px;
+      border-radius: 2px;
       font-weight: 700;
       color: #fff;
       background: {{ condition_color }};
+      font-size: 8pt;
+      flex-shrink: 0;
     }
     .text-block {
       background: var(--color-neutral-0);
-      border: 1px solid var(--color-neutral-200);
-      border-radius: 6px;
-      padding: 10px;
+      border: none;
+      padding: 0;
       white-space: pre-wrap;
-      min-height: 48px;
+      font-size: 9pt;
+      line-height: 1.4;
+      color: var(--color-neutral-700);
     }
     table.parts { width: 100%; border-collapse: collapse; font-size: 9pt; }
     table.parts th {
@@ -95,25 +148,30 @@
       color: #fff;
       text-align: start;
       padding: 6px 8px;
+      font-size: 8pt;
     }
     table.parts td {
-      padding: 6px 8px;
+      padding: 5px 8px;
       border-block-end: 1px solid var(--color-neutral-200);
     }
     table.parts tr:nth-child(even) td { background: var(--color-neutral-100); }
     .signoff {
       margin-block-start: 20px;
-      padding: 16px;
-      border: 1px dashed var(--color-neutral-200);
-      border-radius: 8px;
-      min-height: 72px;
+      padding: 12px 0 0;
+      border-block-start: 1px solid var(--color-neutral-200);
+      min-height: 48px;
     }
-    .signoff-label { font-size: 8pt; color: var(--color-neutral-700); margin-block-end: 8px; }
+    .signoff-label { font-size: 7pt; color: var(--color-neutral-700); margin-block-end: 16px; letter-spacing: 0.04em; }
+    .signoff-line {
+      width: 140px;
+      border-block-end: 1px solid var(--color-neutral-700);
+      opacity: 0.5;
+    }
     .footer-note {
       margin-block-start: 16px;
       font-size: 8pt;
       color: var(--color-neutral-700);
-      text-align: center;
+      text-align: end;
     }
   </style>
 </head>
@@ -121,23 +179,32 @@
   <div class="report">
     <header class="header">
       <div class="brand-block">
-        {% if logo_data_uri %}
-        <img src="{{ logo_data_uri }}" alt="{{ platform_name }}" />
-        {% endif %}
+        <div class="brand-mark" aria-hidden="true">{{ company_initials }}</div>
         <div>
-          <div style="font-weight:700;color:var(--color-primary);">{{ platform_name }}</div>
-          <div class="tenant-name">{{ tenant_name }}</div>
+          <div class="company-name">{{ company_name }}</div>
+          <div class="company-tagline">{{ company_tagline }}</div>
+          {% if prepared_for %}
+          <div class="prepared-for">{{ prepared_for }}</div>
+          {% endif %}
         </div>
       </div>
       <div class="doc-meta">
         <h1 class="doc-title">{{ doc_title }}</h1>
-        <div class="wo-id">{{ wo_label }}: {{ work_order_id }}</div>
+        <div class="wo-id">{{ wo_label }}: {{ work_order_title or work_order_id }}</div>
       </div>
     </header>
+
+    <div class="meta-row">
+      <span>{{ work_order_id }}</span>
+      {% if show_type_chip %}
+      <span class="chip" {% if type_chip_kind == 'preventive' %}style="background:var(--color-primary)"{% endif %}>{{ type_chip_label }}</span>
+      {% endif %}
+    </div>
 
     <div class="grid-2">
       <div class="panel">
         <div class="panel-title">{{ labels.site_asset }}</div>
+        <div class="field"><div class="field-label">{{ labels.client }}</div><div class="field-value">{{ client_name }}</div></div>
         <div class="field"><div class="field-label">{{ labels.site_name }}</div><div class="field-value">{{ site_name }}</div></div>
         <div class="field"><div class="field-label">{{ labels.address }}</div><div class="field-value">{{ site_address }}</div></div>
         <div class="field"><div class="field-label">{{ labels.asset_id }}</div><div class="field-value">{{ asset_id }}</div></div>
@@ -166,24 +233,26 @@
 
     <section class="section">
       <h2 class="section-title">{{ labels.observations }}</h2>
-      <div class="field">
-        <div class="field-label">{{ labels.overall_condition }}</div>
+      <div class="obs-condition">
+        <div class="obs-label">{{ labels.overall_condition }}</div>
         <span class="condition-badge">{{ overall_condition }}</span>
       </div>
-      <div class="field" style="margin-block-start:10px;">
-        <div class="field-label">{{ labels.findings }}</div>
+      {% if findings %}
+      <div class="obs-field">
+        <div class="obs-label">{{ labels.findings }}</div>
         <div class="text-block">{{ findings }}</div>
       </div>
+      {% endif %}
       {% if tests_performed %}
-      <div class="field" style="margin-block-start:10px;">
-        <div class="field-label">{{ labels.tests }}</div>
+      <div class="obs-field">
+        <div class="obs-label">{{ labels.tests }}</div>
         <div class="text-block">{{ tests_performed }}</div>
       </div>
       {% endif %}
     </section>
 
     <section class="section">
-      <h2 class="section-title">{{ labels.resolution }}</h2>
+      <h2 class="section-title">{{ labels.parts_used }}</h2>
       {% if parts_rows %}
       <table class="parts">
         <thead>
@@ -216,6 +285,7 @@
 
     <div class="signoff">
       <div class="signoff-label">{{ labels.signoff }}</div>
+      <div class="signoff-line"></div>
       {% if signature_html %}{{ signature_html | safe }}{% endif %}
     </div>
 

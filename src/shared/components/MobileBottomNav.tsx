@@ -6,6 +6,7 @@ import { hasFeature } from "@/lib/features";
 
 interface MobileBottomNavProps {
   user: User | null;
+  moreOpen?: boolean;
   onMore: () => void;
 }
 
@@ -18,21 +19,22 @@ const FIELD_TABS = [
     roles: ["super_admin", "company_admin", "client_admin", "site_manager", "technician", "manager"] as const,
   },
   {
-    path: "/assets",
+    path: "/scan",
     labelKey: "nav_scan",
     icon: "M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2M7 8h10v8H7V8z",
     roles: ["super_admin", "company_admin", "client_admin", "site_manager", "technician"] as const,
     requiredFeature: "assets",
   },
   {
-    path: "/labor",
-    labelKey: "nav_time",
-    icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
-    roles: ["super_admin", "company_admin", "manager", "technician"] as const,
+    // UAT #5 — Labor/Time hidden; Dashboard stands in until labor returns
+    path: "/dashboard",
+    labelKey: "dashboard",
+    icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6",
+    roles: ["super_admin", "company_admin", "client_admin", "site_manager", "technician", "manager"] as const,
   },
 ] as const;
 
-export function MobileBottomNav({ user, onMore }: MobileBottomNavProps) {
+export function MobileBottomNav({ user, moreOpen = false, onMore }: MobileBottomNavProps) {
   const { t } = useTranslation();
   const location = useLocation();
 
@@ -48,7 +50,7 @@ export function MobileBottomNav({ user, onMore }: MobileBottomNavProps) {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-neutral-0/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm lg:hidden"
+      className="relative z-40 h-[calc(4rem+env(safe-area-inset-bottom))] shrink-0 border-t border-neutral-200 bg-neutral-0 pb-[env(safe-area-inset-bottom)] lg:hidden"
       aria-label={t("primary_navigation")}
     >
       <ul className="mx-auto flex max-w-lg items-stretch justify-around px-1 pt-1">
@@ -58,7 +60,7 @@ export function MobileBottomNav({ user, onMore }: MobileBottomNavProps) {
             <li key={item.path} className="flex-1">
               <Link
                 to={item.path}
-                className={`flex min-h-12 flex-col items-center justify-center gap-0.5 px-1 py-1 text-[11px] font-medium ${
+                className={`flex min-h-12 flex-col items-center justify-center gap-0.5 px-1 py-1.5 text-[11px] font-medium ${
                   active ? "text-primary-700" : "text-neutral-600"
                 }`}
                 aria-current={active ? "page" : undefined}
@@ -82,7 +84,11 @@ export function MobileBottomNav({ user, onMore }: MobileBottomNavProps) {
           <button
             type="button"
             onClick={onMore}
-            className="flex min-h-12 w-full flex-col items-center justify-center gap-0.5 px-1 py-1 text-[11px] font-medium text-neutral-600"
+            className={`flex min-h-12 w-full flex-col items-center justify-center gap-0.5 px-1 py-1.5 text-[11px] font-medium ${
+              moreOpen ? "text-primary-700" : "text-neutral-600"
+            }`}
+            aria-expanded={moreOpen}
+            aria-label={t("nav_more")}
           >
             <svg
               className="h-5 w-5"
@@ -94,7 +100,7 @@ export function MobileBottomNav({ user, onMore }: MobileBottomNavProps) {
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7" />
             </svg>
-            <span>{t("nav_more")}</span>
+            <span className="max-w-[4.5rem] truncate">{t("nav_more")}</span>
           </button>
         </li>
       </ul>

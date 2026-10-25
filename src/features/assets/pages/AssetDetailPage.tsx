@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { apiFetch } from "@/lib/api";
@@ -111,7 +111,9 @@ export default function AssetDetailPage() {
         const assetData = await apiFetch<AssetOutApi>(`/assets/${id}`);
         setAsset(mapToAsset(assetData));
         setQrPayload(assetData.qr_payload ?? null);
-        const woData = await apiFetch<PaginatedWorkOrders>(`/work-orders?asset_id=${id}&page_size=50`);
+        const woData = await apiFetch<PaginatedWorkOrders>(
+          `/assets/${id}/work-order-history?page_size=100`
+        );
         setWorkOrders(woData.data);
       } catch (error) {
         console.error("Failed to fetch asset data", error);
@@ -158,6 +160,7 @@ export default function AssetDetailPage() {
 
   const COMPLETED_STATUSES = new Set(["completed", "verified", "closed"]);
   const maintenanceWOs = workOrders.filter((wo) => COMPLETED_STATUSES.has(wo.status));
+  const openWOs = workOrders.filter((wo) => !COMPLETED_STATUSES.has(wo.status) && wo.status !== "cancelled");
 
   return (
     <div className="space-y-6">
@@ -175,35 +178,36 @@ export default function AssetDetailPage() {
       </nav>
 
       {/* Header */}
-      <div className="rounded-lg border border-neutral-200 bg-neutral-0 p-6 shadow-sm">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <h1 className="text-3xl font-semibold text-neutral-900">
+      <div className="rounded-lg border border-neutral-200 bg-neutral-0 p-4 shadow-sm sm:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl font-semibold text-neutral-900 sm:text-3xl">
               {asset.name || asset.asset_id}
             </h1>
-            <p className="mt-1 text-sm text-neutral-500">
-              {[asset.company_name, asset.site_name, asset.category]
-                .filter(Boolean)
-                .join(" • ")}
-            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <AssetLifecycleBadge status={asset.lifecycle_status} />
+              {asset.site_name ? (
+                <span className="text-sm font-medium text-neutral-800">{asset.site_name}</span>
+              ) : null}
+            </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               data-testid="asset-qr-button"
-              className="rounded-lg border border-neutral-300 bg-neutral-0 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
+              className="min-h-10 rounded-lg border border-neutral-300 bg-neutral-0 px-3 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
               onClick={() => setQrOpen(true)}
             >
               {t("qr_code")}
             </button>
             <button
-              className="rounded-lg border border-neutral-300 bg-neutral-0 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
+              className="min-h-10 rounded-lg border border-neutral-300 bg-neutral-0 px-3 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
               onClick={() => setEditOpen(true)}
             >
               {t("edit_asset")}
             </button>
             {asset.lifecycle_status !== "retired" && asset.lifecycle_status !== "replaced" && (
               <button
-                className="rounded-lg border border-error-main bg-neutral-0 px-4 py-2 text-sm font-medium text-error-dark transition-colors hover:bg-error-light"
+                className="min-h-10 rounded-lg border border-error-main bg-neutral-0 px-3 py-2 text-sm font-medium text-error-dark transition-colors hover:bg-error-light"
                 onClick={() => setRetireConfirm(true)}
               >
                 {t("retire_out_of_service") || "Mark out of service"}
@@ -215,7 +219,7 @@ export default function AssetDetailPage() {
               </span>
             )}
             <button
-              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
+              className="min-h-10 w-full rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 sm:w-auto"
               onClick={() => navigate(`/work-orders?open=create&asset_id=${id}`)}
             >
               + {t("create_work_order")}
@@ -223,26 +227,29 @@ export default function AssetDetailPage() {
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="mt-4 flex flex-wrap gap-6 border-t border-neutral-100 pt-4">
-          <div className="flex items-center gap-2">
-            <AssetLifecycleBadge status={asset.lifecycle_status} />
-          </div>
-          <div className="text-sm text-neutral-600">
-            <span className="font-medium text-neutral-900">{asset.age_years.toFixed(1)} years</span> age
-          </div>
-          <div className="text-sm text-neutral-600">
-            <span className="font-medium text-neutral-900">{asset.lifespan_percentage}%</span> of lifespan used
-          </div>
-          {asset.last_maintenance_date && (
-            <div className="text-sm text-neutral-600">
-              Last maintenance:{" "}
-              <span className="font-medium text-neutral-900">
-                {new Date(asset.last_maintenance_date).toLocaleDateString()}
-              </span>
+        <dl className="mt-4 grid grid-cols-2 gap-3">
+          {(
+            [
+              [
+                t("location"),
+                [
+                  asset.floor ? `${t("floor")} ${asset.floor}` : "",
+                  asset.room ? `${t("room")} ${asset.room}` : "",
+                ]
+                  .filter(Boolean)
+                  .join(", ") || "—",
+              ],
+              [t("asset_type"), asset.category || "—"],
+              [t("serial_number"), asset.serial_number || "—"],
+              [t("label_code"), asset.asset_id || "—"],
+            ] as [string, ReactNode][]
+          ).map(([label, value]) => (
+            <div key={String(label)} className="min-w-0 rounded-xl border border-neutral-200 px-3 py-2.5">
+              <dt className="text-xs font-semibold text-neutral-500">{label}</dt>
+              <dd className="mt-1 break-words text-sm font-medium text-neutral-900">{value}</dd>
             </div>
-          )}
-        </div>
+          ))}
+        </dl>
       </div>
 
       {/* Lifecycle Timeline */}
@@ -373,7 +380,7 @@ export default function AssetDetailPage() {
               />
             </div>
           )}
-          <dl className="grid gap-4 sm:grid-cols-2">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:gap-4 [&_dd]:break-words">
             <div>
               <dt className="text-sm font-medium text-neutral-500">{t("asset_id")}</dt>
               <dd className="mt-1 font-mono text-sm text-neutral-900">{asset.asset_id}</dd>
@@ -404,16 +411,17 @@ export default function AssetDetailPage() {
                 <dd className="mt-1 font-mono text-sm text-neutral-900">{asset.serial_number}</dd>
               </div>
             )}
-            {asset.floor && (
+            {(asset.floor || asset.room) && (
               <div>
-                <dt className="text-sm font-medium text-neutral-500">{t("floor")}</dt>
-                <dd className="mt-1 text-sm text-neutral-900">{asset.floor}</dd>
-              </div>
-            )}
-            {asset.room && (
-              <div>
-                <dt className="text-sm font-medium text-neutral-500">{t("room")}</dt>
-                <dd className="mt-1 text-sm text-neutral-900">{asset.room}</dd>
+                <dt className="text-sm font-medium text-neutral-500">{t("location")}</dt>
+                <dd className="mt-1 text-sm text-neutral-900">
+                  {[
+                    asset.floor ? `${t("floor")} ${asset.floor}` : "",
+                    asset.room ? `${t("room")} ${asset.room}` : "",
+                  ]
+                    .filter(Boolean)
+                    .join(", ")}
+                </dd>
               </div>
             )}
             {asset.criticality && (
@@ -439,7 +447,7 @@ export default function AssetDetailPage() {
               </div>
             )}
             {asset.smart_labels && asset.smart_labels.length > 0 && (
-              <div className="sm:col-span-2">
+              <div className="col-span-2">
                 <dt className="text-sm font-medium text-neutral-500">{t("smart_labels")}</dt>
                 <dd className="mt-1 flex flex-wrap gap-1">
                   {asset.smart_labels.map((label) => (
@@ -472,7 +480,7 @@ export default function AssetDetailPage() {
               </dd>
             </div>
             {asset.location_path && (
-              <div className="sm:col-span-2">
+              <div className="col-span-2">
                 <dt className="text-sm font-medium text-neutral-500">{t("location")}</dt>
                 <dd className="mt-1 text-sm text-neutral-900">{asset.location_path}</dd>
               </div>
@@ -483,7 +491,6 @@ export default function AssetDetailPage() {
 
       {activeTab === "maintenance" && (
         <div className="rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm">
-          {/* Shows completed/verified/closed WOs for this asset only — filtered client-side until NT-P5-A01 backend is live */}
           {maintenanceWOs.length === 0 ? (
             <div className="p-8 text-center text-neutral-600">
               <p>{t("no_maintenance_history")}</p>
@@ -502,6 +509,15 @@ export default function AssetDetailPage() {
                     </th>
                     <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
                       {t("status")}
+                    </th>
+                    <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
+                      {t("failure_code")}
+                    </th>
+                    <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
+                      {t("symptom_code")}
+                    </th>
+                    <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
+                      {t("downtime_minutes")}
                     </th>
                     <th className="px-6 py-3 text-start text-xs font-medium uppercase tracking-wider text-neutral-500">
                       {t("assigned_to")}
@@ -523,6 +539,15 @@ export default function AssetDetailPage() {
                         <span className={workOrderStatusPillClass(wo.status)}>
                           {t(wo.status) || wo.status.replace(/_/g, " ")}
                         </span>
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 font-mono text-xs text-neutral-700">
+                        {wo.failure_code || "—"}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 font-mono text-xs text-neutral-700">
+                        {wo.symptom_code || "—"}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-neutral-700">
+                        {wo.downtime_minutes != null ? wo.downtime_minutes : "—"}
                       </td>
                       <td className="px-6 py-4 text-sm text-neutral-700">
                         {wo.assignee?.full_name || t("not_assigned")}
@@ -602,7 +627,7 @@ export default function AssetDetailPage() {
               + {t("create_work_order")}
             </button>
           </div>
-          {workOrders.length === 0 ? (
+          {openWOs.length === 0 ? (
             <div className="p-8 text-center text-neutral-600">
               <p>{t("no_work_orders")}</p>
             </div>
@@ -626,7 +651,7 @@ export default function AssetDetailPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200">
-                  {workOrders.map((wo) => (
+                  {openWOs.map((wo) => (
                     <tr
                       key={wo.id}
                       onClick={() => navigate(`/work-orders/${wo.id}`)}

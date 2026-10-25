@@ -1,6 +1,6 @@
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { apiFetch, clearTokens } from "@/lib/api";
 import { applyLanguage, getStoredLanguage } from "@/lib/language";
 import type { User } from "@/lib/types";
@@ -9,6 +9,7 @@ import { MobileBottomNav } from "@/shared/components/MobileBottomNav";
 import ClockWidget from "@/shared/components/ClockWidget";
 import NotificationBell from "@/shared/components/NotificationBell";
 import { OrbitLogo } from "@/shared/components/OrbitLogo";
+import { shellParentPath } from "@/shared/navigation/shellParent";
 import { InstallOrbitBanner } from "@/features/pwa/InstallOrbitBanner";
 
 interface LayoutProps {
@@ -18,9 +19,37 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const shellRef = useRef<HTMLDivElement>(null);
   const isRTL = i18n.dir() === "rtl";
+
+  useEffect(() => {
+    const shell = shellRef.current;
+    const viewport = window.visualViewport;
+    if (!shell || !viewport) return;
+
+    const apply = () => {
+      if (window.innerWidth >= 1024) {
+        shell.style.height = "";
+        shell.style.top = "";
+        return;
+      }
+      shell.style.height = `${viewport.height}px`;
+      shell.style.top = `${viewport.offsetTop}px`;
+    };
+
+    apply();
+    viewport.addEventListener("resize", apply);
+    viewport.addEventListener("scroll", apply);
+    window.addEventListener("resize", apply);
+    return () => {
+      viewport.removeEventListener("resize", apply);
+      viewport.removeEventListener("scroll", apply);
+      window.removeEventListener("resize", apply);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,42 +81,37 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div
-      className="orbit-app-shell grid min-h-screen min-h-dvh grid-rows-[auto_minmax(0,1fr)] overflow-x-hidden bg-neutral-50"
+      ref={shellRef}
+      className="orbit-app-shell relative grid h-dvh max-h-dvh grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-neutral-50 max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:h-svh max-lg:max-h-none"
       dir={isRTL ? "rtl" : "ltr"}
     >
-      <header className="relative z-40 shrink-0 border-b border-neutral-200 bg-neutral-0 shadow-sm">
-        <div className="flex items-center justify-between px-4 py-3 lg:px-6">
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              className="rounded-md p-2 text-neutral-600 hover:bg-neutral-100 lg:hidden"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              aria-label={t("toggle_menu")}
-            >
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+      <header className="z-40 h-14 shrink-0 border-b border-neutral-200 bg-neutral-0 shadow-sm">
+        <div className="flex h-full items-center justify-between px-3 lg:px-6">
+          <div className="flex min-w-0 items-center gap-2 lg:gap-4">
+            {shellParentPath(pathname) && (
+              <button
+                type="button"
+                aria-label={t("back")}
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-2xl leading-none text-neutral-800 hover:bg-neutral-100"
+                onClick={() => {
+                  const parent = shellParentPath(pathname);
+                  if (parent) navigate(parent);
+                }}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
-            </button>
-
-            <OrbitLogo iconSize={26} />
+                <span aria-hidden className="inline-block rtl:-scale-x-100">‹</span>
+              </button>
+            )}
+            <OrbitLogo iconSize={26} tenantName={user?.tenant_name} />
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-4">
-            <ClockWidget />
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+            <div className="hidden sm:block">
+              <ClockWidget />
+            </div>
             <NotificationBell />
             <button
               type="button"
-              className="rounded-md border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-100 sm:px-3 sm:py-1.5 sm:text-sm"
+              className="min-h-10 rounded-md border border-neutral-300 px-2.5 py-1.5 text-xs font-medium hover:bg-neutral-100 sm:px-3 sm:text-sm"
               onClick={toggleLang}
             >
               {i18n.language.toUpperCase()}
@@ -95,7 +119,7 @@ export function Layout({ children }: LayoutProps) {
 
             <button
               type="button"
-              className="rounded-md px-2 py-1 text-xs text-error-main hover:bg-error-light sm:px-3 sm:py-1.5 sm:text-sm"
+              className="inline-flex min-h-10 shrink-0 items-center rounded-md bg-red-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-red-700 sm:px-3 sm:text-sm"
               onClick={handleLogout}
             >
               {t("logout")}
@@ -104,29 +128,33 @@ export function Layout({ children }: LayoutProps) {
         </div>
       </header>
 
-      <div className="flex h-full min-h-0 min-w-0 items-stretch">
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <div className="relative flex h-full min-h-0 min-w-0 items-stretch overflow-hidden">
+        <Sidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onLogout={handleLogout}
+        />
 
-        <div
-          className={`flex min-w-0 flex-1 flex-col transition-[margin] duration-300 ease-out ${
-            sidebarOpen ? (isRTL ? "max-lg:mr-64" : "max-lg:ml-64") : ""
-          }`}
-        >
-          <main className="flex-1 min-w-0 overflow-x-hidden px-4 py-6 pb-24 lg:px-8 lg:pb-6">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain px-3 py-3 lg:px-8 lg:py-6">
             <div className="mx-auto w-full max-w-[min(100%,88rem)]">{children}</div>
           </main>
         </div>
+
+        {sidebarOpen && (
+          <div
+            className="absolute inset-0 z-20 bg-neutral-900/40 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
       </div>
 
-      {sidebarOpen && (
-        <div
-          className="fixed inset-x-0 bottom-0 top-14 z-20 bg-neutral-900/50 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden="true"
-        />
-      )}
-
-      <MobileBottomNav user={user} onMore={() => setSidebarOpen(true)} />
+      <MobileBottomNav
+        user={user}
+        moreOpen={sidebarOpen}
+        onMore={() => setSidebarOpen((open) => !open)}
+      />
       <InstallOrbitBanner />
     </div>
   );

@@ -12,18 +12,19 @@ import { useTranslation } from "react-i18next";
 import { apiFetch } from "@/lib/api";
 import type { AssetType, AssetTypeTemplate, Vertical } from "@/lib/types";
 import { localizedName } from "@/features/assets/hooks/useAssetTypes";
+import { activePillClass, chip, tone } from "@/shared/lib/palette";
 
 // ── Origin badge ─────────────────────────────────────────────────────────────
 function OriginBadge({ origin }: { origin: AssetType["origin"] }) {
   const { t } = useTranslation();
   const map: Record<AssetType["origin"], { label: string; cls: string }> = {
-    catalog: { label: t("origin_catalog"), cls: "bg-primary-100 text-primary-700" },
-    custom: { label: t("origin_custom"), cls: "bg-emerald-100 text-emerald-700" },
-    legacy: { label: t("origin_legacy"), cls: "bg-neutral-200 text-neutral-600" },
+    catalog: { label: t("origin_catalog"), cls: `${chip} ${tone.info}` },
+    custom: { label: t("origin_custom"), cls: `${chip} ${tone.success}` },
+    legacy: { label: t("origin_legacy"), cls: `${chip} ${tone.neutral}` },
   };
   const { label, cls } = map[origin] ?? map.legacy;
   return (
-    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
+    <span className={cls}>
       {label}
     </span>
   );
@@ -90,6 +91,7 @@ function TypeFormModal({ open, editId, initialData, verticals, onClose, onSaved 
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [applyPm, setApplyPm] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -101,6 +103,7 @@ function TypeFormModal({ open, editId, initialData, verticals, onClose, onSaved 
       setCriticality(initialData?.default_criticality ?? "");
       setFrequency(initialData?.default_frequency ?? "");
       setSelectedVerticals(initialData?.vertical_codes ?? []);
+      setApplyPm(false);
       setError(null);
     }
   }, [open, initialData]);
@@ -129,7 +132,8 @@ function TypeFormModal({ open, editId, initialData, verticals, onClose, onSaved 
         vertical_codes: selectedVerticals,
       };
       if (isEdit) {
-        await apiFetch(`/asset-types/${editId}`, { method: "PATCH", json: body });
+        const qs = applyPm ? "?apply_schedules=true" : "";
+        await apiFetch(`/asset-types/${editId}${qs}`, { method: "PATCH", json: body });
       } else {
         await apiFetch("/asset-types", { method: "POST", json: body });
       }
@@ -259,10 +263,28 @@ function TypeFormModal({ open, editId, initialData, verticals, onClose, onSaved 
                 <option value="">{t("optional")}</option>
                 <option value="monthly">{t("frequency_monthly")}</option>
                 <option value="quarterly">{t("frequency_quarterly")}</option>
+                <option value="semi_annual">{t("frequency_semi_annual")}</option>
                 <option value="yearly">{t("frequency_yearly")}</option>
               </select>
             </div>
           </div>
+
+          {isEdit && (
+            <label className="flex items-start gap-2 text-sm text-neutral-800">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={applyPm}
+                onChange={(e) => setApplyPm(e.target.checked)}
+              />
+              <span>
+                <span className="font-medium">{t("apply_pm_schedules")}</span>
+                <span className="mt-0.5 block text-xs text-neutral-500">
+                  {t("apply_pm_schedules_help")}
+                </span>
+              </span>
+            </label>
+          )}
 
           {verticals.length > 0 && (
             <div>
@@ -326,6 +348,8 @@ export default function AssetTypesPage() {
   const [libLoading, setLibLoading] = useState(false);
   const [includeInactive, setIncludeInactive] = useState(false);
   const [archiveConfirmId, setArchiveConfirmId] = useState<string | null>(null);
+  const [deleteSelectId, setDeleteSelectId] = useState("");
+  const showCatalog = import.meta.env.DEV;
   const [editType, setEditType] = useState<AssetType | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
@@ -385,6 +409,10 @@ export default function AssetTypesPage() {
     loadLibrary();
   }
 
+  useEffect(() => {
+    if (!showCatalog && tab === "catalog") setTab("library");
+  }, [showCatalog, tab]);
+
   async function adoptSelected() {
     if (selectedTemplateIds.length === 0) return;
     setAdoptLoading(true);
@@ -438,27 +466,52 @@ export default function AssetTypesPage() {
   });
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6">
+    <div className="space-y-3 lg:space-y-6">
       {/* Header */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">{t("asset_types")}</h1>
-          <p className="mt-1 text-sm text-neutral-500">{t("asset_types_page_desc")}</p>
+          <h1 className="text-xl font-bold text-neutral-900 lg:text-3xl lg:font-semibold">{t("asset_types")}</h1>
+          <p className="mt-1 hidden text-sm text-neutral-500 lg:block">{t("asset_types_page_desc")}</p>
         </div>
         {tab === "library" && (
-          <button
-            data-testid="asset-type-create-button"
-            onClick={() => setShowCreateModal(true)}
-            className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
-          >
-            + {t("custom_type")}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {import.meta.env.DEV && (
+              <button
+                type="button"
+                data-testid="asset-type-archive-all"
+                title="Dev only — wipe library during local setup"
+                className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 hover:bg-amber-100"
+                onClick={() => {
+                  if (!window.confirm(t("archive_all_types_confirm"))) return;
+                  void apiFetch<{ archived: number }>("/asset-types/archive-all", {
+                    method: "POST",
+                  }).then(() => loadLibrary());
+                }}
+              >
+                {t("archive_all_types")} (DEV)
+              </button>
+            )}
+            <button
+              data-testid="asset-type-create-button"
+              onClick={() => setShowCreateModal(true)}
+              className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+            >
+              + {t("custom_type")}
+            </button>
+          </div>
         )}
       </div>
+      <p className="hidden text-xs text-neutral-500 lg:block">
+        {showCatalog
+          ? t("asset_types_catalog_help") ||
+            "Catalog = platform starter templates (DEV). Your library is what appears when registering assets."
+          : t("asset_types_custom_help") ||
+            "Add your own asset types. They appear when registering assets. Catalog is hidden until we ship a fuller library."}
+      </p>
 
-      {/* Tabs */}
-      <div className="mb-4 flex gap-0 border-b border-neutral-200">
-        {(["library", "catalog"] as const).map((tabId) => (
+      {/* Tabs — catalog DEV-only (UAT #8) */}
+      <div className="flex gap-0 border-b border-neutral-200">
+        {(showCatalog ? (["library", "catalog"] as const) : (["library"] as const)).map((tabId) => (
           <button
             key={tabId}
             onClick={() => setTab(tabId)}
@@ -469,7 +522,9 @@ export default function AssetTypesPage() {
                 : "text-neutral-500 hover:text-neutral-700",
             ].join(" ")}
           >
-            {tabId === "library" ? t("asset_types") : t("adopt_from_catalog")}
+            {tabId === "library"
+              ? t("asset_types")
+              : `${t("adopt_from_catalog")} (DEV)`}
           </button>
         ))}
       </div>
@@ -481,7 +536,7 @@ export default function AssetTypesPage() {
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <input
               type="search"
-              className="rounded-md border border-neutral-300 px-3 py-2 text-sm w-48"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-base lg:w-48 lg:text-sm"
               placeholder={t("search")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -511,6 +566,41 @@ export default function AssetTypesPage() {
               />
               {t("include_archived")}
             </label>
+            <div className="hidden flex-wrap items-center gap-2 lg:flex">
+              <select
+                data-testid="asset-type-delete-select"
+                className="rounded-md border border-neutral-300 px-3 py-2 text-sm"
+                value={deleteSelectId}
+                onChange={(e) => setDeleteSelectId(e.target.value)}
+                aria-label={t("select_type_to_delete")}
+              >
+                <option value="">{t("select_type_to_delete")}</option>
+                {types
+                  .filter((ty) => ty.is_active)
+                  .map((ty) => (
+                    <option key={ty.id} value={ty.id}>
+                      {localizedName(ty, lang)}
+                    </option>
+                  ))}
+              </select>
+              <button
+                type="button"
+                data-testid="asset-type-delete-selected"
+                disabled={!deleteSelectId}
+                className="rounded-md border border-error-main/40 px-3 py-2 text-sm text-error-dark hover:bg-error-light disabled:opacity-40"
+                onClick={() => {
+                  if (!deleteSelectId) return;
+                  const ty = types.find((x) => x.id === deleteSelectId);
+                  const name = ty ? localizedName(ty, lang) : deleteSelectId;
+                  if (!window.confirm(`${t("archive_type")} "${name}"?`)) return;
+                  void archiveType(deleteSelectId, false).then(() => {
+                    setDeleteSelectId("");
+                  });
+                }}
+              >
+                {t("delete_selected_type")}
+              </button>
+            </div>
           </div>
 
           {/* Table */}
@@ -540,7 +630,66 @@ export default function AssetTypesPage() {
               </div>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-neutral-200">
+            <>
+            <div className="space-y-2 lg:hidden">
+              {filteredTypes.map((ty) => (
+                <div
+                  key={ty.id}
+                  className={`rounded-xl border border-neutral-200 bg-neutral-0 px-3 py-2.5 ${ty.is_active ? "" : "opacity-60"}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-bold text-neutral-900">{localizedName(ty, lang)}</div>
+                      <div className="mt-0.5 text-xs text-neutral-500">
+                        {ty.code}
+                        {ty.asset_count != null ? ` · ${ty.asset_count}` : ""}
+                      </div>
+                    </div>
+                    <span className={`shrink-0 ${activePillClass(ty.is_active)}`}>
+                      {ty.is_active ? t("active") : t("archived")}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <OriginBadge origin={ty.origin} />
+                    {archiveConfirmId === ty.id ? (
+                      <ArchiveConfirm
+                        name={localizedName(ty, lang)}
+                        onConfirm={() => void archiveType(ty.id, false)}
+                        onCancel={() => setArchiveConfirmId(null)}
+                      />
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setEditType(ty)}
+                          className="text-xs font-medium text-primary-600"
+                        >
+                          {t("edit")}
+                        </button>
+                        {ty.is_active ? (
+                          <button
+                            type="button"
+                            onClick={() => setArchiveConfirmId(ty.id)}
+                            className="text-xs text-neutral-500"
+                          >
+                            {t("archive")}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => void archiveType(ty.id, true)}
+                            className="text-xs font-medium text-emerald-600"
+                          >
+                            {t("restore")}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto rounded-xl border border-neutral-200 lg:block">
               <table className="w-full text-sm">
                 <thead className="border-b border-neutral-200 bg-neutral-50">
                   <tr>
@@ -570,9 +719,7 @@ export default function AssetTypesPage() {
                         {ty.asset_count ?? "—"}
                       </td>
                       <td className="px-4 py-3">
-                        <span
-                          className={`text-xs font-medium ${ty.is_active ? "text-emerald-600" : "text-neutral-400"}`}
-                        >
+                        <span className={activePillClass(ty.is_active)}>
                           {ty.is_active ? t("active") : t("archived")}
                         </span>
                       </td>
@@ -614,6 +761,7 @@ export default function AssetTypesPage() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </>
       )}
@@ -672,7 +820,38 @@ export default function AssetTypesPage() {
           ) : templates.length === 0 ? (
             <p className="py-12 text-center text-neutral-500">{t("no_results")}</p>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-neutral-200">
+            <>
+            <div className="space-y-2 lg:hidden">
+              {templates.map((tmpl) => {
+                const adopted = tmpl.adopted ?? false;
+                const checked = selectedTemplateIds.includes(tmpl.id);
+                return (
+                  <label
+                    key={tmpl.id}
+                    className={`flex items-start gap-3 rounded-xl border border-neutral-200 bg-neutral-0 px-3 py-2.5 ${adopted ? "opacity-60" : ""}`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 rounded"
+                      checked={checked}
+                      disabled={adopted}
+                      onChange={() => toggleTemplate(tmpl.id)}
+                      aria-label={localizedName(tmpl, lang)}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-bold text-neutral-900">{localizedName(tmpl, lang)}</span>
+                      <span className="mt-0.5 block text-xs text-neutral-500">{tmpl.code}</span>
+                    </span>
+                    {adopted ? (
+                      <span className={`shrink-0 ${activePillClass(true)}`}>
+                        {t("already_adopted")}
+                      </span>
+                    ) : null}
+                  </label>
+                );
+              })}
+            </div>
+            <div className="hidden overflow-x-auto rounded-xl border border-neutral-200 lg:block">
               <table className="w-full text-sm">
                 <thead className="border-b border-neutral-200 bg-neutral-50">
                   <tr>
@@ -712,7 +891,7 @@ export default function AssetTypesPage() {
                         </td>
                         <td className="px-4 py-3">
                           {adopted ? (
-                            <span className="text-xs font-medium text-emerald-600">
+                            <span className={activePillClass(true)}>
                               {t("already_adopted")}
                             </span>
                           ) : (
@@ -725,6 +904,7 @@ export default function AssetTypesPage() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </>
       )}

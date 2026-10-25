@@ -39,6 +39,16 @@ class WorkOrderUpdate(BaseModel):
     tags: Optional[list[str]] = None
     hold_reason: Optional[str] = Field(None, min_length=1, max_length=2000)
     cancellation_reason: Optional[str] = Field(None, min_length=1, max_length=2000)
+    # A5 — downtime + diagnostic codes (technicians may set these)
+    downtime_started_at: Optional[datetime] = None
+    downtime_ended_at: Optional[datetime] = None
+    clear_downtime: Optional[bool] = None
+    failure_code: Optional[str] = Field(None, max_length=64)
+    symptom_code: Optional[str] = Field(None, max_length=64)
+    clear_failure_code: Optional[bool] = None
+    clear_symptom_code: Optional[bool] = None
+
+
 class WorkOrderOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -57,6 +67,7 @@ class WorkOrderOut(BaseModel):
     template_id: Optional[UUID]
     created_by_user_id: Optional[UUID] = None
     assignee_user_id: Optional[UUID]
+    return_assignee_user_id: Optional[UUID] = None
     creator: Optional[UserBrief] = None
     assignee: Optional[UserBrief] = None
     company_name: Optional[str] = None
@@ -73,6 +84,27 @@ class WorkOrderOut(BaseModel):
     opened_at: datetime
     closed_at: Optional[datetime]
     tags: list[str] = []
+    job_started_at: Optional[datetime] = None
+    job_ended_at: Optional[datetime] = None
+    downtime_started_at: Optional[datetime] = None
+    downtime_ended_at: Optional[datetime] = None
+    failure_code: Optional[str] = None
+    symptom_code: Optional[str] = None
+    downtime_minutes: Optional[int] = None
+    job_hours: Optional[float] = None
+
+
+class DiagnosticCodeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    kind: str
+    code: str
+    name_en: str
+    name_ar: str
+    is_active: bool
+
+
 class AssignBody(BaseModel):
     assignee_user_id: UUID
 class DeclineRequestBody(BaseModel):

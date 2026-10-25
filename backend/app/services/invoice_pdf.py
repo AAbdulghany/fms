@@ -23,9 +23,8 @@ from app.services.maintenance_report_pdf import (
     _p,
     _panel_table,
 )
-from app.services.pdf_brand import NEUTRAL_100, NEUTRAL_700, PRIMARY_500
+from app.services.pdf_brand import NEUTRAL_100, NEUTRAL_700, PRIMARY_500, company_initials
 from app.services.pdf_fonts import ensure_pdf_fonts
-from app.services.platform_bootstrap import DEFAULT_BRANDING
 
 
 def _money(amount: Any, currency: str) -> str:
@@ -77,12 +76,12 @@ def render_invoice_pdf_branded(db: Session, *, invoice: Invoice) -> bytes:
         bottomMargin=1.5 * cm,
     )
     base = getSampleStyleSheet()
-    font_name = ensure_pdf_fonts()
+    font_name, font_bold = ensure_pdf_fonts(lang="en")
     styles = {
         "title": ParagraphStyle(
             "InvTitle",
-            parent=base["Title"],
-            fontName=font_name,
+            parent=base["Normal"],
+            fontName=font_bold,
             fontSize=14,
             textColor=colors.HexColor(PRIMARY_500),
             alignment=TA_LEFT,
@@ -98,15 +97,15 @@ def render_invoice_pdf_branded(db: Session, *, invoice: Invoice) -> bytes:
         "brand": ParagraphStyle(
             "InvBrand",
             parent=base["Normal"],
-            fontName=font_name,
-            fontSize=11,
+            fontName=font_bold,
+            fontSize=12,
             textColor=colors.HexColor(PRIMARY_500),
             alignment=TA_LEFT,
         ),
         "panel_title": ParagraphStyle(
             "InvPT",
             parent=base["Normal"],
-            fontName=font_name,
+            fontName=font_bold,
             fontSize=8,
             textColor=colors.HexColor(PRIMARY_500),
             alignment=TA_LEFT,
@@ -154,20 +153,59 @@ def render_invoice_pdf_branded(db: Session, *, invoice: Invoice) -> bytes:
         ),
     }
 
-    platform = DEFAULT_BRANDING.get("company_name", "Orbit Software")
     tenant_name = tenant.name if tenant else ""
+    company = tenant_name or "—"
     story: list[Any] = []
 
+    mark_style = ParagraphStyle(
+        "InvMark",
+        parent=base["Normal"],
+        fontName=font_name,
+        fontSize=9,
+        textColor=colors.white,
+        alignment=TA_LEFT,
+    )
+    brand_mark = Table(
+        [[_p(company_initials(company), mark_style)]],
+        colWidths=[1.1 * cm],
+        rowHeights=[1.1 * cm],
+    )
+    brand_mark.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(PRIMARY_500)),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ]
+        )
+    )
+    brand_text = Table(
+        [
+            [_p(company, styles["brand"])],
+            [_p("Maintenance & FM", styles["subtitle"])],
+        ],
+        colWidths=[GRID_COL_WIDTH - 1.4 * cm],
+    )
+    brand_row = Table(
+        [[brand_mark, brand_text]],
+        colWidths=[1.2 * cm, GRID_COL_WIDTH - 1.2 * cm],
+    )
+    brand_row.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
     header = Table(
         [
             [
-                Table(
-                    [[_p(platform, styles["brand"])], [_p(tenant_name, styles["subtitle"])]],
-                    colWidths=[GRID_COL_WIDTH],
-                ),
+                brand_row,
                 Table(
                     [
-                        [_p("Invoice / فاتورة", styles["title"])],
+                        [_p("Tax Invoice / فاتورة ضريبية", styles["title"])],
                         [_p(f"Invoice #{invoice.number}", styles["subtitle"])],
                     ],
                     colWidths=[GRID_COL_WIDTH],
@@ -308,7 +346,7 @@ def render_invoice_pdf_branded(db: Session, *, invoice: Invoice) -> bytes:
     story.append(notes_box)
 
     story.append(Spacer(1, 0.3 * cm))
-    story.append(_p(DEFAULT_BRANDING.get("copyright_watermark", f"© {platform}"), styles["subtitle"]))
+    story.append(_p(f"© {company}", styles["subtitle"]))
 
     doc.build(story)
     return buf.getvalue()

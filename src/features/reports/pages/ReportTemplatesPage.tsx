@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "@/lib/api";
+import { SlideNotices } from "@/shared/components/SlideNotice";
 import { CategoryObservationsEditor } from "@/shared/components/CategoryObservationsEditor";
 
 type TemplateRow = {
@@ -84,12 +85,7 @@ export default function ReportTemplatesPage() {
         </button>
       </div>
 
-      {msg && <p className="rounded-md bg-success-light px-4 py-3 text-sm text-success-dark">{msg}</p>}
-      {error && (
-        <div className="rounded-lg border border-error-main bg-error-light px-4 py-3 text-sm text-error-dark">
-          {error}
-        </div>
-      )}
+      <SlideNotices success={msg} error={error} />
 
       {templates.length === 0 && !error ? (
         <div className="rounded-lg border border-neutral-200 bg-neutral-0 p-12 text-center shadow-sm">

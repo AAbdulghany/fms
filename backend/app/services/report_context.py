@@ -8,7 +8,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Asset, Location, User, WorkOrder, WorkOrderDocument, WorkOrderSource
+from app.models import Asset, Client, Location, User, WorkOrder, WorkOrderDocument, WorkOrderSource
 
 REPORT_PDF_DOC_DESCRIPTION = "report_pdf_export"
 
@@ -18,6 +18,7 @@ AUTO_FILL_FIELD_IDS = frozenset(
         "inspector_title",
         "inspector_contact",
         "inspector_license",
+        "client_legal_name",
         "property_site_name",
         "property_full_address",
         "asset_unit_identification",
@@ -25,6 +26,8 @@ AUTO_FILL_FIELD_IDS = frozenset(
         "inspection_date",
         "inspection_start_time",
         "inspection_type",
+        "maintenance_tags",
+        "wo_source",
         "scope_systems_list",
         "reference_documents",
     }
@@ -63,12 +66,13 @@ def _format_site_address(site) -> str:
 
 
 def _inspection_type_label(source: WorkOrderSource) -> str:
+    """Labels aligned with L1 Classic PDF (Corrective chip detection depends on these)."""
     mapping = {
-        WorkOrderSource.preventive: "Routine / periodic",
-        WorkOrderSource.corrective: "Interim",
-        WorkOrderSource.request: "Pre-inspection",
+        WorkOrderSource.preventive: "Preventive",
+        WorkOrderSource.corrective: "Corrective",
+        WorkOrderSource.request: "Request",
     }
-    return mapping.get(source, "Routine / periodic")
+    return mapping.get(source, "Corrective")
 
 
 def _parse_hhmm(value: str) -> tuple[int, int] | None:
@@ -116,6 +120,10 @@ def build_report_auto_fill(db: Session, wo: WorkOrder, inspector: User) -> dict[
     if asset is None and wo.asset_id:
         asset = db.get(Asset, wo.asset_id)
 
+    client = wo.client
+    if client is None and wo.client_id:
+        client = db.get(Client, wo.client_id)
+
     location_name = ""
     if wo.location:
         location_name = wo.location.name
@@ -127,6 +135,10 @@ def build_report_auto_fill(db: Session, wo: WorkOrder, inspector: User) -> dict[
     opened = wo.opened_at
     if opened.tzinfo is None:
         opened = opened.replace(tzinfo=timezone.utc)
+
+    job_start = wo.job_started_at or opened
+    if job_start.tzinfo is None:
+        job_start = job_start.replace(tzinfo=timezone.utc)
 
     contact_parts: list[str] = []
     if inspector.phone:
@@ -154,21 +166,47 @@ def build_report_auto_fill(db: Session, wo: WorkOrder, inspector: User) -> dict[
             continue
         ref_lines.append(f"{doc.file_name}: /api/v1/uploads/{doc.file_url}")
 
+    end_hhmm = ""
+    if wo.job_ended_at:
+        ended = wo.job_ended_at
+        if ended.tzinfo is None:
+            ended = ended.replace(tzinfo=timezone.utc)
+        end_hhmm = ended.strftime("%H:%M")
+
     return {
         "inspector_full_name": inspector.full_name,
         "inspector_title": _user_job_title(inspector),
         "inspector_contact": " / ".join(contact_parts),
         "inspector_license": _user_accreditation(inspector),
+        "client_legal_name": client.legal_name if client else "",
         "property_site_name": site.name if site else "",
         "property_full_address": _format_site_address(site),
         "asset_unit_identification": asset_label,
         "location_name": location_name,
-        "inspection_date": opened.strftime("%Y-%m-%d"),
-        "inspection_start_time": opened.strftime("%H:%M"),
+        "inspection_date": job_start.strftime("%Y-%m-%d"),
+        "inspection_start_time": job_start.strftime("%H:%M"),
+        "inspection_end_time": end_hhmm,
         "inspection_type": _inspection_type_label(wo.source),
+        "maintenance_tags": list(wo.tags or []),
+        "wo_source": getattr(wo.source, "value", str(wo.source or "")),
         "scope_systems_list": scope,
         "reference_documents": "\n".join(ref_lines),
     }
+
+
+def _job_elapsed_hours(wo: WorkOrder) -> float | None:
+    """Labor hours from job_started_at → job_ended_at (preferred) or start→end HH:MM."""
+    start = wo.job_started_at
+    end = wo.job_ended_at
+    if start and end:
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
+        if end.tzinfo is None:
+            end = end.replace(tzinfo=timezone.utc)
+        if end < start:
+            return None
+        return round(max((end - start).total_seconds(), 0) / 3600, 2)
+    return None
 
 
 def merge_report_answers(
@@ -178,20 +216,44 @@ def merge_report_answers(
     technician_answers: dict[str, Any] | None,
 ) -> dict[str, Any]:
     """Merge technician answers with live WO auto-fill (auto-fill always wins)."""
-    auto = build_report_auto_fill(db, wo, inspector)
-    merged = {**(technician_answers or {})}
-    merged.update(auto)
+    from app.services.report_fill_profiles import normalize_answers_for_pdf
 
-    end_time = merged.get("inspection_end_time")
-    if end_time:
-        hours = _elapsed_hours(wo.opened_at, str(end_time))
-        if hours is not None:
-            merged["time_elapsed_hours"] = hours
-            labor = merged.get("labor_log")
-            if not labor:
-                merged["labor_log"] = [{"hours": hours}]
-            elif isinstance(labor, list) and labor and isinstance(labor[0], dict):
-                if labor[0].get("hours") in (None, "", 0):
-                    labor[0]["hours"] = hours
+    auto = build_report_auto_fill(db, wo, inspector)
+    merged = normalize_answers_for_pdf(technician_answers or {})
+    # Auto-fill wins for context; keep tech end time only if job clock not set.
+    tech_end = merged.get("inspection_end_time")
+    merged.update(auto)
+    if not auto.get("inspection_end_time") and tech_end:
+        merged["inspection_end_time"] = tech_end
+
+    hours = _job_elapsed_hours(wo)
+    if hours is None and merged.get("inspection_end_time"):
+        clock_start = wo.job_started_at or wo.opened_at
+        hours = _elapsed_hours(clock_start, str(merged["inspection_end_time"]))
+
+    if hours is not None:
+        merged["time_elapsed_hours"] = hours
+        labor = merged.get("labor_log")
+        if not labor:
+            merged["labor_log"] = [{"hours": hours}]
+        elif isinstance(labor, list) and labor and isinstance(labor[0], dict):
+            labor[0]["hours"] = hours
 
     return merged
+
+
+def stamp_job_start(wo: WorkOrder, when: datetime | None = None) -> bool:
+    """Set job_started_at once when work begins. Returns True if stamped."""
+    if wo.job_started_at:
+        return False
+    wo.job_started_at = when or datetime.now(timezone.utc)
+    return True
+
+
+def stamp_job_end(wo: WorkOrder, when: datetime | None = None) -> datetime:
+    """Set job_ended_at on report submit (always refresh to submit moment)."""
+    ended = when or datetime.now(timezone.utc)
+    if wo.job_started_at is None:
+        wo.job_started_at = ended
+    wo.job_ended_at = ended
+    return ended

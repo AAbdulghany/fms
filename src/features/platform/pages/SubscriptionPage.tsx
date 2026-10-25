@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "@/lib/api";
+import { SlideNotice } from "@/shared/components/SlideNotice";
 
 type Package = {
   id: string;
@@ -154,7 +155,7 @@ export function SubscriptionPage() {
             Limits: {sub.max_users} users, {sub.max_sites} sites
           </div>
         </div>
-        {msg && <p className="text-sm text-neutral-600">{msg}</p>}
+        <SlideNotice text={msg} />
         <button
           type="submit"
           disabled={saving}
