@@ -1,7 +1,7 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Html5Qrcode, type Html5QrcodeResult } from "html5-qrcode";
+import type { Html5Qrcode, Html5QrcodeResult } from "html5-qrcode";
 import { apiFetch, getAccessToken } from "@/lib/api";
 
 type AssetHit = {
@@ -155,7 +155,14 @@ export default function ScanAssetPage() {
       return;
     }
 
-    const scanner = new Html5Qrcode(SCANNER_REGION_ID, { verbose: false });
+    const { Html5Qrcode: Html5QrcodeCtor } = await import("html5-qrcode");
+    if (session !== cameraSessionRef.current) {
+      startingRef.current = false;
+      setCameraBusy(false);
+      return;
+    }
+
+    const scanner = new Html5QrcodeCtor(SCANNER_REGION_ID, { verbose: false });
     scannerRef.current = scanner;
 
     const config = {
@@ -171,7 +178,7 @@ export default function ScanAssetPage() {
       /* ignore frame miss */
     };
 
-    const cameras = await Html5Qrcode.getCameras().catch(() => [] as { id: string; label: string }[]);
+    const cameras = await Html5QrcodeCtor.getCameras().catch(() => [] as { id: string; label: string }[]);
     if (session !== cameraSessionRef.current) {
       startingRef.current = false;
       setCameraBusy(false);

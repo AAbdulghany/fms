@@ -1,40 +1,94 @@
+import { lazy, Suspense, type ReactNode } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Layout } from "@/shared/components/Layout";
 import { ProtectedRoute } from "@/shared/components/ProtectedRoute";
 import { FeatureRoute } from "@/shared/components/FeatureRoute";
 import { FieldHomeRedirect } from "@/shared/components/FieldHomeRedirect";
-import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
-import { InvoiceDetailPage } from "@/features/invoices/pages/InvoiceDetailPage";
-import { InvoicesPage } from "@/features/invoices/pages/InvoicesPage";
-import { LoginPage } from "@/features/auth/pages/LoginPage";
-import { WorkOrderDetailPage } from "@/features/work-orders/pages/WorkOrderDetailPage";
-import { WorkOrdersPage } from "@/features/work-orders/pages/WorkOrdersPage";
-import CompaniesPage from "@/features/companies/pages/CompaniesPage";
-import CompanyDetailPage from "@/features/companies/pages/CompanyDetailPage";
-import SiteDetailPage from "@/features/companies/pages/SiteDetailPage";
-import AssetsPage from "@/features/assets/pages/AssetsPage";
-import AssetDetailPage from "@/features/assets/pages/AssetDetailPage";
-import ScanAssetPage from "@/features/assets/pages/ScanAssetPage";
-import MaintenanceCalendarPage from "@/features/assets/pages/MaintenanceCalendarPage";
-import UsersPage from "@/features/users/pages/UsersPage";
-import LaborPage from "@/features/labor/pages/LaborPage";
-import LocationsPage from "@/features/locations/pages/LocationsPage";
-import { SubscriptionPage } from "@/features/platform/pages/SubscriptionPage";
-import { PlatformPackagesPage } from "@/features/platform/pages/PlatformPackagesPage";
-import { MaintenanceCompaniesPage } from "@/features/platform/pages/MaintenanceCompaniesPage";
-import { ProfilePage } from "@/features/users/pages/ProfilePage";
-import ReportTemplatesPage from "@/features/reports/pages/ReportTemplatesPage";
-import AssetTypesPage from "@/features/assets/pages/AssetTypesPage";
-import AssetTagLandingPage from "@/features/assets/pages/AssetTagLandingPage";
-import CommercialTermsPage from "@/features/billing/pages/CommercialTermsPage";
-import InventoryPage from "@/features/billing/pages/InventoryPage";
+
+const LoginPage = lazy(() =>
+  import("@/features/auth/pages/LoginPage").then((m) => ({ default: m.LoginPage }))
+);
+const DashboardPage = lazy(() =>
+  import("@/features/dashboard/pages/DashboardPage").then((m) => ({ default: m.DashboardPage }))
+);
+const InvoiceDetailPage = lazy(() =>
+  import("@/features/invoices/pages/InvoiceDetailPage").then((m) => ({ default: m.InvoiceDetailPage }))
+);
+const InvoicesPage = lazy(() =>
+  import("@/features/invoices/pages/InvoicesPage").then((m) => ({ default: m.InvoicesPage }))
+);
+const WorkOrderDetailPage = lazy(() =>
+  import("@/features/work-orders/pages/WorkOrderDetailPage").then((m) => ({
+    default: m.WorkOrderDetailPage,
+  }))
+);
+const WorkOrdersPage = lazy(() =>
+  import("@/features/work-orders/pages/WorkOrdersPage").then((m) => ({ default: m.WorkOrdersPage }))
+);
+const CompaniesPage = lazy(() => import("@/features/companies/pages/CompaniesPage"));
+const CompanyDetailPage = lazy(() => import("@/features/companies/pages/CompanyDetailPage"));
+const SiteDetailPage = lazy(() => import("@/features/companies/pages/SiteDetailPage"));
+const AssetsPage = lazy(() => import("@/features/assets/pages/AssetsPage"));
+const AssetDetailPage = lazy(() => import("@/features/assets/pages/AssetDetailPage"));
+const ScanAssetPage = lazy(() => import("@/features/assets/pages/ScanAssetPage"));
+const MaintenanceCalendarPage = lazy(() => import("@/features/assets/pages/MaintenanceCalendarPage"));
+const UsersPage = lazy(() => import("@/features/users/pages/UsersPage"));
+const LaborPage = lazy(() => import("@/features/labor/pages/LaborPage"));
+const LocationsPage = lazy(() => import("@/features/locations/pages/LocationsPage"));
+const SubscriptionPage = lazy(() =>
+  import("@/features/platform/pages/SubscriptionPage").then((m) => ({ default: m.SubscriptionPage }))
+);
+const PlatformPackagesPage = lazy(() =>
+  import("@/features/platform/pages/PlatformPackagesPage").then((m) => ({
+    default: m.PlatformPackagesPage,
+  }))
+);
+const MaintenanceCompaniesPage = lazy(() =>
+  import("@/features/platform/pages/MaintenanceCompaniesPage").then((m) => ({
+    default: m.MaintenanceCompaniesPage,
+  }))
+);
+const ProfilePage = lazy(() =>
+  import("@/features/users/pages/ProfilePage").then((m) => ({ default: m.ProfilePage }))
+);
+const ReportTemplatesPage = lazy(() => import("@/features/reports/pages/ReportTemplatesPage"));
+const AssetTypesPage = lazy(() => import("@/features/assets/pages/AssetTypesPage"));
+const AssetTagLandingPage = lazy(() => import("@/features/assets/pages/AssetTagLandingPage"));
+const CommercialTermsPage = lazy(() => import("@/features/billing/pages/CommercialTermsPage"));
+const InventoryPage = lazy(() => import("@/features/billing/pages/InventoryPage"));
+
+function PageFallback() {
+  return (
+    <div className="flex min-h-[240px] items-center justify-center">
+      <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
+    </div>
+  );
+}
+
+function LazyPage({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<PageFallback />}>{children}</Suspense>;
+}
 
 /** Application route table — pages live under src/features/…/pages/. */
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/a/:token" element={<AssetTagLandingPage />} />
+      <Route
+        path="/login"
+        element={
+          <LazyPage>
+            <LoginPage />
+          </LazyPage>
+        }
+      />
+      <Route
+        path="/a/:token"
+        element={
+          <LazyPage>
+            <AssetTagLandingPage />
+          </LazyPage>
+        }
+      />
 
       <Route
         path="/"
@@ -52,7 +106,9 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <Layout>
-              <DashboardPage />
+              <LazyPage>
+                <DashboardPage />
+              </LazyPage>
             </Layout>
           </ProtectedRoute>
         }
@@ -63,7 +119,9 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={["super_admin", "company_admin"]}>
             <Layout>
-              <CompaniesPage />
+              <LazyPage>
+                <CompaniesPage />
+              </LazyPage>
             </Layout>
           </ProtectedRoute>
         }
@@ -74,7 +132,9 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={["super_admin", "company_admin"]}>
             <Layout>
-              <CompanyDetailPage />
+              <LazyPage>
+                <CompanyDetailPage />
+              </LazyPage>
             </Layout>
           </ProtectedRoute>
         }
@@ -85,7 +145,9 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={["super_admin", "company_admin", "client_admin", "site_manager"]}>
             <Layout>
-              <SiteDetailPage />
+              <LazyPage>
+                <SiteDetailPage />
+              </LazyPage>
             </Layout>
           </ProtectedRoute>
         }
@@ -99,7 +161,9 @@ export function AppRoutes() {
           >
             <Layout>
               <FeatureRoute feature="assets">
-                <ScanAssetPage />
+                <LazyPage>
+                  <ScanAssetPage />
+                </LazyPage>
               </FeatureRoute>
             </Layout>
           </ProtectedRoute>
@@ -114,7 +178,9 @@ export function AppRoutes() {
           >
             <Layout>
               <FeatureRoute feature="assets">
-                <AssetsPage />
+                <LazyPage>
+                  <AssetsPage />
+                </LazyPage>
               </FeatureRoute>
             </Layout>
           </ProtectedRoute>
@@ -127,7 +193,9 @@ export function AppRoutes() {
           <ProtectedRoute allowedRoles={["super_admin", "company_admin", "client_admin", "site_manager"]}>
             <Layout>
               <FeatureRoute feature="assets">
-                <MaintenanceCalendarPage />
+                <LazyPage>
+                  <MaintenanceCalendarPage />
+                </LazyPage>
               </FeatureRoute>
             </Layout>
           </ProtectedRoute>
@@ -142,7 +210,9 @@ export function AppRoutes() {
           >
             <Layout>
               <FeatureRoute feature="assets">
-                <AssetDetailPage />
+                <LazyPage>
+                  <AssetDetailPage />
+                </LazyPage>
               </FeatureRoute>
             </Layout>
           </ProtectedRoute>
@@ -154,7 +224,9 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <Layout>
-              <WorkOrdersPage />
+              <LazyPage>
+                <WorkOrdersPage />
+              </LazyPage>
             </Layout>
           </ProtectedRoute>
         }
@@ -165,7 +237,9 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <Layout>
-              <WorkOrderDetailPage />
+              <LazyPage>
+                <WorkOrderDetailPage />
+              </LazyPage>
             </Layout>
           </ProtectedRoute>
         }
@@ -177,7 +251,9 @@ export function AppRoutes() {
           <ProtectedRoute allowedRoles={["super_admin", "company_admin", "client_admin"]}>
             <Layout>
               <FeatureRoute feature="invoices">
-                <InvoicesPage />
+                <LazyPage>
+                  <InvoicesPage />
+                </LazyPage>
               </FeatureRoute>
             </Layout>
           </ProtectedRoute>
@@ -190,7 +266,9 @@ export function AppRoutes() {
           <ProtectedRoute allowedRoles={["super_admin", "company_admin"]}>
             <Layout>
               <FeatureRoute feature="invoices">
-                <CommercialTermsPage />
+                <LazyPage>
+                  <CommercialTermsPage />
+                </LazyPage>
               </FeatureRoute>
             </Layout>
           </ProtectedRoute>
@@ -202,7 +280,9 @@ export function AppRoutes() {
           <ProtectedRoute allowedRoles={["super_admin", "company_admin"]}>
             <Layout>
               <FeatureRoute feature="invoices">
-                <InventoryPage />
+                <LazyPage>
+                  <InventoryPage />
+                </LazyPage>
               </FeatureRoute>
             </Layout>
           </ProtectedRoute>
@@ -220,7 +300,9 @@ export function AppRoutes() {
           <ProtectedRoute allowedRoles={["super_admin", "company_admin", "client_admin"]}>
             <Layout>
               <FeatureRoute feature="invoices">
-                <InvoiceDetailPage />
+                <LazyPage>
+                  <InvoiceDetailPage />
+                </LazyPage>
               </FeatureRoute>
             </Layout>
           </ProtectedRoute>
@@ -232,7 +314,9 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={["super_admin", "company_admin"]}>
             <Layout>
-              <UsersPage />
+              <LazyPage>
+                <UsersPage />
+              </LazyPage>
             </Layout>
           </ProtectedRoute>
         }
@@ -243,7 +327,9 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={["super_admin", "company_admin", "manager", "technician"]}>
             <Layout>
-              <LaborPage />
+              <LazyPage>
+                <LaborPage />
+              </LazyPage>
             </Layout>
           </ProtectedRoute>
         }
@@ -254,7 +340,9 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={["super_admin", "company_admin", "client_admin"]}>
             <Layout>
-              <LocationsPage />
+              <LazyPage>
+                <LocationsPage />
+              </LazyPage>
             </Layout>
           </ProtectedRoute>
         }
@@ -265,7 +353,9 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={["super_user", "sw_dev", "super_admin"]}>
             <Layout>
-              <MaintenanceCompaniesPage />
+              <LazyPage>
+                <MaintenanceCompaniesPage />
+              </LazyPage>
             </Layout>
           </ProtectedRoute>
         }
@@ -276,7 +366,9 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={["super_user", "sw_dev", "super_admin"]}>
             <Layout>
-              <PlatformPackagesPage />
+              <LazyPage>
+                <PlatformPackagesPage />
+              </LazyPage>
             </Layout>
           </ProtectedRoute>
         }
@@ -287,7 +379,9 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={["super_user", "sw_dev", "super_admin"]}>
             <Layout>
-              <SubscriptionPage />
+              <LazyPage>
+                <SubscriptionPage />
+              </LazyPage>
             </Layout>
           </ProtectedRoute>
         }
@@ -298,7 +392,9 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <Layout>
-              <ProfilePage />
+              <LazyPage>
+                <ProfilePage />
+              </LazyPage>
             </Layout>
           </ProtectedRoute>
         }
@@ -309,7 +405,9 @@ export function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={["super_admin", "company_admin"]}>
             <Layout>
-              <ReportTemplatesPage />
+              <LazyPage>
+                <ReportTemplatesPage />
+              </LazyPage>
             </Layout>
           </ProtectedRoute>
         }
@@ -322,7 +420,9 @@ export function AppRoutes() {
           <ProtectedRoute allowedRoles={["super_admin", "company_admin"]}>
             <Layout>
               <FeatureRoute feature="assets">
-                <AssetTypesPage />
+                <LazyPage>
+                  <AssetTypesPage />
+                </LazyPage>
               </FeatureRoute>
             </Layout>
           </ProtectedRoute>
