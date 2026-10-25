@@ -18,6 +18,8 @@ lib/
 # Do not ignore frontend shared modules (root lib/ is for Python venv artifacts)
 !src/lib/
 !src/lib/**
+!src/shared/lib/
+!src/shared/lib/**
 lib64/
 parts/
 sdist/

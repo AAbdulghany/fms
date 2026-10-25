@@ -1,0 +1,145 @@
+/*
+ * Orbit palette — the only place for chip, notice, stat, and button colors.
+ * Change a tone in tokens.css and every element using these classes follows.
+ *
+ * Tones:  orbit-tone-success | warning | error | info | neutral | primary | hold | verified
+ * Chip:   orbit-chip
+ * Notice: orbit-notice
+ * Stat:   orbit-stat (+ orbit-stat-plain for white boxes)
+ * Button: orbit-btn orbit-btn-primary | orbit-btn-ghost
+ * Roles:  orbit-role-<role>
+ */
+
+.orbit-tone-success {
+  background: var(--color-success-light);
+  color: var(--color-success-dark);
+}
+.orbit-tone-warning {
+  background: var(--color-warning-light);
+  color: var(--color-warning-dark);
+}
+.orbit-tone-error {
+  background: var(--color-error-light);
+  color: var(--color-error-dark);
+}
+.orbit-tone-info {
+  background: var(--color-info-light);
+  color: var(--color-info-dark);
+}
+.orbit-tone-neutral {
+  background: var(--color-neutral-200);
+  color: var(--color-neutral-800);
+}
+.orbit-tone-primary {
+  background: var(--color-primary-100);
+  color: var(--color-primary-700);
+}
+.orbit-tone-hold {
+  background: var(--color-hold-light);
+  color: var(--color-hold-dark);
+}
+.orbit-tone-verified {
+  background: var(--color-verified-bg);
+  color: var(--color-verified-fg);
+}
+
+.orbit-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-full);
+  padding: 0.125rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  white-space: nowrap;
+}
+
+.orbit-chip-strike {
+  text-decoration: line-through;
+}
+
+.orbit-notice {
+  width: fit-content;
+  max-width: 24rem;
+  border-radius: var(--radius-md);
+  padding: 0.125rem 0.375rem;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25rem;
+}
+
+.orbit-stat {
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  padding: 0.75rem 0.5rem;
+  text-align: center;
+}
+.orbit-stat-value {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.75rem;
+}
+.orbit-stat-label {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1rem;
+}
+.orbit-stat-plain {
+  border-color: var(--color-neutral-200);
+  background: var(--color-neutral-0);
+  color: var(--color-neutral-900);
+}
+.orbit-stat-plain .orbit-stat-label {
+  color: var(--color-neutral-600);
+}
+
+.orbit-btn {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.orbit-btn-primary {
+  background: var(--color-primary-600);
+  color: #fff;
+}
+.orbit-btn-primary:hover {
+  background: var(--color-primary-700);
+}
+.orbit-btn-ghost {
+  border: 1px solid var(--color-neutral-300);
+  background: var(--color-neutral-0);
+  color: var(--color-neutral-800);
+}
+.orbit-btn-ghost:hover {
+  background: var(--color-neutral-50);
+}
+
+.orbit-role-super_user,
+.orbit-role-super_admin,
+.orbit-role-sw_dev {
+  background: var(--color-hold-light);
+  color: var(--color-hold-dark);
+}
+.orbit-role-company_admin,
+.orbit-role-company_engineer {
+  background: var(--color-info-light);
+  color: var(--color-info-dark);
+}
+.orbit-role-client_admin,
+.orbit-role-site_manager {
+  background: var(--color-success-light);
+  color: var(--color-success-dark);
+}
+.orbit-role-technician,
+.orbit-role-manager {
+  background: var(--color-warning-light);
+  color: var(--color-warning-dark);
+}

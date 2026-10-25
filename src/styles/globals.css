@@ -1,4 +1,5 @@
 @import "./tokens.css";
+@import "./palette.css";
 
 @tailwind base;
 @tailwind components;
@@ -31,6 +32,45 @@
   }
 }
 
+@keyframes notice-slide-in {
+  from {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.notice-slide {
+  animation: notice-slide-in 0.28s ease-out;
+}
+
+@keyframes notice-slide-in-rtl {
+  from {
+    transform: translateX(-120%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.notice-slide[dir="rtl"] {
+  animation-name: notice-slide-in-rtl;
+}
+
+/* Phone browsers zoom the page when a focused field is under 16px. */
+@media (max-width: 1023px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not([type="submit"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 @layer components {
   /* Example: semantic page shell — extend in app */
   .fms-page {
@@ -55,5 +95,31 @@
   .orbit-app-shell aside,
   .orbit-app-shell nav {
     background-image: none;
+  }
+}
+
+/* Phones scroll the document unless the page is pinned to the visible screen.
+   iPhone and Pixel then move the header and footer with that scroll. */
+@media (max-width: 1023px) {
+  html,
+  body,
+  #root {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  body.fms-page {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    min-height: 0;
+    height: 100svh;
+    max-height: 100svh;
+  }
+
+  #root {
+    height: 100%;
+    overflow: hidden;
   }
 }
