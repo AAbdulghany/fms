@@ -14,6 +14,7 @@ function visibleRolesForFilter(actorRole: UserRole): UserRole[] {
 }
 import { EmptyState } from "@/shared/components/EmptyState";
 import { UserRoleBadge } from "@/shared/components/UserRoleBadge";
+import { activePillClass } from "@/shared/lib/palette";
 
 import { ProvisionCredentialsModal } from "@/features/companies/components/ProvisionCredentialsModal";
 
@@ -238,9 +239,9 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-3 lg:space-y-6">
+      <h1 className="text-xl font-bold text-neutral-900 lg:hidden">{t("users")}</h1>
+      <div className="hidden items-center justify-between lg:flex">
         <h1 className="text-3xl font-semibold text-neutral-900">{t("employees")}</h1>
         <button
           className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
@@ -250,9 +251,8 @@ export default function UsersPage() {
         </button>
       </div>
 
-      {/* Filters */}
       {employees.length > 0 && (
-        <div className="space-y-4">
+        <div className="hidden space-y-4 lg:block">
           {/* Search */}
           <div className="flex items-center gap-4">
             <div className="flex-1">
@@ -351,7 +351,7 @@ export default function UsersPage() {
       ) : (
         <>
           {/* Desktop Table */}
-          <div className="hidden overflow-hidden rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm md:block">
+          <div className="hidden overflow-hidden rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm lg:block">
             <table className="w-full">
               <thead className="border-b border-neutral-200 bg-neutral-50">
                 <tr>
@@ -389,13 +389,7 @@ export default function UsersPage() {
                       <UserRoleBadge role={employee.role} />
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm">
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          employee.status === "active"
-                            ? "bg-success-light text-success-dark"
-                            : "bg-neutral-200 text-neutral-600"
-                        }`}
-                      >
+                      <span className={activePillClass(employee.status === "active")}>
                         {employee.status === "active" ? t("status_active") : t("status_inactive")}
                       </span>
                     </td>
@@ -411,37 +405,20 @@ export default function UsersPage() {
           </div>
 
           {/* Mobile Cards */}
-          <div className="grid gap-4 md:hidden">
+          <div className="space-y-2 lg:hidden">
             {filteredEmployees.map((employee) => (
               <div
                 key={employee.id}
-                className="rounded-lg border border-neutral-200 bg-neutral-0 p-4 shadow-sm transition-colors hover:border-primary-300"
+                className="rounded-xl border border-neutral-200 bg-neutral-0 px-3 py-2.5"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="text-base font-medium text-neutral-900">{employee.full_name}</div>
-                    <div className="text-sm text-neutral-600">{employee.email}</div>
-                    {employee.phone && (
-                      <div className="text-sm text-neutral-600">{employee.phone}</div>
-                    )}
-                  </div>
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      employee.status === "active"
-                        ? "bg-success-light text-success-dark"
-                        : "bg-neutral-200 text-neutral-600"
-                    }`}
-                  >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 text-sm font-bold text-neutral-900">{employee.full_name}</div>
+                  <span className={`shrink-0 ${activePillClass(employee.status === "active")}`}>
                     {employee.status === "active" ? t("status_active") : t("status_inactive")}
                   </span>
                 </div>
-                <div className="mt-3 flex items-center gap-2">
+                <div className="mt-1.5">
                   <UserRoleBadge role={employee.role} />
-                  {employee.last_login && (
-                    <span className="text-xs text-neutral-500">
-                      {t("last_login")}: {new Date(employee.last_login).toLocaleDateString()}
-                    </span>
-                  )}
                 </div>
               </div>
             ))}

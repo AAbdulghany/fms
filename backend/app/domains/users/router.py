@@ -34,17 +34,21 @@ def _user_me_out(db: Session, user: User) -> UserMeOut:
     meta = user.metadata_json or {}
     base = UserPublic.model_validate(user)
     features: list[str] = []
+    tenant_name: str | None = None
     if user.is_platform_admin:
         features = ["assets", "invoices", "csv_import", "advanced_scheduling", "ai_maintenance"]
-    elif user.tenant_id:
+    if user.tenant_id:
         tenant = db.get(Tenant, user.tenant_id)
         if tenant:
-            features = list(get_subscription(db, tenant).get("features") or [])
+            tenant_name = tenant.name
+            if not user.is_platform_admin:
+                features = list(get_subscription(db, tenant).get("features") or [])
     data = base.model_dump()
     data["phone"] = user.phone
     data["job_title"] = meta.get("job_title")
     data["accreditation"] = meta.get("accreditation")
     data["features"] = features
+    data["tenant_name"] = tenant_name
     return UserMeOut(**data)
 
 

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { apiFetch } from "@/lib/api";
+import { SlideNotices } from "@/shared/components/SlideNotice";
 import type { User } from "@/lib/types";
 
 export function ProfilePage() {
@@ -100,8 +101,7 @@ export function ProfilePage() {
         </p>
       )}
 
-      {msg && <p className="rounded-md bg-success-light px-4 py-3 text-sm text-success-dark">{msg}</p>}
-      {err && <p className="rounded-md bg-error-light px-4 py-3 text-sm text-error-dark">{err}</p>}
+      <SlideNotices success={msg} error={err} />
 
       <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-neutral-200 bg-neutral-0 p-6 shadow-sm">
         <div>

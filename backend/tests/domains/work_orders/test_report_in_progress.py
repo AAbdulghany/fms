@@ -94,6 +94,32 @@ def wo_in_progress(db_session, tenant, client_a, site_a, technician, template):
     return wo
 
 
+def test_company_engineer_can_start_report(db_session, tenant, wo_in_progress):
+    from app.api.routes.work_orders import upsert_report_draft
+
+    engineer = User(
+        id=uuid4(),
+        tenant_id=tenant.id,
+        email="eng@test.com",
+        password_hash=hash_password("x"),
+        full_name="Engineer",
+        role=UserRole.company_engineer,
+        is_active=True,
+    )
+    db_session.add(engineer)
+    wo_in_progress.assignee_user_id = engineer.id
+    db_session.commit()
+
+    r = upsert_report_draft(
+        wo_in_progress.id,
+        ReportAnswersUpdate(answers={"note": "engineer"}),
+        db_session,
+        engineer,
+    )
+    assert r.status.value == "draft"
+    assert r.answers_json == {"note": "engineer"}
+
+
 def test_start_report_draft_while_in_progress(db_session, technician, wo_in_progress):
     from app.api.routes.work_orders import upsert_report_draft
 
@@ -216,3 +242,61 @@ def test_work_order_out_includes_asset_context(db_session, wo_in_progress, site_
     assert out.asset_category == "Mechanical"
     assert out.site_address == "123 Main"
     assert out.site_city == "Riyadh"
+
+
+def test_approval_handoff_returns_task_to_previous_user(db_session, tenant, wo_in_progress, template):
+    from fastapi import BackgroundTasks
+
+    from app.api.routes.work_orders import send_report_for_approval
+    from app.domains.reports.router import approve_report
+    from app.models import MaintenanceReport, ReportStatus
+    from app.schemas import AssignBody
+
+    engineer = User(
+        id=uuid4(),
+        tenant_id=tenant.id,
+        email="eng-handoff@test.com",
+        password_hash=hash_password("x"),
+        full_name="Engineer",
+        role=UserRole.company_engineer,
+        is_active=True,
+    )
+    manager = User(
+        id=uuid4(),
+        tenant_id=tenant.id,
+        email="mgr-handoff@test.com",
+        password_hash=hash_password("x"),
+        full_name="Manager",
+        role=UserRole.manager,
+        is_active=True,
+    )
+    db_session.add_all([engineer, manager])
+    wo_in_progress.assignee_user_id = engineer.id
+    report = MaintenanceReport(
+        id=uuid4(),
+        tenant_id=tenant.id,
+        work_order_id=wo_in_progress.id,
+        template_id=template.id,
+        template_version=1,
+        template_snapshot_json={"sections": []},
+        answers_json={},
+        status=ReportStatus.submitted,
+    )
+    db_session.add(report)
+    db_session.commit()
+
+    send_report_for_approval(
+        wo_in_progress.id,
+        AssignBody(assignee_user_id=manager.id),
+        db_session,
+        engineer,
+        BackgroundTasks(),
+    )
+    db_session.refresh(wo_in_progress)
+    assert wo_in_progress.assignee_user_id == manager.id
+    assert wo_in_progress.return_assignee_user_id == engineer.id
+
+    approve_report(report.id, db_session, manager, manager)
+    db_session.refresh(wo_in_progress)
+    assert wo_in_progress.assignee_user_id == engineer.id
+    assert wo_in_progress.return_assignee_user_id is None

@@ -68,6 +68,7 @@ from ._common import (
     REPORT_PDF_DOC_DESCRIPTION,
     REPORT_EDITABLE_STATUSES,
     _ASSIGN_ROLES,
+    auto_work_order_title,
     _access_wo,
     _approve_roles,
     _assignee_audit_label,
@@ -91,6 +92,7 @@ def request_work_order(
     current: Annotated[User, Depends(get_current_user)],
     _: Annotated[User, _request_roles],
     background_tasks: BackgroundTasks,
+    lang: str | None = None,
 ) -> WorkOrderOut:
     """client_admin and site_manager submit a work order request (status=requested)."""
     if body.tags:
@@ -101,6 +103,7 @@ def request_work_order(
     if site.client_id != body.client_id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_CLIENT_SITE")
 
+    asset = None
     if body.asset_id:
         from app.models import Asset as _Asset
 
@@ -130,7 +133,15 @@ def request_work_order(
         source=body.source,
         category=body.category,
         urgency=body.urgency,
-        title=body.title,
+        title=(
+            auto_work_order_title(
+                asset_name=asset.name,
+                source=getattr(body.source, "value", str(body.source)),
+                lang=lang or getattr(current, "locale", None),
+            )
+            if body.asset_id and asset
+            else body.title
+        ),
         description=body.description,
         template_id=template_id,
         created_by_user_id=current.id,

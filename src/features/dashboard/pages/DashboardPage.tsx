@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiFetch } from "@/lib/api";
-import { urgencyBadgeClass, workOrderStatusPillClass } from "@/lib/workOrderDisplay";
+import { displayWorkOrderTitle, urgencyBadgeClass, workOrderStatusPillClass } from "@/lib/workOrderDisplay";
 import type {
   PaginatedWorkOrders,
   User,
@@ -12,9 +12,10 @@ import type {
   WorkOrder,
 } from "@/lib/types";
 import { StatsCard } from "@/shared/components/StatsCard";
+import { stat } from "@/shared/lib/palette";
 
 export function DashboardPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -39,9 +40,10 @@ export function DashboardPage() {
         assets_count: summary.assets_count ?? undefined,
         pending_invoices_draft: summary.pending_invoices_draft ?? undefined,
         my_tasks_count: summary.my_assigned_open ?? undefined,
-        in_progress_count: summary.my_in_progress ?? undefined,
+        in_progress_count: summary.in_progress_count ?? summary.my_in_progress ?? undefined,
         completed_week_count: summary.completed_this_week,
         assets_at_eol_count: summary.assets_at_eol ?? undefined,
+        overdue_maintenance_count: summary.overdue_count ?? undefined,
       };
 
       setStats(dashStats);
@@ -91,6 +93,19 @@ export function DashboardPage() {
   const isTechnician = user.role === "technician";
   const isClientAdmin = user.role === "client_admin";
   const isSiteManager = user.role === "site_manager";
+  const canSeeClients = ["super_admin", "super_user", "sw_dev", "company_admin"].includes(user.role);
+  const canSeeAssets = [
+    "super_admin",
+    "super_user",
+    "sw_dev",
+    "company_admin",
+    "client_admin",
+    "site_manager",
+    "technician",
+  ].includes(user.role);
+  const canSeeInvoices = ["super_admin", "super_user", "sw_dev", "company_admin", "client_admin"].includes(
+    user.role
+  );
   const canRequestWorkOrder = isClientAdmin || isSiteManager;
 
   const openRequestWorkOrder = () => {
@@ -98,9 +113,85 @@ export function DashboardPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
+    <div className="space-y-3 lg:space-y-6">
+      <h1 className="text-xl font-bold text-neutral-900 lg:hidden">{t("dashboard")}</h1>
+      {(() => {
+        const directory = [
+          ...(canSeeClients
+            ? [{ label: t("clients"), value: stats.companies_count ?? 0, to: "/companies" }]
+            : []),
+          ...(canSeeAssets
+            ? [{ label: t("assets"), value: stats.assets_count ?? 0, to: "/assets" }]
+            : []),
+          ...(canSeeInvoices
+            ? [{ label: t("invoices"), value: stats.pending_invoices_draft ?? 0, to: "/invoices" }]
+            : []),
+        ];
+        if (directory.length === 0) return null;
+        return (
+          <div className="grid grid-cols-3 gap-2 lg:hidden">
+            {directory.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => navigate(item.to)}
+                className={stat.plain}
+              >
+                <span className="orbit-stat-value">{item.value}</span>
+                <span className="orbit-stat-label">{item.label}</span>
+              </button>
+            ))}
+          </div>
+        );
+      })()}
+      <div className="grid grid-cols-3 gap-2 lg:hidden">
+        {[
+          { label: t("open_jobs"), value: stats.active_wo_count, to: "/work-orders", tone: stat.open },
+          { label: t("overdue"), value: stats.overdue_maintenance_count ?? 0, to: "/work-orders", tone: stat.overdue },
+          { label: t("in_prog"), value: stats.in_progress_count ?? 0, to: "/work-orders?status=in_progress", tone: stat.inProgress },
+        ].map((item) => (
+          <button
+            key={item.label}
+            type="button"
+            onClick={() => navigate(item.to)}
+            className={item.tone}
+          >
+            <span className="orbit-stat-value">{item.value}</span>
+            <span className="orbit-stat-label">{item.label}</span>
+          </button>
+        ))}
+      </div>
+      {recentWOs.length > 0 && (
+        <div className="space-y-2 lg:hidden">
+          <h2 className="text-sm font-bold text-neutral-900">{t("recent_work_orders")}</h2>
+          {recentWOs.map((wo) => {
+            const place = wo.asset_name || wo.site_name;
+            return (
+              <button
+                key={wo.id}
+                type="button"
+                onClick={() => navigate(`/work-orders/${wo.id}`)}
+                className="block w-full rounded-xl border border-neutral-200 bg-neutral-0 px-3 py-2.5 text-start"
+              >
+                <span className="block text-sm font-bold text-neutral-900">
+                  {displayWorkOrderTitle(wo, i18n.language)}
+                </span>
+                {place ? (
+                  <span className="mt-0.5 block text-xs text-neutral-500">{place}</span>
+                ) : null}
+                <span className="mt-1.5 flex flex-wrap gap-1.5">
+                  <span className={workOrderStatusPillClass(wo.status)}>
+                    {t(wo.status) || wo.status}
+                  </span>
+                  <span className={urgencyBadgeClass(wo.urgency)}>{t(wo.urgency)}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="hidden lg:block">
         <h1 className="text-3xl font-semibold text-neutral-900">
           {t("welcome_back")}, {user.full_name}
         </h1>
@@ -109,7 +200,7 @@ export function DashboardPage() {
 
       {/* Stats Cards - Role-specific */}
       {isTenantStaff && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="hidden gap-4 sm:grid-cols-2 lg:grid lg:grid-cols-4">
           <StatsCard
             label={t("companies")}
             value={stats.companies_count ?? "—"}
@@ -135,7 +226,7 @@ export function DashboardPage() {
       )}
 
       {isTechnician && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="hidden gap-4 sm:grid-cols-2 lg:grid lg:grid-cols-3">
           <StatsCard
             label={t("my_tasks")}
             value={stats.my_tasks_count ?? 0}
@@ -153,7 +244,7 @@ export function DashboardPage() {
       )}
 
       {isClientAdmin && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="hidden gap-4 sm:grid-cols-2 lg:grid lg:grid-cols-3">
           <StatsCard
             label={t("sites_count")}
             value={stats.sites_count ?? "—"}
@@ -173,7 +264,7 @@ export function DashboardPage() {
       )}
 
       {isSiteManager && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="hidden gap-4 sm:grid-cols-2 lg:grid lg:grid-cols-3">
           <StatsCard
             label={t("assets")}
             value={stats.assets_count ?? "—"}
@@ -194,8 +285,8 @@ export function DashboardPage() {
 
       {/* Recent Work Orders */}
       {recentWOs.length > 0 && (
-        <div className="rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm">
-          <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-4">
+        <div className="hidden rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm lg:block">
+          <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3 sm:px-6 sm:py-4">
             <h2 className="text-lg font-medium text-neutral-900">
               {isTechnician ? t("my_work_orders") : t("recent_work_orders")}
             </h2>
@@ -206,8 +297,31 @@ export function DashboardPage() {
               {t("view_all")} →
             </Link>
           </div>
-          
-          <div className="overflow-x-auto">
+
+          <ul className="divide-y divide-neutral-100 lg:hidden">
+            {recentWOs.map((wo) => (
+              <li key={wo.id}>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/work-orders/${wo.id}`)}
+                  className="flex w-full flex-col gap-1 px-4 py-3 text-start hover:bg-neutral-50"
+                >
+                  <span className="text-sm font-semibold text-primary-700">
+                    {wo.title || wo.id.slice(0, 8)}
+                  </span>
+                  <span className="text-xs text-neutral-500">
+                    {[wo.company_name, wo.asset_name || wo.site_name].filter(Boolean).join(" · ") || "—"}
+                  </span>
+                  <span className="mt-1 flex flex-wrap gap-2">
+                    <span className={workOrderStatusPillClass(wo.status)}>{wo.status}</span>
+                    <span className={urgencyBadgeClass(wo.urgency)}>{t(wo.urgency)}</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          <div className="hidden overflow-x-auto lg:block">
             <table className="w-full">
               <thead className="border-b border-neutral-200 bg-neutral-50">
                 <tr>
@@ -253,7 +367,7 @@ export function DashboardPage() {
       )}
 
       {/* Quick Actions */}
-      <div className="rounded-lg border border-neutral-200 bg-neutral-0 p-6 shadow-sm">
+      <div className="hidden rounded-lg border border-neutral-200 bg-neutral-0 p-6 shadow-sm lg:block">
         <h2 className="mb-4 text-lg font-medium text-neutral-900">{t("quick_actions")}</h2>
         <div className="flex flex-wrap gap-3">
           {isTenantStaff && (

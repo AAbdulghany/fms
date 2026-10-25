@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { apiFetch, downloadAuthenticatedFile, openAuthenticatedBlob, resolveApiError } from "@/lib/api";
 import { formatMoneyAmount } from "@/lib/formatCurrency";
 import type { Invoice } from "@/lib/types";
+import { SlideNotices } from "@/shared/components/SlideNotice";
 
 interface UserMe {
   role: string;
@@ -228,8 +229,7 @@ export function InvoiceDetailPage() {
         </div>
       </div>
 
-      {msg && <p className="rounded-md bg-success-light px-3 py-2 text-sm text-success-dark">{msg}</p>}
-      {err && <p className="rounded-md bg-error-light px-3 py-2 text-sm text-error-dark">{err}</p>}
+      <SlideNotices success={msg} error={err} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-lg border border-neutral-200 bg-neutral-0 p-4 shadow-sm">

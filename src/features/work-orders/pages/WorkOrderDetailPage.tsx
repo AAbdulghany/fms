@@ -1,39 +1,21 @@
 ﻿import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiFetch, apiFetchBlob, downloadAuthenticatedFile, resolveApiError } from "@/lib/api";
-import { resolveEffectiveReportSchema } from "@/lib/reportSchema";
+import { displayWorkOrderTitle } from "@/lib/workOrderDisplay";
 import type { AuditLog, Comment, MaintenanceReport, ReportTemplate, WorkOrder, WorkOrderDocument, WorkOrderStatus, WorkOrderUserBrief } from "@/lib/types";
-import { workOrderStatusPillClass } from "@/lib/workOrderDisplay";
 import { WorkOrderRequestReviewModal } from "@/features/work-orders/components/WorkOrderRequestReviewModal";
+import {
+  WorkOrderJobDashboard,
+  type MasterCtaKind,
+} from "@/features/work-orders/components/WorkOrderJobDashboard";
+import { WorkOrderSteppedReport } from "@/features/work-orders/components/WorkOrderSteppedReport";
+import { SlideNotices } from "@/shared/components/SlideNotice";
 
 interface UserMe {
   id: string;
   role: string;
-}
-
-interface TemplateField {
-  id: string;
-  type: string;
-  label?: string;
-  label_key?: string;
-  placeholder?: string;
-  options?: string[];
-  required?: boolean;
-  auto_fill?: boolean;
-  visible?: boolean;
-  max_photos?: number;
-  rows?: number;
-  required_when?: { field: string; values: string[] };
-}
-
-interface TemplateSection {
-  id?: string;
-  title?: string;
-  title_key?: string;
-  visible?: boolean;
-  fields?: TemplateField[];
 }
 
 /** Must match backend `REPORT_PDF_DOC_DESCRIPTION` in work_orders.py */
@@ -44,6 +26,7 @@ const REPORT_UNLOCKED_STATUSES = new Set<WorkOrderStatus>([
   "on_hold",
   "completed",
   "verified",
+  "closed",
 ]);
 
 const ALLOWED_TRANSITIONS: Record<WorkOrderStatus, WorkOrderStatus[]> = {
@@ -72,7 +55,6 @@ export function WorkOrderDetailPage() {
   const [report, setReport] = useState<MaintenanceReport | null>(null);
   const [template, setTemplate] = useState<ReportTemplate | null>(null);
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
-  const [parts, setParts] = useState<Array<{ sku: string; quantity: number }>>([]);
   const [photos, setPhotos] = useState<Record<string, File[]>>({});
   const [me, setMe] = useState<UserMe | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -87,13 +69,65 @@ export function WorkOrderDetailPage() {
   const [documents, setDocuments] = useState<WorkOrderDocument[]>([]);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [assigneeSearch, setAssigneeSearch] = useState("");
-  const [reportModalOpen, setReportModalOpen] = useState(false);
   const [requestReviewOpen, setRequestReviewOpen] = useState(false);
   const [holdModalOpen, setHoldModalOpen] = useState(false);
   const [holdReason, setHoldReason] = useState("");
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [pdfLang, setPdfLang] = useState<"ar" | "en">(i18n.language === "ar" ? "ar" : "en");
+  const [detailTab, setDetailTab] = useState<"job" | "report" | "history">("job");
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [phoneReportOpen, setPhoneReportOpen] = useState(false);
+  const [savingReport, setSavingReport] = useState(false);
+
+  function isDesktopViewport(): boolean {
+    return typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches;
+  }
+
+  // Phone has no Report tab — keep Work selected if state was left on report.
+  useEffect(() => {
+    if (detailTab !== "report") return;
+    if (!isDesktopViewport()) setDetailTab("job");
+  }, [detailTab]);
+
+  function focusReportBox() {
+    setDetailTab("job");
+    if (!isDesktopViewport()) return;
+    window.setTimeout(() => {
+      document.getElementById("wo-report-box")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  }
+
+  async function openReportEditor() {
+    if (report && report.status !== "draft") {
+      setReportModalOpen(false);
+      setPhoneReportOpen(false);
+      return;
+    }
+    // Report submit only allowed in in_progress / on_hold — promote from assigned first.
+    if (wo && (wo.status === "assigned" || wo.status === "created")) {
+      try {
+        await patchStatus(undefined, "in_progress", { focusReport: false });
+      } catch {
+        return;
+      }
+    }
+    if (!report) {
+      try {
+        await saveReport();
+      } catch {
+        return;
+      }
+    }
+    setDetailTab("job");
+    if (isDesktopViewport()) {
+      setReportModalOpen(true);
+    } else {
+      setPhoneReportOpen(true);
+    }
+  }
+  const [inspectorNote, setInspectorNote] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
 
   const loadReportData = async (w: WorkOrder, woId: string) => {
     let resolvedTemplate: ReportTemplate | null = null;
@@ -123,12 +157,9 @@ export function WorkOrderDetailPage() {
       setReport(r);
       const aj = (r.answers_json as Record<string, unknown>) || {};
       setAnswers(aj);
-      const partsData = aj.parts_used ?? [{ sku: "FLT-001", quantity: 2 }];
-      setParts(Array.isArray(partsData) ? partsData : []);
     } catch {
       setReport(null);
       setAnswers({});
-      setParts([{ sku: "FLT-001", quantity: 2 }]);
     }
   };
 
@@ -140,21 +171,29 @@ export function WorkOrderDetailPage() {
       const w = await apiFetch<WorkOrder>(`/work-orders/${id}`);
       setWo(w);
 
+      // Load /users/me on its own — a failure in history/comments/etc. must not
+      // leave `me` null (Assign to me depends on me.id).
+      void apiFetch<UserMe>("/users/me")
+        .then((user) => setMe(user))
+        .catch(() => {
+          /* keep prior me if any */
+        });
+
       void Promise.all([
-        apiFetch<UserMe>("/users/me"),
         apiFetch<AuditLog[]>(`/work-orders/${id}/history`),
         apiFetch<Comment[]>(`/work-orders/${id}/comments`),
         apiFetch<WorkOrderUserBrief[]>(`/work-orders/${id}/assignable-users`),
         apiFetch<WorkOrderDocument[]>(`/work-orders/${id}/documents`),
-      ]).then(([user, hist, comm, assignable, docs]) => {
-        setMe(user);
-        setHistory(hist);
-        setComments(comm);
-        setAssignableUsers(assignable);
-        setDocuments(docs);
-      }).catch(() => {
-        /* secondary data — page remains usable */
-      });
+      ])
+        .then(([hist, comm, assignable, docs]) => {
+          setHistory(hist);
+          setComments(comm);
+          setAssignableUsers(assignable);
+          setDocuments(docs);
+        })
+        .catch(() => {
+          /* secondary data — page remains usable */
+        });
 
       void loadReportData(w, id);
     } catch (e) {
@@ -169,6 +208,12 @@ export function WorkOrderDetailPage() {
   useEffect(() => {
     setNextStatus("");
   }, [id, wo?.status, wo?.assignee_user_id]);
+
+  useEffect(() => {
+    if (!msg) return;
+    const timer = window.setTimeout(() => setMsg(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [msg]);
 
   const filteredAssignable = useMemo(() => {
     const q = assigneeSearch.trim().toLowerCase();
@@ -190,24 +235,6 @@ export function WorkOrderDetailPage() {
     [documents]
   );
 
-  const schemaForForm = useMemo(() => {
-    if (
-      report?.template_snapshot_json &&
-      typeof report.template_snapshot_json === "object" &&
-      Array.isArray((report.template_snapshot_json as { sections?: unknown }).sections)
-    ) {
-      return report.template_snapshot_json as { sections: TemplateSection[] };
-    }
-    if (template?.schema_json) {
-      return resolveEffectiveReportSchema(template.schema_json, wo?.asset_category) as {
-        sections: TemplateSection[];
-      };
-    }
-    return undefined;
-  }, [report?.template_snapshot_json, template?.schema_json, wo?.asset_category]);
-
-  const sections = (schemaForForm?.sections as TemplateSection[]) || [];
-  const technicianSections = sections.filter((sec) => sec.visible !== false);
   const siteAddressLine = wo
     ? [wo.site_address, wo.site_city, wo.site_country].filter(Boolean).join(", ")
     : "";
@@ -227,14 +254,13 @@ export function WorkOrderDetailPage() {
     );
   }
 
-  async function saveReport(e?: FormEvent) {
+  async function saveReport(e?: FormEvent, opts?: { close?: boolean }) {
     e?.preventDefault();
-    if (!id) return;
-    const hadReportBefore = !!report;
+    if (!id) throw new Error(t("error_generic") || "Missing work order");
     setMsg(null);
     setErr(null);
+    setSavingReport(true);
     let payload = { ...answers };
-    payload = { ...payload, parts_used: parts };
 
     // Upload photos and get file identifiers
     const photoRefs: Record<string, string[]> = {};
@@ -246,8 +272,10 @@ export function WorkOrderDetailPage() {
         photoRefs[fieldId] = uploadedIds;
       }
     } catch (e) {
-      setErr("Photo upload failed");
-      return;
+      setSavingReport(false);
+      const msg = t("error_photo_upload") || "Photo upload failed";
+      setErr(msg);
+      throw e instanceof Error ? e : new Error(msg);
     }
 
     if (Object.keys(photoRefs).length > 0) {
@@ -259,32 +287,78 @@ export function WorkOrderDetailPage() {
         json: { answers: payload, pdf_lang: pdfLang },
       });
       setReport(r);
-      setMsg("Saved");
-      await load();
-      if (hadReportBefore) {
+      setMsg(t("saved") || "Saved");
+      if (opts?.close) {
         setReportModalOpen(false);
+        setPhoneReportOpen(false);
       }
+      await load();
+      return r;
     } catch (e) {
-      setErr(resolveApiError(e, t, i18n.language, t("error_generic")));
+      const msg = resolveApiError(e, t, i18n.language, t("error_generic"));
+      setErr(msg);
+      throw e instanceof Error ? e : new Error(msg);
+    } finally {
+      setSavingReport(false);
     }
   }
 
-  async function submitReport() {
+  async function submitReport(opts?: { approve?: boolean }) {
     if (!id) return;
     setMsg(null);
     setErr(null);
+    setSavingReport(true);
+    let submitted = false;
     try {
+      // Backend rejects submit unless WO is in_progress / on_hold.
+      if (wo && (wo.status === "assigned" || wo.status === "created")) {
+        await patchStatus(undefined, "in_progress", { focusReport: false });
+      }
       await saveReport();
+      setSavingReport(true);
       const r = await apiFetch<MaintenanceReport>(
         `/work-orders/${id}/report/submit?pdf_lang=${encodeURIComponent(pdfLang)}`,
         { method: "POST" }
       );
+      submitted = true;
       setReport(r);
-      setMsg("Submitted");
-      await load();
       setReportModalOpen(false);
+      setPhoneReportOpen(false);
+      setDetailTab("job");
+      if (opts?.approve) {
+        await apiFetch(`/reports/${r.id}/approve`, { method: "POST" });
+        setMsg(t("report_has_been_approved") || "Report approved");
+      } else {
+        setMsg(t("report_submitted") || "Report submitted.");
+      }
+      await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Error");
+      setErr(resolveApiError(e, t, i18n.language, t("error_generic")));
+      if (submitted) {
+        setReportModalOpen(false);
+        setPhoneReportOpen(false);
+      }
+    } finally {
+      setSavingReport(false);
+    }
+  }
+
+  async function reopenReportForEdit() {
+    if (!id) return;
+    setErr(null);
+    setSavingReport(true);
+    try {
+      const r = await apiFetch<MaintenanceReport>(`/work-orders/${id}/report/reopen`, {
+        method: "POST",
+      });
+      setReport(r);
+      setDetailTab("job");
+      if (isDesktopViewport()) setReportModalOpen(true);
+      else setPhoneReportOpen(true);
+    } catch (e) {
+      setErr(resolveApiError(e, t, i18n.language, t("error_generic")));
+    } finally {
+      setSavingReport(false);
     }
   }
 
@@ -292,10 +366,13 @@ export function WorkOrderDetailPage() {
     if (!report?.id) return;
     setErr(null);
     try {
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
       await downloadAuthenticatedFile(
         `/reports/${report.id}/pdf?lang=${lang}`,
-        `maintenance-report-${lang}.pdf`
+        `maintenance-report-${lang}-${stamp}.pdf`
       );
+      // Refresh WO so "Saved report PDFs" shows the newly generated file.
+      await load();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Export failed");
     }
@@ -306,13 +383,10 @@ export function WorkOrderDetailPage() {
     setErr(null);
     try {
       if (doc.description === REPORT_PDF_DOC) {
-        const blob = await apiFetchBlob(`/work-orders/${id}/documents/${doc.id}/file`);
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = doc.file_name || "report.pdf";
-        a.click();
-        URL.revokeObjectURL(url);
+        // Always regenerate (verified/closed WOs included) — never serve a stale saved file.
+        const name = (doc.file_name || "").toLowerCase();
+        const lang: "ar" | "en" = name.includes("-ar-") || name.includes("_ar_") ? "ar" : "en";
+        await exportReportPdf(lang);
         return;
       }
       window.open(`/api/v1/uploads/${doc.file_url}`, "_blank", "noopener,noreferrer");
@@ -354,44 +428,189 @@ export function WorkOrderDetailPage() {
     }
   }
 
-  async function patchStatus(extraPayload?: Record<string, string>) {
-    if (!id || !nextStatus || !wo) return;
+  async function patchStatus(
+    extraPayload?: Record<string, string>,
+    statusOverride?: WorkOrderStatus,
+    options?: { focusReport?: boolean }
+  ) {
+    const targetStatus = statusOverride ?? nextStatus;
+    if (!id || !targetStatus || !wo) return;
     setMsg(null);
     setErr(null);
-    const targetStatus = nextStatus;
     try {
       const updated = await apiFetch<WorkOrder>(`/work-orders/${id}`, {
         method: "PATCH",
-        json: { status: nextStatus, ...extraPayload },
+        json: { status: targetStatus, ...extraPayload },
       });
       setWo(updated);
       setNextStatus("");
       await load();
-      if (statusAllowsReport(targetStatus) || statusAllowsReport(updated.status)) {
-        setReportModalOpen(true);
+      if (
+        options?.focusReport !== false &&
+        (statusAllowsReport(targetStatus) || statusAllowsReport(updated.status))
+      ) {
+        focusReportBox();
       }
     } catch (e) {
       setErr(resolveApiError(e, t, i18n.language, t("error_generic")));
     }
   }
 
-  function handleApply() {
-    if (!nextStatus || nextStatus === wo?.status) return;
-    if (nextStatus === "on_hold") {
+  function handleRailTransition(status: WorkOrderStatus) {
+    setNextStatus(status);
+    if (status === "on_hold") {
       setHoldReason("");
       setHoldModalOpen(true);
       return;
     }
-    if (nextStatus === "cancelled") {
+    if (status === "cancelled") {
       setCancelReason("");
       setCancelModalOpen(true);
       return;
     }
-    if (nextStatus === "completed" && (!report || (report.status !== "submitted" && report.status !== "approved"))) {
+    if (status === "completed" && (!report || (report.status !== "submitted" && report.status !== "approved"))) {
       setErr(t("error_report_required") || "The maintenance report must be submitted before marking as completed.");
+      setDetailTab("job");
+      focusReportBox();
       return;
     }
-    void patchStatus();
+    void patchStatus(undefined, status);
+  }
+
+  async function handleMasterCta(kind: MasterCtaKind) {
+    if (!id || !wo) return;
+    setErr(null);
+    setMsg(null);
+    try {
+      if (kind === "assign_me") {
+        if (!me?.id) {
+          setErr(t("error_session") || "Session missing — refresh and try again.");
+          return;
+        }
+        const updated = await apiFetch<WorkOrder>(`/work-orders/${id}/assign`, {
+          method: "POST",
+          json: { assignee_user_id: String(me.id) },
+        });
+        setWo(updated);
+        setSelectedAssignee("");
+        setAssigneeSearch("");
+        setMsg(t("assigned_ok") || "Assigned successfully.");
+        await load();
+        return;
+      }
+      if (kind === "assign_selected") {
+        if (!selectedAssignee) return;
+        await assignUser(selectedAssignee);
+        return;
+      }
+      if (kind === "fill_report") {
+        if (wo.status === "assigned" || wo.status === "created") {
+          await patchStatus(undefined, "in_progress");
+        }
+        await openReportEditor();
+        return;
+      }
+      if (kind === "complete") {
+        void handleRailTransition("completed");
+        return;
+      }
+      if (kind === "verify") {
+        void handleRailTransition("verified");
+        return;
+      }
+      if (kind === "close") {
+        void handleRailTransition("closed");
+      }
+    } catch (e) {
+      setErr(resolveApiError(e, t, i18n.language, t("error_generic")));
+    }
+  }
+
+  async function assignUser(userId: string) {
+    if (!id || !userId) return;
+    setErr(null);
+    setMsg(null);
+    try {
+      if (!canAssignOthers && userId !== me?.id) {
+        setErr(t("error_forbidden") || "You cannot assign this work order to someone else.");
+        return;
+      }
+      const updated = await apiFetch<WorkOrder>(`/work-orders/${id}/assign`, {
+        method: "POST",
+        json: { assignee_user_id: userId },
+      });
+      setWo(updated);
+      setSelectedAssignee("");
+      setAssigneeSearch("");
+      setMsg(t("assigned_ok") || "Assigned successfully.");
+      setReportModalOpen(false);
+      setPhoneReportOpen(false);
+      await load();
+    } catch (e) {
+      setErr(resolveApiError(e, t, i18n.language, t("error_generic")));
+    }
+  }
+
+  async function closeWorkOrder() {
+    if (!id || !wo) return;
+    if (wo.status !== "completed" && wo.status !== "verified") return;
+    setErr(null);
+    setMsg(null);
+    try {
+      if (wo.status === "completed") {
+        await apiFetch<WorkOrder>(`/work-orders/${id}`, {
+          method: "PATCH",
+          json: { status: "verified" },
+        });
+      }
+      const updated = await apiFetch<WorkOrder>(`/work-orders/${id}`, {
+        method: "PATCH",
+        json: { status: "closed" },
+      });
+      setWo(updated);
+      setReportModalOpen(false);
+      setPhoneReportOpen(false);
+      setMsg(t("closed") || "Closed");
+      await load();
+    } catch (e) {
+      setErr(resolveApiError(e, t, i18n.language, t("error_generic")));
+    }
+  }
+
+  async function saveInspectorNote() {
+    if (!id || !inspectorNote.trim() || !wo) return;
+    setSavingNote(true);
+    setErr(null);
+    try {
+      const note = inspectorNote.trim();
+      await apiFetch(`/work-orders/${id}/comments`, {
+        method: "POST",
+        json: { content: `[Inspector] ${note}` },
+      });
+      const nextAnswers = {
+        ...answers,
+        inspector_notes: [answers.inspector_notes, note].filter(Boolean).join("\n\n"),
+      };
+      setAnswers(nextAnswers);
+      if (statusAllowsReport(wo.status) || report) {
+        try {
+          await apiFetch(`/work-orders/${id}/report`, {
+            method: "PUT",
+            json: { answers: nextAnswers, pdf_lang: pdfLang },
+          });
+        } catch {
+          /* comment still saved */
+        }
+      }
+      setInspectorNote("");
+      const comm = await apiFetch<Comment[]>(`/work-orders/${id}/comments`);
+      setComments(comm);
+      setDetailTab("history");
+    } catch (e) {
+      setErr(resolveApiError(e, t, i18n.language, t("error_generic")));
+    } finally {
+      setSavingNote(false);
+    }
   }
 
   async function generateInvoice() {
@@ -406,6 +625,25 @@ export function WorkOrderDetailPage() {
       setMsg("Invoice created");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Error");
+    }
+  }
+
+  async function sendApprovalTo(userId: string) {
+    if (!id || !userId) return;
+    setErr(null);
+    setMsg(null);
+    try {
+      const updated = await apiFetch<WorkOrder>(`/work-orders/${id}/report/send-approval`, {
+        method: "POST",
+        json: { assignee_user_id: userId },
+      });
+      setWo(updated);
+      setSelectedAssignee("");
+      setAssigneeSearch("");
+      setMsg(t("wo_waiting_manager"));
+      await load();
+    } catch (e) {
+      setErr(resolveApiError(e, t, i18n.language, t("error_generic")));
     }
   }
 
@@ -434,23 +672,6 @@ export function WorkOrderDetailPage() {
       setNewComment("");
       const comm = await apiFetch<Comment[]>(`/work-orders/${id}/comments`);
       setComments(comm);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Error");
-    }
-  }
-
-  async function assignUser() {
-    if (!id || !selectedAssignee) return;
-    setMsg(null);
-    setErr(null);
-    try {
-      await apiFetch(`/work-orders/${id}/assign`, {
-        method: "POST",
-        json: { assignee_user_id: selectedAssignee },
-      });
-      setSelectedAssignee("");
-      setAssigneeSearch("");
-      window.location.reload();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Error");
     }
@@ -521,149 +742,392 @@ export function WorkOrderDetailPage() {
     me?.role === "manager" ||
     me?.role === "super_admin";
   const canAdminWO =
-    me?.role === "company_admin" || 
-    me?.role === "super_admin" || 
+    me?.role === "company_admin" ||
+    me?.role === "company_engineer" ||
+    me?.role === "super_admin" ||
     me?.role === "site_manager" ||
-    me?.role === "technician"; // Technicians can change status too
+    me?.role === "technician";
+  // Reassign is admin/engineer only — not technicians or site managers.
+  const canAssignOthers =
+    me?.role === "company_admin" ||
+    me?.role === "company_engineer" ||
+    me?.role === "super_admin";
+  const canEditDiagnostics = !!canAdminWO;
   const canReviewRequest =
     wo.status === "requested" &&
     (me?.role === "company_admin" || me?.role === "super_admin");
 
-  const fieldLabel = (field: TemplateField) => {
-    const byId = t(`report_field_${field.id}`);
-    if (byId !== `report_field_${field.id}`) return byId;
-    if (field.label_key) {
-      const byKey = t(field.label_key);
-      if (byKey !== field.label_key) return byKey;
-    }
-    return field.label ?? field.id;
-  };
-
-  const sectionTitle = (sec: TemplateSection) => {
-    if (sec.title_key) {
-      const byKey = t(sec.title_key);
-      if (byKey !== sec.title_key) return byKey;
-    }
-    if (sec.id) {
-      const byId = t(`report_section_${sec.id}`);
-      if (byId !== `report_section_${sec.id}`) return byId;
-    }
-    return sec.title ?? "";
-  };
-
-  const optionLabel = (value: string) => {
-    const byId = t(`report_option_${value.toLowerCase()}`);
-    if (byId !== `report_option_${value.toLowerCase()}`) return byId;
-    return value;
-  };
-
-  const isTechnicianField = (field: TemplateField) =>
-    !field.auto_fill && field.visible !== false && field.type !== "header";
-
   const reportPhaseUnlocked = statusAllowsReport(wo.status);
-
-  const statusSelectValue = (nextStatus || wo.status) as WorkOrderStatus;
   const allowedNext = ALLOWED_TRANSITIONS[wo.status] ?? [];
-  const selectableStatuses = Array.from(new Set<WorkOrderStatus>([wo.status, ...allowedNext]));
 
-  const reportPrimaryActionLabel = !report
-    ? t("fill_report") || "Fill report"
-    : reportPdfDocuments.length > 0
-      ? t("edit_report") || "Edit report"
-      : t("continue_report") || "Continue report";
+  const reportPanelContent = (
+            <div className="space-y-3">
+              {!reportPhaseUnlocked && template ? (
+                <p className="text-sm text-neutral-600">
+                  {t("report_unlocked_at_in_progress") ||
+                    "The maintenance report is available once this work order is in progress."}
+                </p>
+              ) : null}
+              {reportPhaseUnlocked && !template ? (
+                <p className="text-sm text-neutral-500">{t("no_report")}</p>
+              ) : null}
+              {reportPhaseUnlocked && template ? (
+                <>
+                  {(!report || report.status === "draft") && (
+                    <p className="hidden text-xs text-neutral-500 lg:block">
+                      {t("report_card_hint") ||
+                        "Open the window to start or edit the report. Export regenerates a fresh PDF every time."}
+                    </p>
+                  )}
+                  {reportPdfDocuments.length > 0 && (
+                    <div className="rounded-md bg-neutral-50 p-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-neutral-600">
+                        {t("saved_report_pdfs") || "Saved report PDFs"}
+                      </p>
+                      <ul className="mt-2 space-y-1">
+                        {reportPdfDocuments.map((d) => (
+                          <li key={d.id}>
+                            <button
+                              type="button"
+                              className="text-sm font-medium text-primary-700 hover:underline"
+                              onClick={() => void downloadWorkOrderDocument(d)}
+                            >
+                              {d.file_name}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {report && (
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className="min-h-10 rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
+                        onClick={() => void exportReportPdf("ar")}
+                      >
+                        {t("export_report_ar") || "Export PDF (Arabic)"}
+                      </button>
+                      <button
+                        type="button"
+                        className="min-h-10 rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
+                        onClick={() => void exportReportPdf("en")}
+                      >
+                        {t("export_report_en") || "Export PDF (English)"}
+                      </button>
+                    </div>
+                  )}
+                  {(!report || report.status === "draft") && (
+                    <button
+                      type="button"
+                      className="min-h-11 w-full rounded-md bg-primary-600 px-4 py-2.5 text-sm font-medium text-neutral-0 hover:bg-primary-700"
+                      onClick={() => void openReportEditor()}
+                    >
+                      {!report
+                        ? t("start_report") || "Start report"
+                        : t("wo_view_edit_report")}
+                    </button>
+                  )}
+                </>
+              ) : null}
+            </div>
+  );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 lg:space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-neutral-900">{wo.title || "Work order"}</h1>
-        <p className="flex flex-wrap items-center gap-2 text-sm text-neutral-500">
-          <span>{t("status")}:</span>
-          <span className={workOrderStatusPillClass(wo.status)}>{wo.status}</span>
-          <span className="font-mono text-xs text-neutral-400">· {wo.id}</span>
+        <h1 className="text-xl font-semibold text-neutral-900 lg:text-2xl">
+          <span className="lg:hidden">
+            {displayWorkOrderTitle(wo, i18n.language)}
+          </span>
+          <span className="hidden lg:inline">
+            {displayWorkOrderTitle(wo, i18n.language)}
+          </span>
+        </h1>
+        <p className="hidden flex-wrap items-center gap-2 text-sm text-neutral-500 lg:flex">
+          <span className="font-mono text-xs text-neutral-400">{wo.id}</span>
+          {wo.asset_name && <span>· {wo.asset_name}</span>}
         </p>
       </div>
 
-      <div className="rounded-lg border border-neutral-200 bg-neutral-0 p-4 shadow-sm">
-        <h2 className="text-base font-semibold text-neutral-800">{t("wo_context") || "Work order context"}</h2>
-        <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
-          <div>
-            <dt className="text-xs font-medium text-neutral-500">{t("company")}</dt>
-            <dd className="mt-0.5 text-neutral-900">{wo.company_name || "—"}</dd>
-          </div>
-          <div>
-            <dt className="text-xs font-medium text-neutral-500">{t("site")}</dt>
-            <dd className="mt-0.5 text-neutral-900">
-              {wo.site_name ? (
-                <Link to={`/sites/${wo.site_id}`} className="text-primary-700 hover:underline">
-                  {wo.site_name}
-                </Link>
-              ) : (
-                "—"
-              )}
-            </dd>
-          </div>
-          {siteAddressLine && (
-            <div className="sm:col-span-2">
-              <dt className="text-xs font-medium text-neutral-500">{t("address")}</dt>
-              <dd className="mt-0.5 text-neutral-900">{siteAddressLine}</dd>
-            </div>
-          )}
-          {wo.location_name && (
-            <div>
-              <dt className="text-xs font-medium text-neutral-500">{t("location") || "Location"}</dt>
-              <dd className="mt-0.5 text-neutral-900">{wo.location_name}</dd>
-            </div>
-          )}
-          <div>
-            <dt className="text-xs font-medium text-neutral-500">{t("asset")}</dt>
-            <dd className="mt-0.5 text-neutral-900">
-              {wo.asset_id ? (
-                <Link to={`/assets/${wo.asset_id}`} className="text-primary-700 hover:underline">
-                  {wo.asset_name || wo.asset_label_code || wo.asset_id}
-                </Link>
-              ) : (
-                "—"
-              )}
-            </dd>
-          </div>
-          {wo.asset_category && (
-            <div>
-              <dt className="text-xs font-medium text-neutral-500">{t("asset_category")}</dt>
-              <dd className="mt-0.5 text-neutral-900">{wo.asset_category}</dd>
-            </div>
-          )}
-          {(wo.asset_serial || wo.asset_model) && (
-            <div className="sm:col-span-2 flex flex-wrap gap-x-6 gap-y-1">
-              {wo.asset_serial && (
-                <span>
-                  <span className="text-xs text-neutral-500">{t("asset_serial")}: </span>
-                  <span className="text-neutral-900">{wo.asset_serial}</span>
-                </span>
-              )}
-              {wo.asset_model && (
-                <span>
-                  <span className="text-xs text-neutral-500">{t("model") || "Model"}: </span>
-                  <span className="text-neutral-900">{wo.asset_model}</span>
-                </span>
-              )}
-            </div>
-          )}
-          <div>
-            <dt className="text-xs font-medium text-neutral-500">{t("category") || "Category"}</dt>
-            <dd className="mt-0.5 text-neutral-900">{wo.category}</dd>
-          </div>
-          <div>
-            <dt className="text-xs font-medium text-neutral-500">{t("source") || "Source"}</dt>
-            <dd className="mt-0.5 capitalize text-neutral-900">{wo.source}</dd>
-          </div>
-          {wo.description && (
-            <div className="sm:col-span-2">
-              <dt className="text-xs font-medium text-neutral-500">{t("description")}</dt>
-              <dd className="mt-0.5 whitespace-pre-wrap text-neutral-900">{wo.description}</dd>
-            </div>
-          )}
-        </dl>
+      {/* Phone: Work | History only. Desktop: Job | Report | History. */}
+      <div
+        className="grid grid-cols-2 gap-1 rounded-xl bg-primary-50 p-1 lg:hidden"
+        role="tablist"
+        aria-label={t("wo_tab_work")}
+      >
+        {(
+          [
+            ["job", "wo_tab_work"],
+            ["history", "wo_tab_history"],
+          ] as const
+        ).map(([tabId, key]) => (
+          <button
+            key={tabId}
+            type="button"
+            role="tab"
+            aria-selected={detailTab === tabId}
+            className={`min-h-10 rounded-lg px-2 py-2 text-sm font-semibold ${
+              detailTab === tabId
+                ? "bg-primary-700 text-white shadow-sm"
+                : "text-neutral-500"
+            }`}
+            onClick={() => setDetailTab(tabId)}
+          >
+            {t(key)}
+          </button>
+        ))}
       </div>
+      <div
+        className="hidden border-b border-neutral-200 lg:flex"
+        role="tablist"
+      >
+        {(
+          [
+            ["job", "wo_tab_job"],
+            ["report", "wo_tab_report"],
+            ["history", "wo_tab_history"],
+          ] as const
+        ).map(([tabId, key]) => (
+          <button
+            key={tabId}
+            type="button"
+            role="tab"
+            aria-selected={detailTab === tabId}
+            className={`min-h-11 border-b-2 px-4 py-2.5 text-sm font-medium ${
+              detailTab === tabId
+                ? "border-primary-600 text-primary-700"
+                : "border-transparent text-neutral-500 hover:text-neutral-800"
+            }`}
+            onClick={() => setDetailTab(tabId)}
+          >
+            {t(key)}
+          </button>
+        ))}
+      </div>
+
+      <SlideNotices success={msg} error={wo ? err : null} />
+
+      {detailTab === "job" && (
+        <WorkOrderJobDashboard
+          wo={wo}
+          report={report}
+          allowedNext={allowedNext}
+          canAdminWO={!!canAdminWO}
+          canAssignOthers={!!canAssignOthers}
+          canEditDiagnostics={canEditDiagnostics}
+          meId={me?.id ?? null}
+          assignableUsers={assignableUsers}
+          filteredAssignable={filteredAssignable}
+          assigneeSearch={assigneeSearch}
+          selectedAssignee={selectedAssignee}
+          onAssigneeSearchChange={(v) => {
+            setAssigneeSearch(v);
+            setSelectedAssignee("");
+          }}
+          onSelectAssignee={(uid, label) => {
+            setSelectedAssignee(uid);
+            setAssigneeSearch(label);
+          }}
+          inspectorNote={inspectorNote}
+          savingNote={savingNote}
+          onInspectorNoteChange={setInspectorNote}
+          onSaveInspectorNote={() => void saveInspectorNote()}
+          onMasterCta={(kind) => void handleMasterCta(kind)}
+          onSecondaryTransition={handleRailTransition}
+          onWoSaved={setWo}
+          siteAddressLine={siteAddressLine}
+          canEditReport={canEditReport && reportPhaseUnlocked}
+          savingReport={savingReport}
+          onSaveReport={() => void saveReport()}
+          onSubmitReport={() => void submitReport()}
+          onStartReport={() => void openReportEditor()}
+          phoneReportOpen={phoneReportOpen}
+          onPhoneReportOpenChange={setPhoneReportOpen}
+          onExportReport={(lang) => void exportReportPdf(lang)}
+          onPreviewReport={async (lang) => {
+            if (!report?.id) return null;
+            setErr(null);
+            try {
+              const blob = await apiFetchBlob(`/reports/${report.id}/pdf?lang=${lang}`);
+              return URL.createObjectURL(blob);
+            } catch (e) {
+              setErr(e instanceof Error ? e.message : "Export failed");
+              return null;
+            }
+          }}
+          onConfirmReport={() => {
+            if (allowedNext.includes("completed")) void handleMasterCta("complete");
+            else if (allowedNext.includes("verified")) void handleMasterCta("verify");
+          }}
+          onEditReport={() => void reopenReportForEdit()}
+          canApprove={!!canApprove}
+          canHandOffApproval={
+            me?.role === "technician" ||
+            me?.role === "company_engineer" ||
+            me?.role === "site_manager"
+          }
+          onSendApproval={(userId) => void sendApprovalTo(userId)}
+          onAssignUser={(userId) => void assignUser(userId)}
+          onFinishReport={() => void submitReport()}
+          onSendToApprove={() => void submitReport({ approve: !!canApprove })}
+          onApproveReport={() => void approveReport()}
+          onCloseWorkOrder={() => void closeWorkOrder()}
+          canCloseWorkOrder={
+            !!canApprove ||
+            me?.role === "company_engineer" ||
+            me?.role === "site_manager"
+          }
+          phoneReport={
+            report && report.status === "draft" ? (
+              <WorkOrderSteppedReport
+                woSource={wo.source || "corrective"}
+                workOrderId={wo.id}
+                answers={answers}
+                setAnswers={setAnswers}
+                photos={photos}
+                setPhotos={setPhotos}
+                canEdit={canEditReport}
+                isDraft
+                jobStartedAt={wo.job_started_at}
+                jobHours={wo.job_hours}
+                pdfLang={pdfLang}
+                setPdfLang={setPdfLang}
+                onSave={async () => {
+                  await saveReport(undefined, { close: true });
+                }}
+                submitLabel={t("wo_finish_report")}
+                onSubmit={() => submitReport()}
+                saving={savingReport}
+              />
+            ) : null
+          }
+          reportPanel={<div className="hidden lg:block">{reportPanelContent}</div>}
+        />
+      )}
+
+      {detailTab === "report" && (
+        <div
+          id="wo-report-box"
+          className="hidden scroll-mt-20 space-y-4 rounded-xl border border-neutral-200 bg-neutral-0 p-4 shadow-sm lg:block lg:p-6"
+        >
+          {reportPanelContent}
+        </div>
+      )}
+
+      {reportModalOpen && (!report || report.status === "draft") && (
+      <>
+      <div
+        className="fixed inset-0 z-40 bg-black/40"
+        onMouseDown={() => setReportModalOpen(false)}
+      />
+      <div
+        className="fixed left-1/2 top-14 z-50 max-h-[85vh] w-full max-w-2xl -translate-x-1/2 overflow-y-auto rounded-lg border border-neutral-200 bg-neutral-0 p-6 shadow-xl"
+      >
+        <div className="mb-4 flex items-center justify-between border-b border-neutral-100 pb-3">
+          <h2 className="text-lg font-medium text-neutral-800">{t("report") || "Maintenance report"}</h2>
+          <button
+            type="button"
+            className="rounded-md px-2 py-1 text-sm text-neutral-600 hover:bg-neutral-100"
+            onClick={() => setReportModalOpen(false)}
+          >
+            {t("close") || "Close"}
+          </button>
+        </div>
+            {!report && (
+              <div className="py-4 text-center">
+                <p className="mb-3 text-sm text-neutral-600">
+                  {t("start_report_hint") || "No report started yet. Start to capture inspection details."}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void saveReport()}
+                  className="rounded-md bg-primary-600 px-5 py-2 text-sm font-medium text-neutral-0 hover:bg-primary-700"
+                >
+                  {t("start_report") || "Start report"}
+                </button>
+              </div>
+            )}
+
+            {report && (
+              <div className="space-y-4">
+                {referenceDocuments.length > 0 && (
+                  <div className="rounded-md border border-neutral-200 bg-neutral-50 p-3">
+                    <p className="text-xs font-medium uppercase tracking-wide text-neutral-600">
+                      {t("reference_documents") || "Reference documents"}
+                    </p>
+                    <ul className="mt-2 space-y-1">
+                      {referenceDocuments.map((doc) => (
+                        <li key={doc.id}>
+                          <button
+                            type="button"
+                            className="text-sm text-primary-700 hover:underline"
+                            onClick={() => void downloadWorkOrderDocument(doc)}
+                          >
+                            {doc.file_name}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {report.status === "draft" && (
+                  <WorkOrderSteppedReport
+                    woSource={wo.source || "corrective"}
+                    workOrderId={wo.id}
+                    answers={answers}
+                    setAnswers={setAnswers}
+                    photos={photos}
+                    setPhotos={setPhotos}
+                    canEdit={canEditReport}
+                    isDraft
+                    jobStartedAt={wo.job_started_at}
+                    jobHours={wo.job_hours}
+                    pdfLang={pdfLang}
+                    setPdfLang={setPdfLang}
+                    onSave={async () => {
+                      await saveReport(undefined, { close: true });
+                    }}
+                    submitLabel={t("wo_finish_report")}
+                    onSubmit={() => submitReport()}
+                  />
+                )}
+              </div>
+            )}
+      </div>
+      </>
+      )}
+
+
+      {detailTab === "job" &&
+        (wo.status === "verified" || wo.status === "closed") &&
+        canAdminWO && (
+        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 bg-neutral-0 p-4 shadow-sm">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-neutral-600" htmlFor="wo-invoice-currency">
+              {t("invoice_currency")}
+            </label>
+            <select
+              id="wo-invoice-currency"
+              className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
+              value={invoiceCurrency}
+              onChange={(e) => setInvoiceCurrency(e.target.value)}
+            >
+              <option value="SAR">SAR</option>
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="EGP">EGP</option>
+            </select>
+          </div>
+          <button
+            type="button"
+            className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+            onClick={() => void generateInvoice()}
+          >
+            {t("generate_invoice")}
+          </button>
+        </div>
+      )}
 
       {canReviewRequest && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3">
@@ -687,603 +1151,10 @@ export function WorkOrderDetailPage() {
         />
       )}
 
-      <div className="grid gap-6 rounded-lg border border-neutral-200 bg-neutral-0 p-4 md:grid-cols-2">
-        <div className="min-w-0 space-y-4">
-          <div>
-            <div className="text-xs font-medium text-neutral-500">{t("created_by")}</div>
-            {wo.creator ? (
-              <div className="mt-2 flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-800">
-                  {(wo.creator.full_name || wo.creator.email || "?").slice(0, 1).toUpperCase()}
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-neutral-900">
-                    {wo.creator.full_name || wo.creator.email}
-                  </div>
-                  <div className="text-xs text-neutral-500">{wo.creator.role}</div>
-                </div>
-              </div>
-            ) : (
-              <p className="mt-1 text-sm text-neutral-400">—</p>
-            )}
-            <p className="mt-2 text-xs text-neutral-500">
-              {t("created_at")}: {new Date(wo.opened_at).toLocaleString()}
-            </p>
-          </div>
-
-          <div className="border-t border-neutral-100 pt-4">
-            {canAdminWO ? (
-              <>
-                <label className="mb-1 block text-xs font-medium text-neutral-600" htmlFor="wo-status-transition">
-                  {t("transition_status") || "Transition status"}
-                </label>
-                <div className="flex max-w-sm flex-wrap items-center gap-2">
-                  <select
-                    id="wo-status-transition"
-                    className="w-36 shrink-0 rounded-md border border-neutral-300 bg-neutral-0 px-2 py-1.5 text-xs shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 sm:w-40"
-                    value={statusSelectValue}
-                    onChange={(e) =>
-                      setNextStatus(
-                        e.target.value === wo.status ? "" : (e.target.value as WorkOrderStatus)
-                      )
-                    }
-                  >
-                    {selectableStatuses.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    className="shrink-0 rounded-md bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-0 shadow-sm transition hover:bg-neutral-900 disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={!nextStatus || nextStatus === wo.status}
-                    onClick={handleApply}
-                  >
-                    {t("apply") || "Apply"}
-                  </button>
-                </div>
-                <p className="mt-1 max-w-sm text-[11px] leading-snug text-neutral-500">
-                  {t("status_dropdown_hint") ||
-                    "Shows the current work order status. Pick a new status, then Apply."}
-                </p>
-                {wo.status === "verified" && (
-                  <div className="mt-3 flex max-w-sm flex-wrap items-end gap-2 border-t border-neutral-100 pt-3">
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-neutral-600">
-                        {t("invoice_currency")}
-                      </label>
-                      <select
-                        className="w-28 rounded-md border border-neutral-300 px-2 py-1.5 text-xs shadow-sm"
-                        value={invoiceCurrency}
-                        onChange={(e) => setInvoiceCurrency(e.target.value)}
-                      >
-                        <option value="SAR">SAR</option>
-                        <option value="USD">USD</option>
-                        <option value="EUR">EUR</option>
-                        <option value="EGP">EGP</option>
-                      </select>
-                    </div>
-                    <button
-                      type="button"
-                      className="rounded-md bg-primary-600 px-3 py-1.5 text-xs font-medium text-neutral-0 shadow-sm hover:bg-primary-700"
-                      onClick={() => void generateInvoice()}
-                    >
-                      {t("generate_invoice")}
-                    </button>
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <div className="text-xs font-medium text-neutral-500">{t("transition_status")}</div>
-                <p className="mt-1.5">
-                  <span className={workOrderStatusPillClass(wo.status)}>{wo.status}</span>
-                </p>
-                <p className="mt-1 max-w-sm text-[11px] text-neutral-500">
-                  {t("status_readonly_hint") || "Status changes are limited to authorized roles."}
-                </p>
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className="min-w-0 border-neutral-100 md:border-l md:pl-6">
-          <div className="text-xs font-medium text-neutral-500">{t("assigned_to")}</div>
-          {wo.assignee ? (
-            <div className="mt-2 flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-success-light text-sm font-semibold text-success-dark">
-                {(wo.assignee.full_name || wo.assignee.email || "?").slice(0, 1).toUpperCase()}
-              </div>
-              <div>
-                <div className="text-sm font-medium text-neutral-900">
-                  {wo.assignee.full_name || wo.assignee.email}
-                </div>
-                <div className="text-xs text-neutral-500">{wo.assignee.role}</div>
-              </div>
-            </div>
-          ) : (
-            <p className="mt-1 text-sm text-neutral-400">{t("not_assigned")}</p>
-          )}
-          {canAdminWO && (
-            <div className="relative mt-4">
-              <label className="mb-1.5 block text-xs font-medium text-neutral-600" htmlFor="wo-assignee-search">
-                {t("assign_or_reassign") || "Assign or reassign"}
-              </label>
-              <div className="flex flex-wrap items-center gap-2">
-                <input
-                  id="wo-assignee-search"
-                  type="search"
-                  className="min-w-0 flex-1 rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  placeholder={t("search_assignee") || "Search users…"}
-                  value={assigneeSearch}
-                  onChange={(e) => {
-                    setAssigneeSearch(e.target.value);
-                    setSelectedAssignee("");
-                  }}
-                  autoComplete="off"
-                />
-                <button
-                  type="button"
-                  className="shrink-0 rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-neutral-0 shadow-sm transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-neutral-300"
-                  onClick={() => void assignUser()}
-                  disabled={!selectedAssignee}
-                >
-                  {t("assign")}
-                </button>
-              </div>
-              {assigneeSearch.trim().length > 0 && filteredAssignable.length > 0 && (
-                <ul
-                  className="absolute z-20 mt-1 max-h-40 w-full min-w-[12rem] overflow-auto rounded-md border border-neutral-200 bg-neutral-0 text-sm shadow-lg"
-                  role="listbox"
-                >
-                  {filteredAssignable.map((u) => (
-                    <li key={u.id}>
-                      <button
-                        type="button"
-                        className="w-full px-3 py-2 text-left hover:bg-neutral-100"
-                        onClick={() => {
-                          setSelectedAssignee(u.id);
-                          setAssigneeSearch(`${u.full_name || u.email} (${u.role})`);
-                        }}
-                      >
-                        <span className="font-medium text-neutral-900">{u.full_name || u.email}</span>
-                        <span className="ml-1 text-xs text-neutral-500">{u.role}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {assigneeSearch.trim().length > 0 && filteredAssignable.length === 0 && (
-                <p className="mt-1.5 text-xs text-neutral-500">{t("no_assignee_matches") || "No matching users"}</p>
-              )}
-              {selectedAssignee && (
-                <p className="mt-1.5 text-xs text-neutral-600">
-                  {t("assignee_selected") || "Selected"}:{" "}
-                  <strong>
-                    {assignableUsers.find((u) => u.id === selectedAssignee)?.full_name ||
-                      assignableUsers.find((u) => u.id === selectedAssignee)?.email}
-                  </strong>
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {msg && <p className="rounded-md bg-success-light px-3 py-2 text-success-dark">{msg}</p>}
-      {err && <p className="rounded-md bg-error-light px-3 py-2 text-error-dark">{err}</p>}
-
-      {!reportPhaseUnlocked && template && (
-        <div className="rounded-lg border border-neutral-200 bg-neutral-0 p-4 shadow-sm">
-          <h2 className="text-base font-semibold text-neutral-800">{t("report") || "Report"}</h2>
-          <p className="mt-2 text-sm text-neutral-600">
-            {t("report_unlocked_at_in_progress") ||
-              "The maintenance report is available once this work order is in progress."}
-          </p>
-        </div>
-      )}
-
-      {reportPhaseUnlocked && !template && (
-        <div className="rounded-lg border border-neutral-200 bg-neutral-0 p-4 shadow-sm">
-          <h2 className="text-base font-semibold text-neutral-800">{t("report") || "Report"}</h2>
-          <p className="mt-2 text-sm text-neutral-500">{t("no_report")}</p>
-        </div>
-      )}
-
-      {reportPhaseUnlocked && template && (
-        <>
-          <div className="rounded-lg border border-neutral-200 bg-neutral-0 p-4 shadow-sm">
-            <h2 className="text-base font-semibold text-neutral-800">{t("report") || "Report"}</h2>
-            <p className="mt-1 text-sm text-neutral-600">
-              {t("report_card_hint") ||
-                "Open the window to start or edit the report. Each save refreshes the PDF in your documents list."}
-            </p>
-            {reportPdfDocuments.length > 0 && (
-              <div className="mt-3 rounded-md bg-neutral-50 p-3">
-                <p className="text-xs font-medium uppercase tracking-wide text-neutral-600">
-                  {t("saved_report_pdfs") || "Saved report PDFs"}
-                </p>
-                <ul className="mt-2 space-y-1">
-                  {reportPdfDocuments.map((d) => (
-                    <li key={d.id}>
-                      <button
-                        type="button"
-                        className="text-sm font-medium text-primary-700 hover:underline"
-                        onClick={() => void downloadWorkOrderDocument(d)}
-                      >
-                        {d.file_name}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {report && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
-                  onClick={() => void exportReportPdf("ar")}
-                >
-                  {t("export_report_ar") || "Export PDF (Arabic)"}
-                </button>
-                <button
-                  type="button"
-                  className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
-                  onClick={() => void exportReportPdf("en")}
-                >
-                  {t("export_report_en") || "Export PDF (English)"}
-                </button>
-              </div>
-            )}
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                className="rounded-md bg-primary-600 px-3 py-1.5 text-sm font-medium text-neutral-0"
-                onClick={() => setReportModalOpen(true)}
-              >
-                {reportPrimaryActionLabel}
-              </button>
-              {canApprove && report?.status === "submitted" && (
-                <button
-                  type="button"
-                  className="rounded-md bg-success-dark px-3 py-1.5 text-sm text-neutral-0"
-                  onClick={() => void approveReport()}
-                >
-                  {t("approve")}
-                </button>
-              )}
-            </div>
-          </div>
-
-          {reportModalOpen && (
-            <div
-              className="fixed inset-0 z-40 bg-black/40"
-              onMouseDown={() => setReportModalOpen(false)}
-            />
-          )}
-
-          <div
-            className={
-              reportModalOpen
-                ? "fixed left-1/2 top-14 z-50 max-h-[85vh] w-full max-w-2xl -translate-x-1/2 overflow-y-auto rounded-lg border border-neutral-200 bg-neutral-0 p-6 shadow-xl"
-                : "hidden"
-            }
-          >
-            <div className="mb-4 flex items-center justify-between border-b border-neutral-100 pb-3">
-              <h2 className="text-lg font-medium text-neutral-800">{t("report") || "Maintenance report"}</h2>
-              <button
-                type="button"
-                className="rounded-md px-2 py-1 text-sm text-neutral-600 hover:bg-neutral-100"
-                onClick={() => setReportModalOpen(false)}
-              >
-                {t("close") || "Close"}
-              </button>
-            </div>
-
-            {!report && (
-              <div className="py-4 text-center">
-                <p className="mb-3 text-sm text-neutral-600">
-                  {t("start_report_hint") || "No report started yet. Start to capture inspection details."}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => void saveReport()}
-                  className="rounded-md bg-primary-600 px-5 py-2 text-sm font-medium text-neutral-0 hover:bg-primary-700"
-                >
-                  {t("start_report") || "Start report"}
-                </button>
-              </div>
-            )}
-
-            {report && (
-              <form className="space-y-4" onSubmit={(e) => void saveReport(e)}>
-            {referenceDocuments.length > 0 && (
-              <div className="rounded-md border border-neutral-200 bg-neutral-50 p-3">
-                <p className="text-xs font-medium uppercase tracking-wide text-neutral-600">
-                  {t("reference_documents") || "Reference documents"}
-                </p>
-                <ul className="mt-2 space-y-1">
-                  {referenceDocuments.map((doc) => (
-                    <li key={doc.id}>
-                      <button
-                        type="button"
-                        className="text-sm text-primary-700 hover:underline"
-                        onClick={() => void downloadWorkOrderDocument(doc)}
-                      >
-                        {doc.file_name}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {technicianSections.map((sec, si) => (
-              <div key={sec.id ?? si} className="space-y-3">
-                {(sec.title || sec.title_key || sec.id) && (
-                  <h3 className="border-b border-neutral-200 pb-2 text-base font-semibold text-neutral-900">
-                    {sectionTitle(sec)}
-                  </h3>
-                )}
-                {(sec.fields || []).filter(isTechnicianField).map((field) => {
-                  if (field.type === "time") {
-                    return (
-                      <div key={field.id}>
-                        <label className="mb-1 block text-sm text-neutral-700">
-                          {fieldLabel(field)}
-                          {field.required ? " *" : ""}
-                        </label>
-                        <input
-                          type="time"
-                          className="w-full max-w-xs rounded-md border border-neutral-300 px-3 py-2"
-                          value={String(answers[field.id] ?? "")}
-                          disabled={!canEditReport || report?.status !== "draft"}
-                          onChange={(e) => {
-                            const endTime = e.target.value;
-                            setAnswers((a) => {
-                              const next = { ...a, [field.id]: endTime };
-                              if (endTime && wo.opened_at) {
-                                const start = new Date(wo.opened_at);
-                                const [eh, em] = endTime.split(":").map(Number);
-                                const end = new Date(start);
-                                end.setHours(eh, em, 0, 0);
-                                if (end < start) end.setDate(end.getDate() + 1);
-                                const hours = Math.round(((end.getTime() - start.getTime()) / 3600000) * 100) / 100;
-                                if (!a.labor_log) {
-                                  next.labor_log = [{ hours }];
-                                }
-                              }
-                              return next;
-                            });
-                          }}
-                        />
-                      </div>
-                    );
-                  }
-                  if (field.type === "text") {
-                    return (
-                      <div key={field.id}>
-                        <label className="mb-1 block text-sm text-neutral-700">
-                          {fieldLabel(field)}
-                          {field.required ? " *" : ""}
-                        </label>
-                        <input
-                          type="text"
-                          className="w-full max-w-xl rounded-md border border-neutral-300 px-3 py-2"
-                          value={String(answers[field.id] ?? "")}
-                          placeholder={field.placeholder}
-                          disabled={!canEditReport || report?.status !== "draft"}
-                          onChange={(e) =>
-                            setAnswers((a) => ({ ...a, [field.id]: e.target.value }))
-                          }
-                        />
-                      </div>
-                    );
-                  }
-                  if (field.type === "textarea") {
-                    return (
-                      <div key={field.id}>
-                        <label className="mb-1 block text-sm text-neutral-700">
-                          {fieldLabel(field)}
-                          {field.required ? " *" : ""}
-                        </label>
-                        <textarea
-                          className="w-full max-w-3xl rounded-md border border-neutral-300 px-3 py-2"
-                          rows={field.rows ?? 4}
-                          value={String(answers[field.id] ?? "")}
-                          placeholder={field.placeholder}
-                          disabled={!canEditReport || report?.status !== "draft"}
-                          onChange={(e) =>
-                            setAnswers((a) => ({ ...a, [field.id]: e.target.value }))
-                          }
-                        />
-                      </div>
-                    );
-                  }
-                  if (field.type === "checklist" && field.options) {
-                    return (
-                      <div key={field.id}>
-                        <label className="mb-1 block text-sm text-neutral-700">
-                          {fieldLabel(field)}
-                          {field.required ? " *" : ""}
-                        </label>
-                        <select
-                          className="w-full max-w-md rounded-md border border-neutral-300 px-3 py-2"
-                          value={String(answers[field.id] ?? "")}
-                          disabled={!canEditReport || report?.status !== "draft"}
-                          onChange={(e) =>
-                            setAnswers((a) => ({ ...a, [field.id]: e.target.value }))
-                          }
-                        >
-                          <option value="">—</option>
-                          {field.options.map((o) => (
-                            <option key={o} value={o}>
-                              {optionLabel(o)}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    );
-                  }
-                  if (field.type === "labor_log") {
-                    const hours = Array.isArray(answers.labor_log)
-                      ? Number((answers.labor_log as { hours?: number }[])[0]?.hours ?? 0)
-                      : Number(answers.labor_hours ?? 0);
-                    return (
-                      <div key={field.id}>
-                        <label className="mb-1 block text-sm text-neutral-700">
-                          {fieldLabel(field)}
-                        </label>
-                        <input
-                          type="number"
-                          step="0.25"
-                          className="w-full max-w-xs rounded-md border border-neutral-300 px-3 py-2"
-                          disabled={!canEditReport || report?.status !== "draft"}
-                          value={hours || ""}
-                          onChange={(e) => {
-                            const h = parseFloat(e.target.value) || 0;
-                            setAnswers((a) => ({ ...a, labor_log: [{ hours: h }] }));
-                          }}
-                        />
-                      </div>
-                    );
-                  }
-                  if (field.type === "parts_used") {
-                    return (
-                      <div key={field.id} className="space-y-3">
-                        <label className="mb-1 block text-sm text-neutral-700">
-                          {t("parts_used") || "Parts Used"}
-                        </label>
-                        <div className="space-y-2">
-                          {parts.map((part, idx) => (
-                            <div key={idx} className="flex items-center gap-2">
-                              <input
-                                type="text"
-                                className="flex-1 rounded-md border border-neutral-300 px-3 py-1 text-sm"
-                                value={part.sku}
-                                disabled={!canEditReport || report?.status !== "draft"}
-                                onChange={(e) => {
-                                  const newParts = [...parts];
-                                  newParts[idx].sku = e.target.value;
-                                  setParts(newParts);
-                                }}
-                                placeholder="SKU"
-                              />
-                              <input
-                                type="number"
-                                className="w-20 rounded-md border border-neutral-300 px-3 py-1 text-sm"
-                                value={part.quantity}
-                                disabled={!canEditReport || report?.status !== "draft"}
-                                onChange={(e) => {
-                                  const newParts = [...parts];
-                                  newParts[idx].quantity = parseInt(e.target.value, 10) || 0;
-                                  setParts(newParts);
-                                }}
-                              />
-                              <button
-                                type="button"
-                                className="text-error-main hover:text-error-dark"
-                                disabled={!canEditReport || report?.status !== "draft"}
-                                onClick={() => setParts(parts.filter((_, i) => i !== idx))}
-                              >
-                                ×
-                              </button>
-                            </div>
-                          ))}
-                          {canEditReport && report?.status === "draft" && (
-                            <button
-                              type="button"
-                              className="text-xs text-primary-600 hover:underline"
-                              onClick={() => setParts([...parts, { sku: "", quantity: 1 }])}
-                            >
-                              + {t("add_part") || "Add Part"}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  }
-                  if (field.type === "photo" && field.max_photos) {
-                    return (
-                      <div key={field.id}>
-                        <label className="mb-1 block text-sm text-neutral-700">
-                          {fieldLabel(field)}
-                          {field.required ? " *" : ""}
-                        </label>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          disabled={!canEditReport || report?.status !== "draft"}
-                          onChange={(e) => {
-                            const files = Array.from(e.target.files || []);
-                            setPhotos((p) => ({ ...p, [field.id]: files }));
-                          }}
-                          className="w-full text-sm text-neutral-600"
-                        />
-                        {photos[field.id] && (
-                          <p className="mt-1 text-xs text-neutral-500">
-                            {photos[field.id].length} file(s) selected (max: {field.max_photos})
-                          </p>
-                        )}
-                      </div>
-                    );
-                  }
-                  return null;
-                })}
-              </div>
-            ))}
-            {report?.status === "draft" && (
-              <div className="flex flex-wrap items-center gap-3 border-t border-neutral-100 pt-4">
-                <label className="text-sm text-neutral-700">
-                  {t("report_pdf_language") || "PDF language"}
-                  <select
-                    className="ml-2 rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
-                    value={pdfLang}
-                    onChange={(e) => setPdfLang(e.target.value as "ar" | "en")}
-                  >
-                    <option value="ar">{t("report_pdf_lang_ar") || "Arabic (AR)"}</option>
-                    <option value="en">{t("report_pdf_lang_en") || "English (EN)"}</option>
-                  </select>
-                </label>
-              </div>
-            )}
-            {report?.status === "draft" && (
-              <div className="flex flex-wrap gap-2 pt-4">
-                <button
-                  type="submit"
-                  className="rounded-md bg-primary-600 px-4 py-2 text-sm text-neutral-0"
-                >
-                  {t("save_report")}
-                </button>
-                <button
-                  type="button"
-                  className="rounded-md border border-primary-600 px-4 py-2 text-sm text-primary-700"
-                  onClick={() => void submitReport()}
-                >
-                  {t("submit_report")}
-                </button>
-              </div>
-            )}
-            
-            {report && report.status !== "draft" && (
-              <div className="mt-4 rounded-md bg-neutral-100 p-3">
-                <p className="text-sm text-neutral-600">
-                  Report status: <strong className="text-neutral-900">{report.status}</strong>
-                  {report.status === "submitted" && " - Waiting for approval"}
-                  {report.status === "approved" && " - Report has been approved"}
-                </p>
-              </div>
-            )}
-          </form>
-            )}
-          </div>
-        </>
-      )}
-
-      <div className="rounded-lg border border-neutral-200 bg-neutral-0 p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-medium text-neutral-800">{t("comments") || "Comments & Documents"}</h2>
+      {/* History tab — comments + activity only */}
+      <div className={detailTab === "history" ? "space-y-4 lg:space-y-6" : "hidden"}>
+      <div className="rounded-xl border border-neutral-200 bg-neutral-0 p-4 shadow-sm lg:p-6">
+        <h2 className="mb-4 text-base font-medium text-neutral-800 lg:text-lg">{t("comments") || "Comments & Documents"}</h2>
         
         <div className="mb-4 space-y-3">
           {comments.length === 0 && documents.length === 0 ? (
@@ -1353,88 +1224,10 @@ export function WorkOrderDetailPage() {
         </form>
       </div>
 
-      {holdModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-neutral-0 p-6 shadow-xl">
-            <h3 className="mb-2 text-lg font-semibold text-neutral-900">
-              {t("hold_reason_title") || "Reason for Hold"}
-            </h3>
-            <p className="mb-4 text-sm text-neutral-600">
-              {t("hold_reason_hint") || "Provide a reason for placing this work order on hold."}
-            </p>
-            <textarea
-              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-              rows={4}
-              value={holdReason}
-              onChange={(e) => setHoldReason(e.target.value)}
-              placeholder={t("hold_reason_placeholder") || "Enter hold reason…"}
-              autoFocus
-            />
-            <div className="mt-4 flex justify-end gap-3">
-              <button
-                className="rounded-md px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100"
-                onClick={() => setHoldModalOpen(false)}
-              >
-                {t("cancel")}
-              </button>
-              <button
-                className="rounded-md bg-neutral-800 px-4 py-2 text-sm font-medium text-neutral-0 hover:bg-neutral-900 disabled:opacity-50"
-                disabled={!holdReason.trim()}
-                onClick={() => {
-                  setHoldModalOpen(false);
-                  void patchStatus({ hold_reason: holdReason.trim() });
-                }}
-              >
-                {t("apply") || "Apply"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {cancelModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-neutral-0 p-6 shadow-xl">
-            <h3 className="mb-2 text-lg font-semibold text-neutral-900">
-              {t("cancel_reason_title") || "Reason for Cancellation"}
-            </h3>
-            <p className="mb-4 text-sm text-neutral-600">
-              {t("cancel_reason_hint") || "Provide a reason for cancelling this work order."}
-            </p>
-            <textarea
-              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-              rows={4}
-              value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
-              placeholder={t("cancel_reason_placeholder") || "Enter cancellation reason…"}
-              autoFocus
-            />
-            <div className="mt-4 flex justify-end gap-3">
-              <button
-                className="rounded-md px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100"
-                onClick={() => setCancelModalOpen(false)}
-              >
-                {t("cancel")}
-              </button>
-              <button
-                className="rounded-md bg-error-dark px-4 py-2 text-sm font-medium text-neutral-0 hover:bg-error-main disabled:opacity-50"
-                disabled={!cancelReason.trim()}
-                onClick={() => {
-                  setCancelModalOpen(false);
-                  void patchStatus({ cancellation_reason: cancelReason.trim() });
-                }}
-              >
-                {t("confirm") || "Confirm"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {(history.length > 0 || comments.length > 0 || documents.length > 0) && (
-        <div className="rounded-lg border border-neutral-200 bg-neutral-0 p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-medium text-neutral-800">{t("history") || "Activity History"}</h2>
-          <div className="space-y-3">
+        <div className="rounded-xl border border-neutral-200 bg-neutral-0 p-4 shadow-sm lg:p-6">
+          <h2 className="mb-4 text-base font-medium text-neutral-800 lg:text-lg">{t("history") || "Activity History"}</h2>
+          <div className="space-y-3 border-s-2 border-primary-200 ps-3 lg:border-s-0 lg:ps-0">
             {[...history, ...comments.map(c => ({
               id: c.id,
               actor_name: c.user_name,
@@ -1548,6 +1341,85 @@ export function WorkOrderDetailPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+      </div>
+
+      {holdModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-neutral-0 p-6 shadow-xl">
+            <h3 className="mb-2 text-lg font-semibold text-neutral-900">
+              {t("hold_reason_title") || "Reason for Hold"}
+            </h3>
+            <p className="mb-4 text-sm text-neutral-600">
+              {t("hold_reason_hint") || "Provide a reason for placing this work order on hold."}
+            </p>
+            <textarea
+              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              rows={4}
+              value={holdReason}
+              onChange={(e) => setHoldReason(e.target.value)}
+              placeholder={t("hold_reason_placeholder") || "Enter hold reason…"}
+              autoFocus
+            />
+            <div className="mt-4 flex justify-end gap-3">
+              <button
+                className="rounded-md px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100"
+                onClick={() => setHoldModalOpen(false)}
+              >
+                {t("cancel")}
+              </button>
+              <button
+                className="rounded-md bg-neutral-800 px-4 py-2 text-sm font-medium text-neutral-0 hover:bg-neutral-900 disabled:opacity-50"
+                disabled={!holdReason.trim()}
+                onClick={() => {
+                  setHoldModalOpen(false);
+                  void patchStatus({ hold_reason: holdReason.trim() }, "on_hold");
+                }}
+              >
+                {t("apply") || "Apply"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cancelModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-neutral-0 p-6 shadow-xl">
+            <h3 className="mb-2 text-lg font-semibold text-neutral-900">
+              {t("cancel_reason_title") || "Reason for Cancellation"}
+            </h3>
+            <p className="mb-4 text-sm text-neutral-600">
+              {t("cancel_reason_hint") || "Provide a reason for cancelling this work order."}
+            </p>
+            <textarea
+              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              rows={4}
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder={t("cancel_reason_placeholder") || "Enter cancellation reason…"}
+              autoFocus
+            />
+            <div className="mt-4 flex justify-end gap-3">
+              <button
+                className="rounded-md px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100"
+                onClick={() => setCancelModalOpen(false)}
+              >
+                {t("cancel")}
+              </button>
+              <button
+                className="rounded-md bg-error-dark px-4 py-2 text-sm font-medium text-neutral-0 hover:bg-error-main disabled:opacity-50"
+                disabled={!cancelReason.trim()}
+                onClick={() => {
+                  setCancelModalOpen(false);
+                  void patchStatus({ cancellation_reason: cancelReason.trim() }, "cancelled");
+                }}
+              >
+                {t("confirm") || "Confirm"}
+              </button>
+            </div>
           </div>
         </div>
       )}

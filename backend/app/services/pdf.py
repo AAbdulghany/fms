@@ -33,12 +33,17 @@ def render_asset_label_pdf(
     client_name: str | None = None,
     size_mm: float | None = None,
     design: str | None = None,
+    qr_payload: str | None = None,
 ) -> bytes:
     """A2 sticker PDF — Design A (square) or C (field tag); size configurable in mm."""
     from app.services.asset_label_sticker import render_asset_sticker_pdf
 
     return render_asset_sticker_pdf(
-        asset, client_name=client_name, size_mm=size_mm, design=design
+        asset,
+        client_name=client_name,
+        size_mm=size_mm,
+        design=design,
+        qr_payload=qr_payload,
     )
 
 
@@ -49,8 +54,9 @@ def render_report_summary_pdf(
     work_order_id: str = "",
     answers: dict[str, Any],
     template_schema: dict[str, Any] | None = None,
-    platform_company_name: str = "Orbit Software",
+    platform_company_name: str = "",
     platform_copyright: str = "",
+    client_name: str = "",
     lang: str = "ar",
     dir_: str | None = None,
 ) -> bytes:
@@ -61,8 +67,9 @@ def render_report_summary_pdf(
         work_order_title=work_order_title,
         work_order_id=work_order_id,
         answers=answers or {},
-        platform_company_name=platform_company_name,
+        platform_company_name=platform_company_name or tenant_name,
         platform_copyright=platform_copyright,
+        client_name=client_name,
         lang=lang,
         dir_=dir_,
     )

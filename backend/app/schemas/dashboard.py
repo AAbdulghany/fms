@@ -29,6 +29,8 @@ class DashboardSummaryOut(BaseModel):
     my_in_progress: Optional[int] = None
     completed_this_week: int = 0
     assets_at_eol: Optional[int] = None
+    in_progress_count: Optional[int] = None
+    overdue_count: Optional[int] = None
 
 
 # --- Comments ---

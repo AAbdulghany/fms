@@ -77,6 +77,7 @@ def dashboard_summary(
         )
         out.my_assigned_open = int(my_open or 0)
         out.my_in_progress = int(my_prog or 0)
+        out.in_progress_count = int(my_prog or 0)
         out.completed_this_week = int(done_week or 0)
         out.open_work_orders = int(
             db.scalar(
@@ -86,6 +87,27 @@ def dashboard_summary(
                     WorkOrder.tenant_id == tid,
                     WorkOrder.assignee_user_id == current.id,
                     WorkOrder.status.notin_([WorkOrderStatus.closed, WorkOrderStatus.cancelled]),
+                )
+            )
+            or 0
+        )
+        out.overdue_count = int(
+            db.scalar(
+                select(func.count())
+                .select_from(WorkOrder)
+                .where(
+                    WorkOrder.tenant_id == tid,
+                    WorkOrder.assignee_user_id == current.id,
+                    WorkOrder.due_at.isnot(None),
+                    WorkOrder.due_at < datetime.now(timezone.utc),
+                    WorkOrder.status.notin_(
+                        [
+                            WorkOrderStatus.closed,
+                            WorkOrderStatus.cancelled,
+                            WorkOrderStatus.completed,
+                            WorkOrderStatus.verified,
+                        ]
+                    ),
                 )
             )
             or 0
@@ -139,6 +161,35 @@ def dashboard_summary(
     if site_ids is not None:
         wq = wq.where(WorkOrder.site_id.in_(site_ids))
     out.open_work_orders = int(db.scalar(wq) or 0)
+
+    prog_q = select(func.count()).select_from(WorkOrder).where(
+        WorkOrder.tenant_id == tid,
+        WorkOrder.status == WorkOrderStatus.in_progress,
+    )
+    if client_filter:
+        prog_q = prog_q.where(WorkOrder.client_id == client_filter)
+    if site_ids is not None:
+        prog_q = prog_q.where(WorkOrder.site_id.in_(site_ids))
+    out.in_progress_count = int(db.scalar(prog_q) or 0)
+
+    overdue_q = select(func.count()).select_from(WorkOrder).where(
+        WorkOrder.tenant_id == tid,
+        WorkOrder.due_at.isnot(None),
+        WorkOrder.due_at < datetime.now(timezone.utc),
+        WorkOrder.status.notin_(
+            [
+                WorkOrderStatus.closed,
+                WorkOrderStatus.cancelled,
+                WorkOrderStatus.completed,
+                WorkOrderStatus.verified,
+            ]
+        ),
+    )
+    if client_filter:
+        overdue_q = overdue_q.where(WorkOrder.client_id == client_filter)
+    if site_ids is not None:
+        overdue_q = overdue_q.where(WorkOrder.site_id.in_(site_ids))
+    out.overdue_count = int(db.scalar(overdue_q) or 0)
 
     op_users_q = select(func.count()).select_from(User).where(
         User.tenant_id == tid,

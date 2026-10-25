@@ -91,9 +91,9 @@ export default function CompaniesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-3 lg:space-y-6">
+      <h1 className="text-xl font-bold text-neutral-900 lg:hidden">{t("clients")}</h1>
+      <div className="hidden items-center justify-between lg:flex">
         <h1 className="text-3xl font-semibold text-neutral-900">{t("companies")}</h1>
         <button
           type="button"
@@ -105,8 +105,7 @@ export default function CompaniesPage() {
         </button>
       </div>
 
-      {/* Search + Include Archived */}
-      <div className="flex items-center gap-4">
+      <div className="hidden items-center gap-4 lg:flex">
         <div className="flex-1">
           <input
             type="text"
@@ -170,7 +169,7 @@ export default function CompaniesPage() {
         /* Table View (Desktop) / Card View (Mobile) */
         <>
           {/* Desktop Table */}
-          <div className="hidden overflow-hidden rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm md:block">
+          <div className="hidden overflow-hidden rounded-lg border border-neutral-200 bg-neutral-0 shadow-sm lg:block">
             <table className="w-full">
               <thead className="border-b border-neutral-200 bg-neutral-50">
                 <tr>
@@ -242,34 +241,19 @@ export default function CompaniesPage() {
           </div>
 
           {/* Mobile Cards */}
-          <div className="grid gap-4 md:hidden">
+          <div className="space-y-2 lg:hidden">
             {filteredCompanies.map((company) => (
-              <div
+              <button
                 key={company.id}
+                type="button"
                 onClick={() => navigate(`/companies/${company.id}`)}
-                className="cursor-pointer rounded-lg border border-neutral-200 bg-neutral-0 p-4 shadow-sm transition-colors hover:border-primary-300"
+                className="block w-full rounded-xl border border-neutral-200 bg-neutral-0 px-3 py-2.5 text-start"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="text-base font-medium text-primary-600">{company.name}</div>
-                    <div className="text-sm text-neutral-600">{company.contact_email}</div>
-                  </div>
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      company.status === "active"
-                        ? "bg-success-light text-success-dark"
-                        : "bg-neutral-200 text-neutral-600"
-                    }`}
-                  >
-                    {company.status}
-                  </span>
-                </div>
-                <div className="mt-3 flex gap-4 text-sm text-neutral-600">
-                  <span>{company.sites_count ?? 0} {t("sites_count")}</span>
-                  <span>•</span>
-                  <span>{company.active_wo_count ?? 0} {t("active_wos")}</span>
-                </div>
-              </div>
+                <span className="block text-sm font-bold text-neutral-900">{company.name}</span>
+                <span className="mt-0.5 block text-xs text-neutral-500">
+                  {company.sites_count ?? 0} {t("sites")}
+                </span>
+              </button>
             ))}
           </div>
         </>

@@ -12,9 +12,11 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // Quick tunnels rotate subdomains; leading-dot matches all of *.trycloudflare.com
+    allowedHosts: [".trycloudflare.com"],
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:8000",
+        target: "http://127.0.0.1:8001",
         changeOrigin: true,
       },
     },

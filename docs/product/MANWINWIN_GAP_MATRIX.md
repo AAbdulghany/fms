@@ -70,11 +70,11 @@ This document provides an honest, evidence-based gap analysis between **ManWinWi
 | Corrective WO creation & assignment | ✅ Done | `src/features/work-orders/pages/WorkOrdersPage.tsx`, `WorkOrderDetailPage.tsx` | — | Full lifecycle implemented |
 | WO status lifecycle (created → assigned → in_progress → completed → verified → closed) | ✅ Done | `CLAUDE.md` status list; `WorkOrderDetailPage.tsx` | — | Matches ManWinWin WO lifecycle |
 | WO request channel (client → FM) | ✅ Done | `WorkOrderRequestReviewModal.tsx`; pitch §3.1 "WO requests" Done | — | — |
-| WO-to-asset linking (scoped WO list per asset) | 🟡 Partial | Wave 5 RC-2: backend `asset_id` filter fixed (NT-P5-A01 Fixed); FE verification NT-P5-A01-FE **Open** | P0 | Critical for asset maintenance history; FE wiring still open |
+| WO-to-asset linking (scoped WO list per asset) | ✅ Done | `GET /work-orders?asset_id=`; A5 `GET /assets/{id}/work-order-history`; AssetDetail maintenance + WO tabs | P0 | Gap matrix P0 closed in A5 |
 | WO priority / urgency classification | 🟡 Partial | No explicit priority field evidenced in route/component scan; WO schema not confirmed | P1 | ManWinWin has P1–P4 urgency; Orbit status unknown — needs schema check |
 | WO attachments (photos, reports) | 🟡 Partial | Report templates exist; photo upload blocked by object storage gap (pitch §3.2) | P0 | Same blocker as asset photos |
 | WO cost tracking (parts + labor) | 🟡 Partial | Labor page + time entries done; parts cost = ❌ (no inventory); invoice generated but not broken down by cost type | P1 | Partial: labor cost only |
-| Downtime tracking per WO | ❌ Missing | No downtime/MTTR field in routes or components | P1 | Key hospital KPI (equipment availability); ManWinWin tracks asset downtime per WO |
+| Downtime tracking per WO | ✅ Done | A5: `downtime_started_at` / `downtime_ended_at` + `downtime_minutes`; failure/symptom codes; WO diagnostics panel | P1 | MTTR KPI foundation; catalog seeded per tenant |
 | WO escalation / SLA breach alerts | ❌ Missing | Notifications partial (SMTP not prod); no SLA timer logic evidenced | P1 | ManWinWin SLA clock triggers escalation |
 | Multi-technician assignment to WO | ❌ Missing | Single technician assignment assumed; no multi-assignee component found | P2 | ManWinWin supports team assignment |
 

@@ -51,8 +51,25 @@ def observation_fields_for_category(schema: dict[str, Any], asset_category: str 
     return copy.deepcopy(by_cat.get(DEFAULT_CATEGORY_KEY) or default_observation_fields())
 
 
-def resolve_effective_schema(schema: dict[str, Any], asset_category: str | None = None) -> dict[str, Any]:
-    """Return a copy of the template schema with category-specific observation fields applied."""
+def resolve_effective_schema(
+    schema: dict[str, Any],
+    asset_category: str | None = None,
+    *,
+    wo_source: str | None = None,
+    use_short_fill: bool = True,
+) -> dict[str, Any]:
+    """Return schema for draft/PDF validation.
+
+    When ``use_short_fill`` is True (default), prefer the preventive/corrective
+    short guided profile keyed by ``wo_source`` (UAT report-fill redesign).
+    """
+    if use_short_fill:
+        from app.services.report_fill_profiles import short_schema_for_source
+
+        # Always short profile for tech fill/submit — never fall back to STD-INSP
+        # (empty wo_source → corrective). Legacy long schemas are PDF-only via normalize.
+        return short_schema_for_source(wo_source or "corrective")
+
     effective = copy.deepcopy(schema or {})
     fields = observation_fields_for_category(effective, asset_category)
     sections = effective.get("sections") or []

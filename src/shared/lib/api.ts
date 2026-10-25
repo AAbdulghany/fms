@@ -87,14 +87,16 @@ export async function apiFetch<T>(
 
 export { resolveApiError, parseApiError } from "./errors";
 
-/** Authenticated binary download (e.g. generated report PDF). */
+/** Authenticated binary download (e.g. generated report PDF). Always bypasses HTTP cache. */
 export async function apiFetchBlob(path: string): Promise<Blob> {
-  let res = await request(path, { method: "GET" });
+  const bust = path.includes("?") ? `&_=${Date.now()}` : `?_=${Date.now()}`;
+  const freshPath = `${path}${bust}`;
+  let res = await request(freshPath, { method: "GET", cache: "no-store" });
 
   if (res.status === 401 && !path.startsWith("/auth/")) {
     const nextAccessToken = await tryRefreshToken();
     if (nextAccessToken) {
-      res = await request(path, { method: "GET" }, nextAccessToken);
+      res = await request(freshPath, { method: "GET", cache: "no-store" }, nextAccessToken);
     } else {
       redirectToLogin();
       throw new Error(JSON.stringify({ detail: "INVALID_TOKEN" }));
