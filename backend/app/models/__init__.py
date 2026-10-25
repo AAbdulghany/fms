@@ -20,7 +20,7 @@ __all__ = [
     "Tenant", "SubscriptionPackage", "TenantSubscription", "PlatformSettings",
     "User", "UserSiteScope", "Client", "Site", "Location",
     "Asset", "MaintenanceSchedule", "ReportTemplate",
-    "WorkOrder", "MaintenanceReport", "Comment", "WorkOrderDocument", "DiagnosticCode",
+    "WorkOrder", "MaintenanceReport", "Comment", "WorkOrderDocument",
     "PricingProfile", "Contract", "Part", "Invoice", "InvoiceLineItem",
     "TaxProfile", "WorkOrderPart",
     "TechnicianProfile", "LaborEntry", "TechnicianSchedule",

@@ -86,14 +86,70 @@ class InvoicePatchBody(BaseModel):
 class PartCreate(BaseModel):
     sku: str
     name: str = ""
+    name_en: str = ""
+    name_ar: str = ""
     unit_cost_sar: Decimal = Decimal("0")
+    kind: str = "part"  # part | raw_material
+    qty_on_hand: Decimal = Decimal("0")
+
+    @model_validator(mode="after")
+    def _fill_localized_names(self) -> "PartCreate":
+        en = (self.name_en or self.name or "").strip()
+        ar = (self.name_ar or self.name or "").strip()
+        self.name_en = en
+        self.name_ar = ar
+        if not self.name:
+            self.name = en or ar
+        k = (self.kind or "part").strip().lower().replace("-", "_").replace(" ", "_")
+        if k in ("raw", "raw_material", "material"):
+            self.kind = "raw_material"
+        elif k in ("spare_asset", "spare", "asset", "whole_asset"):
+            self.kind = "spare_asset"
+        else:
+            self.kind = "part"
+        return self
+
+
 class PartOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     sku: str
     name: str
+    name_en: str = ""
+    name_ar: str = ""
     unit_cost_sar: Decimal
+    kind: str = "part"
+    qty_on_hand: Decimal = Decimal("0")
+
+
+class PartUpdate(BaseModel):
+    name_en: Optional[str] = None
+    name_ar: Optional[str] = None
+    unit_cost_sar: Optional[Decimal] = None
+    kind: Optional[str] = None
+    qty_on_hand: Optional[Decimal] = None
+
+
+class PartBulkItem(BaseModel):
+    sku: str
+    name_en: str = ""
+    name_ar: str = ""
+    name: str = ""
+    unit_cost_sar: Decimal = Decimal("0")
+    kind: str = "part"
+    qty_on_hand: Decimal = Decimal("0")
+
+
+class PartBulkRequest(BaseModel):
+    items: list[PartBulkItem] = Field(default_factory=list, min_length=1)
+
+
+class PartBulkResult(BaseModel):
+    created: int = 0
+    updated: int = 0
+    skipped: int = 0
+    errors: list[str] = Field(default_factory=list)
 class PricingProfileCreate(BaseModel):
     name: str
     hourly_rate_sar: Decimal = Decimal("0")
@@ -114,6 +170,19 @@ class ContractCreate(BaseModel):
     pricing_profile_id: UUID
     name: str = "Default"
     currency: str = "SAR"
+    tax_rate_percent: Optional[Decimal] = None
+    tax_inclusive: bool = False
+
+
+class ContractUpdate(BaseModel):
+    pricing_profile_id: Optional[UUID] = None
+    name: Optional[str] = None
+    currency: Optional[str] = None
+    status: Optional[str] = None
+    tax_rate_percent: Optional[Decimal] = None
+    tax_inclusive: Optional[bool] = None
+
+
 class ContractOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -123,3 +192,49 @@ class ContractOut(BaseModel):
     name: str
     currency: str
     status: str
+    tax_rate_percent: Optional[Decimal] = None
+    tax_inclusive: bool = False
+
+
+class TaxProfileCreate(BaseModel):
+    name: str = "Standard VAT"
+    rate_percent: Decimal = Decimal("15")
+    tax_inclusive: bool = False
+    rounding: str = "HALF_UP"
+    is_default: bool = True
+
+
+class TaxProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    rate_percent: Optional[Decimal] = None
+    tax_inclusive: Optional[bool] = None
+    rounding: Optional[str] = None
+    is_default: Optional[bool] = None
+
+
+class TaxProfileOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    name: str
+    rate_percent: Decimal
+    tax_inclusive: bool
+    rounding: str
+    is_default: bool
+
+
+class WorkOrderPartCreate(BaseModel):
+    part_id: UUID
+    quantity: Decimal = Decimal("1")
+
+
+class WorkOrderPartOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    work_order_id: UUID
+    part_id: UUID
+    quantity: Decimal
+    unit_cost_sar: Decimal
+    part_sku: Optional[str] = None
+    part_name: Optional[str] = None

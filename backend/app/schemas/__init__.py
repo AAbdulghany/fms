@@ -126,5 +126,4 @@ __all__ = [
     "WorkOrderCreate",
     "WorkOrderOut",
     "WorkOrderUpdate",
-    "DiagnosticCodeOut",
 ]

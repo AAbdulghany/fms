@@ -1,4 +1,7 @@
-"""Maintenance calendar query service (Wave 3 / NT-117)."""
+"""Maintenance calendar query service (Wave 3 / NT-117 + Automation Plan #1).
+
+Projects every due occurrence in the requested year until asset aging (EOL).
+"""
 
 from __future__ import annotations
 
@@ -10,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from app.models import Asset, MaintenanceSchedule, Site, User, UserRole, UserSiteScope
+from app.services.maintenance_schedules import iter_projected_dues
 
 
 def _quarter_of(dt: datetime) -> int:
@@ -26,7 +30,11 @@ def get_calendar_events(
     month: int | None = None,
     client_id: UUID | None = None,
 ) -> list[dict[str, Any]]:
-    """Return maintenance calendar events scoped by RBAC and filtered by year."""
+    """Return maintenance calendar events scoped by RBAC and filtered by year.
+
+    Automation Plan #1: expands each active schedule into all occurrences
+    that fall in ``year`` and on/before the asset's expected EOL.
+    """
     if year is None:
         year = datetime.now(timezone.utc).year
 
@@ -57,6 +65,9 @@ def get_calendar_events(
 
     schedules = db.scalars(q).unique().all()
 
+    range_start = datetime(year, 1, 1, tzinfo=timezone.utc)
+    range_end = datetime(year, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
+
     events: list[dict[str, Any]] = []
     for sched in schedules:
         asset = sched.asset
@@ -65,30 +76,33 @@ def get_calendar_events(
         site = asset.site
         if not site:
             continue
-        due = sched.next_due_at
-        if due.tzinfo is None:
-            due = due.replace(tzinfo=timezone.utc)
-        if due.year != year:
-            continue
-        if view == "monthly":
-            if month is not None and due.month != month:
-                continue
-            bucket = due.day
-        elif view == "quarterly":
-            bucket = _quarter_of(due)
-        else:
-            bucket = due.month
-        events.append(
-            {
-                "asset_id": str(asset.id),
-                "asset_name": asset.name,
-                "site_id": str(asset.site_id),
-                "client_id": str(site.client_id),
-                "schedule_id": str(sched.id),
-                "frequency": sched.frequency,
-                "due_at": due.isoformat(),
-                "bucket": bucket,
-            }
-        )
 
+        for due in iter_projected_dues(
+            sched,
+            range_start=range_start,
+            range_end=range_end,
+            asset=asset,
+        ):
+            if view == "monthly":
+                if month is not None and due.month != month:
+                    continue
+                bucket = due.day
+            elif view == "quarterly":
+                bucket = _quarter_of(due)
+            else:
+                bucket = due.month
+            events.append(
+                {
+                    "asset_id": str(asset.id),
+                    "asset_name": asset.name,
+                    "site_id": str(asset.site_id),
+                    "client_id": str(site.client_id),
+                    "schedule_id": str(sched.id),
+                    "frequency": sched.frequency,
+                    "due_at": due.isoformat(),
+                    "bucket": bucket,
+                }
+            )
+
+    events.sort(key=lambda e: e["due_at"])
     return events

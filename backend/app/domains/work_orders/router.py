@@ -30,7 +30,7 @@ from .crud import (  # noqa: F401
     list_work_orders,
     patch_work_order,
 )
-from .reports import get_report, send_report_for_approval, submit_report, upsert_report_draft  # noqa: F401
+from .reports import get_report, submit_report, upsert_report_draft  # noqa: F401
 from .requests import (  # noqa: F401
     approve_work_order_request,
     decline_work_order_request,
@@ -51,7 +51,6 @@ __all__ = [
     "get_report",
     "upsert_report_draft",
     "submit_report",
-    "send_report_for_approval",
     "get_work_order_history",
     "get_work_order_comments",
     "create_work_order_comment",
