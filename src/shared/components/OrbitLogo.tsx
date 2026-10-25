@@ -7,6 +7,8 @@ interface OrbitLogoProps {
   iconSize?: number;
   /** Light mark for the navy login panel */
   tone?: "default" | "onDark";
+  /** Tenant display name → "Orbit - {tenant}" (UAT #9) */
+  tenantName?: string | null;
   className?: string;
 }
 
@@ -21,22 +23,27 @@ export function OrbitLogo({
   showWordmark = true,
   iconSize = 28,
   tone = "default",
+  tenantName,
   className = "",
 }: OrbitLogoProps) {
   const { t } = useTranslation();
+  const title =
+    tenantName && tenantName.trim()
+      ? t("app_title_with_tenant", { tenant: tenantName.trim() })
+      : t("app_title");
 
   return (
-    <span className={`inline-flex items-center gap-2.5 ${className}`}>
+    <span className={`inline-flex min-w-0 items-center gap-2.5 ${className}`}>
       <svg
         width={iconSize}
         height={iconSize}
         viewBox="0 0 256 256"
-        className={tone === "onDark" ? "text-neutral-50" : "text-primary-700"}
+        className={`shrink-0 ${tone === "onDark" ? "text-neutral-50" : "text-primary-700"}`}
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         role="img"
         aria-hidden={showWordmark ? true : undefined}
-        aria-label={showWordmark ? undefined : "Orbit"}
+        aria-label={showWordmark ? undefined : title}
       >
         <path className="fill-current" d={RING} />
         <path className="fill-current" d={CAP_A} />
@@ -44,8 +51,13 @@ export function OrbitLogo({
         <path className="fill-secondary-500" d={ASSET} />
       </svg>
       {showWordmark && (
-        <span className="font-display-ar text-lg font-semibold tracking-tight text-primary-600 lg:text-xl">
-          {t("app_title")}
+        <span
+          className={`truncate font-display-ar text-base font-semibold tracking-tight lg:text-lg ${
+            tone === "onDark" ? "text-neutral-50" : "text-primary-600"
+          }`}
+          title={title}
+        >
+          {title}
         </span>
       )}
     </span>

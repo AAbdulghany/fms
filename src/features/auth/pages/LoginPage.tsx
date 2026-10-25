@@ -20,6 +20,7 @@ export function LoginPage() {
   const [identifier, setIdentifier] = useState("super@demo.com");
   const [password, setPassword] = useState(`super${DEMO_SUFFIX}`);
   const [error, setError] = useState<string | null>(null);
+  const [signInOpen, setSignInOpen] = useState(false);
 
   useEffect(() => {
     applyLanguage(getStoredLanguage(), i18n);
@@ -63,16 +64,61 @@ export function LoginPage() {
     "w-full rounded-xl border border-neutral-200 bg-neutral-0 px-4 py-3 text-base text-neutral-900 outline-none focus:border-primary-500";
 
   return (
-    <div className="flex min-h-dvh flex-col bg-neutral-50 lg:flex-row">
-      <section className="flex flex-col items-center justify-center gap-3 bg-primary-900 px-8 py-12 text-center text-neutral-50 lg:w-[42%] lg:px-12">
+    <div className="relative h-full min-h-0 bg-primary-900 max-lg:overflow-hidden lg:flex lg:min-h-dvh lg:bg-neutral-50">
+      <section className="relative flex h-full flex-col items-center justify-center bg-primary-900 px-8 text-center text-neutral-50 lg:hidden">
+        <button
+          type="button"
+          className="absolute end-4 top-4 rounded-full bg-neutral-0/10 px-3 py-1.5 text-sm font-semibold text-neutral-50"
+          onClick={toggleLang}
+        >
+          {i18n.language === "ar" ? "EN" : "عربي"}
+        </button>
         <OrbitLogo showWordmark={false} iconSize={168} tone="onDark" />
-        <p className="font-['Syne'] text-3xl font-bold tracking-[0.18em] text-neutral-50">ORBIT</p>
-        <p className="font-['Syne'] text-xl font-bold text-neutral-50">{t("login_maintain")}</p>
+        <p className="mt-3 font-['Syne'] text-3xl font-bold tracking-[0.18em] text-neutral-50">ORBIT</p>
+        <p className="mt-2 font-['Syne'] text-xl font-bold text-neutral-50">{t("login_maintain")}</p>
         <p className="font-['Syne'] text-xl font-bold text-secondary-500">{t("login_orbit_line")}</p>
+        <button
+          type="button"
+          className={`mt-10 w-full max-w-xs rounded-xl bg-secondary-500 py-3.5 font-['Syne'] text-lg font-bold text-neutral-900 ${
+            signInOpen ? "invisible" : ""
+          }`}
+          onClick={() => setSignInOpen(true)}
+        >
+          {t("login")}
+        </button>
       </section>
-      <div className="h-1.5 bg-secondary-500 lg:h-auto lg:w-1.5" aria-hidden />
-      <section className="flex flex-1 items-center justify-center px-6 py-10 lg:px-16">
-        <form onSubmit={onSubmit} className="w-full max-w-md space-y-5">
+
+      <section className="hidden items-center justify-center bg-primary-900 px-12 py-12 text-center text-neutral-50 lg:flex lg:w-[42%] lg:shrink-0">
+        <div className="flex flex-col items-center gap-3">
+          <OrbitLogo showWordmark={false} iconSize={168} tone="onDark" />
+          <p className="font-['Syne'] text-3xl font-bold tracking-[0.18em] text-neutral-50">ORBIT</p>
+          <p className="font-['Syne'] text-xl font-bold text-neutral-50">{t("login_maintain")}</p>
+          <p className="font-['Syne'] text-xl font-bold text-secondary-500">{t("login_orbit_line")}</p>
+        </div>
+      </section>
+      <div className="hidden bg-secondary-500 lg:block lg:w-1.5 lg:shrink-0" aria-hidden />
+
+      <div
+        className={`pointer-events-none absolute inset-0 z-10 bg-primary-900 opacity-60 lg:hidden ${
+          signInOpen ? "" : "hidden"
+        }`}
+        aria-hidden
+      />
+
+      <section
+        className={`${
+          signInOpen ? "flex" : "hidden"
+        } absolute inset-0 z-20 items-center justify-center px-5 lg:static lg:z-auto lg:flex lg:min-h-dvh lg:flex-1 lg:bg-neutral-50 lg:px-16 lg:py-10`}
+        onClick={() => {
+          if (signInOpen) setSignInOpen(false);
+        }}
+      >
+        <form
+          onSubmit={onSubmit}
+          onClick={(event) => event.stopPropagation()}
+          className="w-full max-w-md space-y-5 rounded-2xl bg-neutral-0 p-6 shadow-xl lg:rounded-none lg:bg-transparent lg:p-0 lg:shadow-none"
+        >
+
           <div className="flex items-center justify-between gap-4">
             <h1 className="font-['Syne'] text-4xl font-bold text-neutral-900">{t("login")}</h1>
             <button
