@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Orbit — Font compare: IBM Plex · Inter · Noto</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f4f2ee;
+        --card: #fff;
+        --ink: #141414;
+        --muted: #5a5a5a;
+        --line: #ddd8cf;
+        --accent: #1d4e89;
+        --ok: #166534;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+        line-height: 1.45;
+      }
+      header {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 2rem 1.5rem 1rem;
+      }
+      header h1 {
+        margin: 0 0 0.4rem;
+        font-size: 1.65rem;
+        font-weight: 700;
+      }
+      header p {
+        margin: 0;
+        color: var(--muted);
+        max-width: 40rem;
+      }
+      .note {
+        margin-top: 0.75rem;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+      main {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 0.5rem 1.5rem 3rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 1.25rem 1.35rem 1.4rem;
+      }
+      .card h2 {
+        margin: 0 0 0.25rem;
+        font-size: 1.1rem;
+      }
+      .sub {
+        margin: 0 0 1rem;
+        font-size: 0.88rem;
+        color: var(--muted);
+      }
+      .sub code {
+        font-size: 0.78rem;
+        background: #efece5;
+        padding: 0.1rem 0.35rem;
+        border-radius: 4px;
+      }
+      .cols {
+        display: grid;
+        gap: 0.85rem;
+      }
+      @media (min-width: 800px) {
+        .cols-3 {
+          grid-template-columns: 1fr 1fr 1fr;
+        }
+        .cols-2 {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 1rem;
+        min-height: 100%;
+      }
+      .panel h3 {
+        margin: 0 0 0.65rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .ar {
+        direction: rtl;
+        text-align: right;
+      }
+      .line {
+        margin: 0 0 0.45rem;
+      }
+      .weights {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px dashed var(--line);
+      }
+      .ui-mock {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .ui-mock .bar {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--line);
+        font-weight: 600;
+        font-size: 1.05rem;
+      }
+      .ui-mock .body {
+        padding: 1rem;
+        font-size: 0.95rem;
+      }
+      .ui-mock .meta {
+        margin-top: 0.5rem;
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+      .pill {
+        display: inline-block;
+        margin-top: 0.65rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        padding: 0.2rem 0.5rem;
+        border-radius: 999px;
+        background: #e8f5e9;
+        color: var(--ok);
+      }
+      .pill.soft {
+        background: #eef4fb;
+        color: var(--accent);
+      }
+      footer {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 0 1.5rem 2.5rem;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Compare: IBM Plex · Inter · Noto</h1>
+      <p>
+        Focused shortlist for P3. Syne, Plus Jakarta, and JetBrains are omitted so you can
+        judge these three alone.
+      </p>
+      <p class="note">
+        Today in app: Noto = body AR · IBM Plex = display AR · Inter = body EN
+      </p>
+    </header>
+
+    <main>
+      <!-- Portrait cards -->
+      <section class="card">
+        <h2>Family portraits</h2>
+        <p class="sub">Same weights 400 / 500 / 600 / 700</p>
+        <div class="cols cols-3">
+          <div class="panel" style="font-family: 'Noto Sans Arabic', sans-serif">
+            <h3>Noto Sans Arabic</h3>
+            <p class="ar line" style="font-size: 1.35rem; font-weight: 700">أوربت للصيانة</p>
+            <p class="ar line">إدارة الأصول وأوامر العمل في المستشفيات</p>
+            <div class="weights ar">
+              <span style="font-weight: 400">عادي ٤٠٠ — Regular</span>
+              <span style="font-weight: 500">متوسط ٥٠٠ — Medium</span>
+              <span style="font-weight: 600">شبه سميك ٦٠٠ — Semi</span>
+              <span style="font-weight: 700">سميك ٧٠٠ — Bold</span>
+            </div>
+            <span class="pill soft">Current body AR</span>
+          </div>
+
+          <div class="panel" style="font-family: 'IBM Plex Sans Arabic', sans-serif">
+            <h3>IBM Plex Sans Arabic</h3>
+            <p class="ar line" style="font-size: 1.35rem; font-weight: 700">أوربت للصيانة</p>
+            <p class="ar line">إدارة الأصول وأوامر العمل في المستشفيات</p>
+            <div class="weights ar">
+              <span style="font-weight: 400">عادي ٤٠٠ — Regular</span>
+              <span style="font-weight: 500">متوسط ٥٠٠ — Medium</span>
+              <span style="font-weight: 600">شبه سميك ٦٠٠ — Semi</span>
+              <span style="font-weight: 700">سميك ٧٠٠ — Bold</span>
+            </div>
+            <span class="pill soft">Current display AR</span>
+          </div>
+
+          <div class="panel" style="font-family: Inter, sans-serif">
+            <h3>Inter</h3>
+            <p class="line" style="font-size: 1.35rem; font-weight: 700">Orbit Maintenance</p>
+            <p class="line">Hospital asset &amp; work-order operations</p>
+            <div class="weights">
+              <span style="font-weight: 400">Regular 400</span>
+              <span style="font-weight: 500">Medium 500</span>
+              <span style="font-weight: 600">Semibold 600</span>
+              <span style="font-weight: 700">Bold 700</span>
+            </div>
+            <span class="pill soft">Current body EN</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Arabic head-to-head -->
+      <section class="card">
+        <h2>Arabic head-to-head — Noto vs IBM Plex</h2>
+        <p class="sub">Identical copy. Decide if you need both, or one face for body + display.</p>
+        <div class="cols cols-2">
+          <div class="panel ar" style="font-family: 'Noto Sans Arabic', sans-serif">
+            <h3>Noto Sans Arabic</h3>
+            <p class="line" style="font-size: 1.6rem; font-weight: 700">أوامر العمل المفتوحة</p>
+            <p class="line" style="font-weight: 600">صيانة وقائية · هذا الأسبوع</p>
+            <p class="line" style="font-weight: 400; color: #444">
+              المولد رقم ٤٢ في الطابق السفلي يحتاج فحصاً عاجلاً قبل نهاية الوردية. تم تعيين الفني أحمد.
+            </p>
+            <p class="line" style="font-size: 0.85rem; font-weight: 500; color: #666; margin-top: 0.75rem">
+              WO-2026-0042 · عاجل · قيد التنفيذ
+            </p>
+          </div>
+          <div class="panel ar" style="font-family: 'IBM Plex Sans Arabic', sans-serif">
+            <h3>IBM Plex Sans Arabic</h3>
+            <p class="line" style="font-size: 1.6rem; font-weight: 700">أوامر العمل المفتوحة</p>
+            <p class="line" style="font-weight: 600">صيانة وقائية · هذا الأسبوع</p>
+            <p class="line" style="font-weight: 400; color: #444">
+              المولد رقم ٤٢ في الطابق السفلي يحتاج فحصاً عاجلاً قبل نهاية الوردية. تم تعيين الفني أحمد.
+            </p>
+            <p class="line" style="font-size: 0.85rem; font-weight: 500; color: #666; margin-top: 0.75rem">
+              WO-2026-0042 · عاجل · قيد التنفيذ
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- UI mock: pairing with Inter -->
+      <section class="card">
+        <h2>App chrome mock — each Arabic face + Inter</h2>
+        <p class="sub">
+          How bilingual UI might feel: Arabic title in Noto or Plex, English meta in Inter
+        </p>
+        <div class="cols cols-2">
+          <div>
+            <p class="sub" style="margin-bottom: 0.5rem">Pair A · <code>Noto</code> + <code>Inter</code></p>
+            <div class="ui-mock">
+              <div class="bar ar" style="font-family: 'Noto Sans Arabic', sans-serif; font-weight: 700">
+                لوحة التحكم
+              </div>
+              <div class="body">
+                <p class="ar" style="font-family: 'Noto Sans Arabic', sans-serif; margin: 0 0 0.35rem">
+                  ٥ أوامر عمل مفتوحة · ٢ متأخرة
+                </p>
+                <p class="meta" style="font-family: Inter, sans-serif; margin: 0">
+                  Open work orders · 2 overdue
+                </p>
+              </div>
+            </div>
+          </div>
+          <div>
+            <p class="sub" style="margin-bottom: 0.5rem">Pair B · <code>IBM Plex</code> + <code>Inter</code></p>
+            <div class="ui-mock">
+              <div class="bar ar" style="font-family: 'IBM Plex Sans Arabic', sans-serif; font-weight: 700">
+                لوحة التحكم
+              </div>
+              <div class="body">
+                <p class="ar" style="font-family: 'IBM Plex Sans Arabic', sans-serif; margin: 0 0 0.35rem">
+                  ٥ أوامر عمل مفتوحة · ٢ متأخرة
+                </p>
+                <p class="meta" style="font-family: Inter, sans-serif; margin: 0">
+                  Open work orders · 2 overdue
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Numbers / mixed -->
+      <section class="card">
+        <h2>Digits &amp; mixed script</h2>
+        <p class="sub">Arabic-Indic vs Latin numerals in UI strings</p>
+        <div class="cols cols-3">
+          <div class="panel ar" style="font-family: 'Noto Sans Arabic', sans-serif">
+            <h3>Noto</h3>
+            <p class="line" style="font-size: 1.25rem; font-weight: 600">١٢٣٤٥٦٧٨٩٠</p>
+            <p class="line">Invoice #1042 · فاتورة ١٠٤٢</p>
+            <p class="line" style="font-weight: 500">SAR 1,250.00 · ١٬٢٥٠٫٠٠ ر.س</p>
+          </div>
+          <div class="panel ar" style="font-family: 'IBM Plex Sans Arabic', sans-serif">
+            <h3>IBM Plex</h3>
+            <p class="line" style="font-size: 1.25rem; font-weight: 600">١٢٣٤٥٦٧٨٩٠</p>
+            <p class="line">Invoice #1042 · فاتورة ١٠٤٢</p>
+            <p class="line" style="font-weight: 500">SAR 1,250.00 · ١٬٢٥٠٫٠٠ ر.س</p>
+          </div>
+          <div class="panel" style="font-family: Inter, sans-serif">
+            <h3>Inter</h3>
+            <p class="line" style="font-size: 1.25rem; font-weight: 600">1234567890</p>
+            <p class="line">Invoice #1042 · WO-2026-0042</p>
+            <p class="line" style="font-weight: 500">SAR 1,250.00</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Decision helper -->
+      <section class="card">
+        <h2>Decision helper</h2>
+        <div class="cols cols-3">
+          <div class="panel">
+            <h3>Keep all 3</h3>
+            <p class="sub" style="margin: 0">
+              Noto body AR · Plex display AR · Inter EN — closest to today, still drops Syne /
+              Jakarta / JetBrains
+            </p>
+          </div>
+          <div class="panel">
+            <h3>Keep 2: Noto + Inter</h3>
+            <p class="sub" style="margin: 0">
+              One Arabic face for body and headings. Drop IBM Plex. Smallest webfont set of this
+              shortlist.
+            </p>
+          </div>
+          <div class="panel">
+            <h3>Keep 2: Plex + Inter</h3>
+            <p class="sub" style="margin: 0">
+              IBM Plex for all Arabic; Inter for English. Drop Noto. Slightly more “product”
+              Arabic tone.
+            </p>
+          </div>
+        </div>
+        <p class="sub" style="margin: 1rem 0 0">
+          Reply with e.g. <strong>“Noto + Inter”</strong> or <strong>“keep all 3”</strong> and I’ll
+          apply P3.
+        </p>
+      </section>
+    </main>
+
+    <footer>
+      File: <code>designs/font-compare.html</code> · Refresh the browser tab if it was already open.
+    </footer>
+  </body>
+</html>

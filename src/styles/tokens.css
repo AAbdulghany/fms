@@ -75,11 +75,12 @@
   --urgency-urgent: #f59e0b;
   --urgency-emergency: #ef4444;
 
-  /* Typography stacks */
-  --font-display-en: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+  /* Typography stacks — P3 diet: Noto (AR) + Inter (EN) + Syne (login only); system mono */
+  --font-display-en: "Inter", "Segoe UI", system-ui, sans-serif;
   --font-body-en: "Inter", "Segoe UI", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
-  --font-display-ar: "IBM Plex Sans Arabic", "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
+  --font-display-ar: "Noto Sans Arabic", "Segoe UI", system-ui, sans-serif;
   --font-body-ar: "Noto Sans Arabic", "Segoe UI", system-ui, sans-serif;
 
   --text-xs: 0.75rem;
