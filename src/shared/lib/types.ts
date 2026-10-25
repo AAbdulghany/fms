@@ -21,6 +21,7 @@ export interface User {
   is_active: boolean;
   is_platform_admin?: boolean;
   features?: string[];
+  tenant_name?: string | null;
   phone?: string | null;
   job_title?: string | null;
   accreditation?: string | null;
@@ -60,6 +61,7 @@ export interface WorkOrder {
   template_id: string | null;
   created_by_user_id?: string | null;
   assignee_user_id: string | null;
+  return_assignee_user_id?: string | null;
   creator?: WorkOrderUserBrief | null;
   assignee?: WorkOrderUserBrief | null;
   company_name?: string | null;
@@ -76,6 +78,23 @@ export interface WorkOrder {
   tags?: string[];
   opened_at: string;
   closed_at: string | null;
+  job_started_at?: string | null;
+  job_ended_at?: string | null;
+  job_hours?: number | null;
+  downtime_started_at?: string | null;
+  downtime_ended_at?: string | null;
+  failure_code?: string | null;
+  symptom_code?: string | null;
+  downtime_minutes?: number | null;
+}
+
+export interface DiagnosticCode {
+  id: string;
+  kind: "failure" | "symptom" | string;
+  code: string;
+  name_en: string;
+  name_ar: string;
+  is_active: boolean;
 }
 
 export interface PaginatedWorkOrders {
@@ -342,4 +361,6 @@ export interface DashboardSummary {
   my_in_progress?: number | null;
   completed_this_week: number;
   assets_at_eol?: number | null;
+  in_progress_count?: number | null;
+  overdue_count?: number | null;
 }

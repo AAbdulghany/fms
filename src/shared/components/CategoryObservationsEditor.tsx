@@ -1,6 +1,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "@/lib/api";
+import { SlideNotices } from "@/shared/components/SlideNotice";
 import type { ObservationFieldDef } from "@/lib/reportSchema";
 
 type Props = {
@@ -293,8 +294,7 @@ export function CategoryObservationsEditor({ templateId, templateName, open, onC
               + {t("add_field") || "Add field"}
             </button>
 
-            {msg && <p className="rounded-md bg-success-light px-3 py-2 text-sm text-success-dark">{msg}</p>}
-            {err && <p className="rounded-md bg-error-light px-3 py-2 text-sm text-error-dark">{err}</p>}
+            <SlideNotices success={msg} error={err} />
 
             <div className="flex flex-wrap justify-between gap-2 border-t border-neutral-100 pt-4">
               {selectedCategory !== DEFAULT_CATEGORY && categories[selectedCategory] && (

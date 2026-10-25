@@ -1,6 +1,7 @@
 import { FormEvent, Fragment, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "@/lib/api";
+import { SlideNotice } from "@/shared/components/SlideNotice";
 
 type ClientRow = {
   id: string;
@@ -151,7 +152,7 @@ export function MaintenanceCompaniesPage() {
             required
           />
         </div>
-        {msg && <p className="text-sm text-neutral-600">{msg}</p>}
+        <SlideNotice text={msg} />
         <button type="submit" className="rounded-md bg-primary-600 px-4 py-2 text-sm text-white">
           {t("save")}
         </button>
