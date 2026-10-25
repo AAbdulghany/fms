@@ -37,6 +37,7 @@ class UserMeOut(UserPublic):
     """Authenticated user profile including tenant subscription features."""
 
     features: list[str] = Field(default_factory=list)
+    tenant_name: Optional[str] = None
 class UserListOut(BaseModel):
     """Extended user representation used in list / admin views."""
 

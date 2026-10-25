@@ -8,14 +8,17 @@
 
 ### The 6 Roles
 
-| Role | Code | Permission Level |
+| Role (display) | Code | Permission Level |
 |------|------|----------------|
-| Super Admin | `super_admin` | Full system access |
-| Company Admin | `company_admin` | Tenant-wide |
-| Client Admin | `client_admin` | Single client |
-| Site Manager | `site_manager` | Assigned sites |
+| Platform Super Admin | `super_admin` | Full system / platform access |
+| Tenant Company Admin | `company_admin` | Tenant-wide |
+| Tenant Engineer | `company_engineer` | Tenant engineering |
 | Technician | `technician` | Assigned WOs |
+| Client Admin | `client_admin` | Client account |
+| Client Site Manager | `site_manager` | Assigned sites |
 | Manager | `manager` | Read + approve |
+
+> A5: display naming only — no `require_permission` rewrite (Program B).
 
 ### Defining Roles
 

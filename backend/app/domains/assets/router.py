@@ -5,7 +5,7 @@ from uuid import UUID
 
 
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
 
 from sqlalchemy import select
 
@@ -26,6 +26,7 @@ from app.models import (
     User,
     UserRole,
     UserSiteScope,
+    WorkOrder,
 )
 
 from app.schemas import (
@@ -43,6 +44,10 @@ from app.schemas import (
     MaintenanceScheduleCreate,
 
     MaintenanceScheduleOut,
+
+    PaginatedMeta,
+
+    PaginatedWorkOrders,
 
 )
 
@@ -63,7 +68,7 @@ from app.services.asset_types import (
 )
 from app.schemas.asset_types import AssetTypeRef
 
-from app.services.maintenance_schedules import create_schedule
+from app.services.maintenance_schedules import create_schedule, ensure_next_actions_for_tenant
 
 from app.services.maintenance_calendar import get_calendar_events
 
@@ -289,7 +294,10 @@ def list_assets(
 
         now = datetime.now(timezone.utc)
 
-
+        def _aware_dt(dt: datetime) -> datetime:
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=timezone.utc)
+            return dt
 
         def _active_schedules(a: Asset):
             return [s for s in (a.schedules or []) if s.is_active]
@@ -298,9 +306,7 @@ def list_assets(
             active = _active_schedules(a)
             if not active:
                 return None
-            return min(s.next_due_at for s in active)
-
-
+            return min(_aware_dt(s.next_due_at) for s in active)
 
         if _view == "maintenance" or _sort == "next_due" or _filter:
             assets = [a for a in assets if _active_schedules(a)]
@@ -310,7 +316,7 @@ def list_assets(
                 a for a in assets
                 if (due := _next_due(a)) is not None and due <= now
             ]
-        elif _filter == "due_week":
+        elif _filter in ("due_week", "due_this_week"):
             week = now + timedelta(days=7)
             assets = [
                 a for a in assets
@@ -331,6 +337,17 @@ def list_assets(
 
 
 
+
+
+@router.post("/maintenance-schedules/ensure-next-actions")
+def ensure_next_maintenance_actions(
+    db: Annotated[Session, Depends(get_db)],
+    current: Annotated[User, Depends(get_current_user)],
+) -> dict:
+    """Seed missing next-event preventive WOs for all active schedules (no dummy reminders)."""
+    created = ensure_next_actions_for_tenant(db, current.tenant_id)
+    db.commit()
+    return {"created": created}
 
 
 @router.get("/maintenance-calendar", response_model=list[MaintenanceCalendarEventOut])
@@ -416,6 +433,7 @@ def create_asset(
         tenant_id=current.tenant_id,
         asset_type_id=body.asset_type_id,
         category=body.category,
+        asset_type_name=getattr(body, "asset_type_name", None),
     )
     defaults = apply_type_defaults(
         resolved.asset_type,
@@ -571,7 +589,52 @@ def get_asset(
     return _asset_to_out(asset)
 
 
+@router.get("/{asset_id}/work-order-history", response_model=PaginatedWorkOrders)
+def get_asset_work_order_history(
+    asset_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current: Annotated[User, Depends(get_current_user)],
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+) -> PaginatedWorkOrders:
+    """A5 — solid chronological WO history for an asset (gap matrix P0 / AI foundation)."""
+    from sqlalchemy import func
 
+    from app.domains.work_orders._common import _wo_load_options, _work_order_to_out
+
+    asset = _access_asset(db, current, asset_id)
+    q = select(WorkOrder).where(
+        WorkOrder.tenant_id == current.tenant_id,
+        WorkOrder.asset_id == asset.id,
+    )
+    if current.role == UserRole.technician:
+        q = q.where(WorkOrder.assignee_user_id == current.id)
+    if current.role == UserRole.client_admin and current.client_id:
+        q = q.where(WorkOrder.client_id == current.client_id)
+    if current.role == UserRole.site_manager:
+        scoped = db.scalars(
+            select(UserSiteScope.site_id).where(UserSiteScope.user_id == current.id)
+        ).all()
+        if scoped:
+            q = q.where(WorkOrder.site_id.in_(scoped))
+        else:
+            from sqlalchemy import false
+
+            q = q.where(false())
+
+    total = db.scalar(select(func.count()).select_from(q.subquery()))
+    rows = list(
+        db.scalars(
+            q.options(*_wo_load_options())
+            .order_by(WorkOrder.opened_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        ).all()
+    )
+    return PaginatedWorkOrders(
+        data=[_work_order_to_out(r) for r in rows],
+        meta=PaginatedMeta(page=page, page_size=page_size, total=int(total or 0)),
+    )
 
 
 @router.patch("/{asset_id}", response_model=AssetOut)
@@ -784,15 +847,11 @@ def add_schedule(
 
 
 @router.get("/{asset_id}/label-sheet")
-
 def asset_label_sheet(
-
     asset_id: UUID,
-
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
-
     current: Annotated[User, Depends(get_current_user)],
-
     size_mm: float | None = Query(
         default=None,
         ge=40,
@@ -803,23 +862,26 @@ def asset_label_sheet(
         default=None,
         description="Sticker design: a (docked square) or c (field tag).",
     ),
-
+    format: str | None = Query(
+        default="pdf",
+        description="Response format: pdf (print) or png (WYSIWYG on-screen preview).",
+    ),
 ) -> Response:
-
     asset = _access_asset(db, current, asset_id)
-
     db.refresh(asset)
-
     _ = asset.schedules
 
-    from app.services.asset_tags import ensure_active_tag
+    import os
+
+    from app.config import get_settings
     from app.services.asset_label_sticker import (
         DESIGN_A,
         LABEL_SIZE_MM_DEFAULT,
         clamp_label_size_mm,
         normalize_label_design,
+        sticker_pdf_to_png,
     )
-    from app.config import get_settings
+    from app.services.asset_tags import absolute_qr_payload, ensure_active_tag
 
     ensure_active_tag(db, asset)
     db.flush()
@@ -840,19 +902,52 @@ def asset_label_sheet(
         size_mm if size_mm is not None else default_mm,
         design=sticker_design,
     )
+
+    # Same absolute URL the Vite preview encodes (PUBLIC_APP_URL or browser Origin)
+    app_base = (os.environ.get("PUBLIC_APP_URL") or "").rstrip("/")
+    if not app_base:
+        app_base = (request.headers.get("origin") or "").rstrip("/")
+    if not app_base:
+        referer = request.headers.get("referer") or ""
+        if referer.startswith("http"):
+            from urllib.parse import urlsplit
+
+            parts = urlsplit(referer)
+            app_base = f"{parts.scheme}://{parts.netloc}"
+    qr_abs = absolute_qr_payload(asset.qr_payload, app_base=app_base or None)
+
     pdf = render_asset_label_pdf(
-        asset, client_name=client_name, size_mm=sticker_mm, design=sticker_design
+        asset,
+        client_name=client_name,
+        size_mm=sticker_mm,
+        design=sticker_design,
+        qr_payload=qr_abs,
     )
     db.commit()
 
+    fmt = (format or "pdf").strip().lower()
+    no_cache = {
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+        "Pragma": "no-cache",
+    }
+    stem = asset.label_code or str(asset.id)
+    if fmt in ("png", "image", "preview"):
+        return Response(
+            content=sticker_pdf_to_png(pdf),
+            media_type="image/png",
+            headers={
+                **no_cache,
+                "Content-Disposition": f'inline; filename="label-{stem}.png"',
+            },
+        )
+
     return Response(
-
         content=pdf,
-
         media_type="application/pdf",
-
-        headers={"Content-Disposition": f'inline; filename="label-{asset.label_code or asset.id}.pdf"'},
-
+        headers={
+            **no_cache,
+            "Content-Disposition": f'inline; filename="label-{stem}.pdf"',
+        },
     )
 
 

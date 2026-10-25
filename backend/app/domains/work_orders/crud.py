@@ -34,6 +34,7 @@ from app.schemas import (
     CommentCreate,
     CommentOut,
     DeclineRequestBody,
+    DiagnosticCodeOut,
     DocumentCreate,
     DocumentOut,
     MaintenanceReportOut,
@@ -45,6 +46,7 @@ from app.schemas import (
     WorkOrderOut,
     WorkOrderUpdate,
 )
+from app.services.diagnostic_codes import list_codes as list_diagnostic_codes
 from app.services.asset_lifecycle import on_work_order_completed
 from app.services.audit import write_audit
 from app.services.report_context import merge_report_answers, resolve_report_inspector
@@ -68,6 +70,8 @@ from ._common import (
     REPORT_PDF_DOC_DESCRIPTION,
     REPORT_EDITABLE_STATUSES,
     _ASSIGN_ROLES,
+    _SELF_ASSIGN_ROLES,
+    auto_work_order_title,
     _access_wo,
     _approve_roles,
     _assignee_audit_label,
@@ -83,6 +87,39 @@ from ._common import (
     validate_tags,
 )
 from .router import router
+
+@router.get("/diagnostic-codes", response_model=list[DiagnosticCodeOut])
+def get_diagnostic_codes(
+    db: Annotated[Session, Depends(get_db)],
+    current: Annotated[User, Depends(get_current_user)],
+    kind: str | None = Query(None, pattern="^(failure|symptom)$"),
+) -> list[DiagnosticCodeOut]:
+    """A5 — failure / symptom code catalog for WO forms and later AI features."""
+    rows = list_diagnostic_codes(db, current.tenant_id, kind=kind)
+    return [DiagnosticCodeOut.model_validate(r) for r in rows]
+
+
+@router.get("/next-title")
+def next_work_order_title(
+    asset_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current: Annotated[User, Depends(get_current_user)],
+    source: str = Query("corrective"),
+    lang: str = Query("en"),
+) -> dict[str, str]:
+    """Preview the automatic title: source for asset #N."""
+    from app.models import Asset as _Asset
+
+    asset = db.get(_Asset, asset_id)
+    if not asset or asset.tenant_id != current.tenant_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="ASSET_NOT_FOUND")
+    title = auto_work_order_title(
+        asset_name=asset.name,
+        source=source,
+        lang=lang,
+    )
+    return {"title": title}
+
 
 @router.get("", response_model=PaginatedWorkOrders)
 def list_work_orders(
@@ -171,6 +208,7 @@ def create_work_order(
     current: Annotated[User, Depends(get_current_user)],
     _: Annotated[User, _create_roles],
     background_tasks: BackgroundTasks,
+    lang: str | None = None,
 ) -> WorkOrderOut:
     # P2-F3: Validate tags
     if body.tags:
@@ -217,7 +255,11 @@ def create_work_order(
         source=body.source,
         category=body.category,
         urgency=body.urgency,
-        title=body.title,
+        title=auto_work_order_title(
+            asset_name=asset.name,
+            source=getattr(body.source, "value", str(body.source)),
+            lang=lang or getattr(current, "locale", None),
+        ),
         description=body.description,
         template_id=template_id,
         created_by_user_id=current.id,
@@ -272,7 +314,10 @@ def patch_work_order(
     background_tasks: BackgroundTasks,
 ) -> WorkOrderOut:
     wo = _access_wo(db, current, work_order_id)
-    assert_mutable(wo, body)
+    try:
+        assert_mutable(wo, body)
+    except TransitionError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=exc.code) from exc
     _assert_patch_fields_allowed(current, body)
     if body.assignee_user_id is not None:
         if current.role not in _ASSIGN_ROLES:
@@ -291,6 +336,11 @@ def patch_work_order(
         old_status = wo.status
         old_status_value = old_status.value
         wo.status = body.status
+
+        if body.status == WorkOrderStatus.in_progress and old_status != WorkOrderStatus.in_progress:
+            from app.services.report_context import stamp_job_start
+
+            stamp_job_start(wo)
 
         if body.status == WorkOrderStatus.closed:
             wo.closed_at = datetime.now(timezone.utc)
@@ -316,6 +366,29 @@ def patch_work_order(
         # P2-F3: Validate and update tags
         validate_tags(body.tags)
         wo.tags = body.tags
+
+    # A5 — downtime window + diagnostic codes
+    if body.clear_downtime:
+        wo.downtime_started_at = None
+        wo.downtime_ended_at = None
+    else:
+        if body.downtime_started_at is not None:
+            wo.downtime_started_at = body.downtime_started_at
+        if body.downtime_ended_at is not None:
+            wo.downtime_ended_at = body.downtime_ended_at
+    if wo.downtime_started_at and wo.downtime_ended_at:
+        if wo.downtime_ended_at < wo.downtime_started_at:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_DOWNTIME_WINDOW")
+
+    if body.clear_failure_code:
+        wo.failure_code = None
+    elif body.failure_code is not None:
+        wo.failure_code = body.failure_code.strip().upper() or None
+    if body.clear_symptom_code:
+        wo.symptom_code = None
+    elif body.symptom_code is not None:
+        wo.symptom_code = body.symptom_code.strip().upper() or None
+
     write_audit(
         db,
         tenant_id=current.tenant_id,
@@ -345,12 +418,13 @@ def get_assignable_users(
 ) -> list[UserBrief]:
     wo = _access_wo(db, current, work_order_id)
     
-    # Get users with roles: site_manager, client_admin, technician, manager
     assignable_roles = [
         UserRole.site_manager,
         UserRole.client_admin,
         UserRole.technician,
+        UserRole.company_engineer,
         UserRole.manager,
+        UserRole.company_admin,
     ]
     
     users = db.scalars(
@@ -373,21 +447,26 @@ def assign_work_order(
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
     background_tasks: BackgroundTasks,
-    _: Annotated[
-        User,
-        Depends(
-            require_roles(
-                UserRole.super_admin,
-                UserRole.company_admin,
-                UserRole.site_manager,
-            )
-        ),
-    ],
 ) -> WorkOrderOut:
+    """Assign a WO. Admins may assign anyone; technicians may only assign themselves."""
     wo = _access_wo(db, current, work_order_id)
+    # Compare as str — avoids UUID/str mismatches from clients / drivers.
+    self_assign = str(body.assignee_user_id) == str(current.id)
+    if current.role in _ASSIGN_ROLES:
+        pass
+    elif self_assign and current.role in _SELF_ASSIGN_ROLES:
+        pass
+    else:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
     old_assignee_id = wo.assignee_user_id
     old_status = wo.status
-    _validate_assignee(db, current.tenant_id, body.assignee_user_id)
+    # Self-assign: allow actor even when their role is not in _ASSIGNABLE_USER_ROLES
+    # (company_admin / super_admin). Field roles (engineer, tech) also use this path.
+    if self_assign:
+        if not current.is_active:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_ASSIGNEE")
+    else:
+        _validate_assignee(db, current.tenant_id, body.assignee_user_id)
     wo.assignee_user_id = body.assignee_user_id
     if wo.status == WorkOrderStatus.created:
         if not can_transition(wo.status, WorkOrderStatus.assigned):

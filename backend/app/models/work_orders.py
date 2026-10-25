@@ -54,12 +54,22 @@ class WorkOrder(Base):
     description: Mapped[str] = mapped_column(Text, default="")
     template_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("report_templates.id"))
     assignee_user_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    # Worker to restore after a manager approves a report that was sent to them.
+    return_assignee_user_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     created_by_user_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     due_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     sla_response_due_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     sla_resolution_due_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    # Auto labor clock: Start work → report submit
+    job_started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    job_ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    # A5 — Data foundation for later AI
+    downtime_started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    downtime_ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    failure_code: Mapped[Optional[str]] = mapped_column(String(64))
+    symptom_code: Mapped[Optional[str]] = mapped_column(String(64))
     # P2-F3: Maintenance Tags
     tags: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
 
@@ -116,6 +126,23 @@ class Comment(Base):
 
     user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
     work_order: Mapped["WorkOrder"] = relationship("WorkOrder", back_populates="comments")
+
+class DiagnosticCode(Base):
+    """Tenant-scoped failure / symptom code catalog (A5 AI data foundation)."""
+
+    __tablename__ = "diagnostic_codes"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "kind", "code", name="uq_diagnostic_tenant_kind_code"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)  # failure | symptom
+    code: Mapped[str] = mapped_column(String(64), nullable=False)
+    name_en: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    name_ar: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
 
 class WorkOrderDocument(Base):
     __tablename__ = "work_order_documents"

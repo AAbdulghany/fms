@@ -96,18 +96,39 @@ def validate_status_transition(
         }:
             raise TransitionError("FORBIDDEN")
 
+    elif to_s in {WorkOrderStatus.verified, WorkOrderStatus.closed} and role not in (
+        ADMIN_TRANSITION_ROLES | {UserRole.manager, UserRole.client_admin}
+    ):
+        raise TransitionError("FORBIDDEN")
+
     elif to_s in {
         WorkOrderStatus.assigned,
-        WorkOrderStatus.verified,
-        WorkOrderStatus.closed,
         WorkOrderStatus.cancelled,
     } and role not in ADMIN_TRANSITION_ROLES:
         raise TransitionError("FORBIDDEN")
 
 
 def assert_mutable(wo: WorkOrder, body: WorkOrderUpdate) -> None:
-    """Block field edits on terminal work orders."""
+    """Block field edits on terminal work orders.
+
+    Verified is terminal for field edits, and can still move to closed or cancelled.
+    """
     if not is_terminal(wo.status):
+        return
+    if wo.status == WorkOrderStatus.verified and body.status in (
+        WorkOrderStatus.closed,
+        WorkOrderStatus.cancelled,
+    ):
+        extra = (
+            body.title,
+            body.description,
+            body.urgency,
+            body.template_id,
+            body.assignee_user_id,
+            body.tags,
+        )
+        if any(v is not None for v in extra):
+            raise TransitionError("IMMUTABLE")
         return
     if body.status is not None and body.status != wo.status:
         raise TransitionError("IMMUTABLE")
@@ -123,3 +144,4 @@ def assert_mutable(wo: WorkOrder, body: WorkOrderUpdate) -> None:
     )
     if any(v is not None for v in mutable_fields):
         raise TransitionError("IMMUTABLE")
+    # A5 diagnostic / downtime fields remain editable on terminal WOs for backfill.

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Orbit UAT — WO + Report flow (Concept D)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --navy: #1d4e89;
+      --navy-deep: #123056;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --line: #d5deea;
+      --bg: #f7f9fc;
+      --card: #fff;
+      --signal: #e85d04;
+      --ok: #10b981;
+      --warn: #f59e0b;
+      --err: #ef4444;
+      --soft: #e8eef7;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 1px 1px, rgba(29,78,137,.07) 1px, transparent 0) 0 0 / 18px 18px,
+        linear-gradient(165deg, #e8eef7 0%, var(--bg) 40%, #fff 100%);
+    }
+    header.page { max-width: 1280px; margin: 0 auto; padding: 2rem 1.5rem 0.75rem; }
+    header.page h1 { margin: 0 0 .35rem; font-size: clamp(1.5rem, 2.8vw, 2rem); letter-spacing: -.03em; }
+    header.page p { margin: 0; color: var(--muted); max-width: 46rem; line-height: 1.5; font-size: .95rem; }
+    .badge {
+      display: inline-block; margin-top: .85rem; padding: .35rem .7rem;
+      background: var(--navy); color: #fff; border-radius: 8px; font-size: .78rem; font-weight: 600;
+    }
+    .decisions {
+      max-width: 1280px; margin: 1rem auto 0; padding: 0 1.5rem;
+      display: flex; flex-wrap: wrap; gap: .5rem;
+    }
+    .decisions span {
+      font-size: .75rem; padding: .3rem .55rem; border-radius: 999px;
+      background: #fff; border: 1px solid var(--line); color: var(--navy-deep);
+    }
+    section { max-width: 1280px; margin: 0 auto; padding: 1.5rem 1.5rem 0.5rem; }
+    section h2 { margin: 0 0 .25rem; font-size: 1.2rem; color: var(--navy-deep); }
+    section .note { margin: 0 0 1rem; color: var(--muted); font-size: .9rem; max-width: 52rem; line-height: 1.45; }
+    .row { display: flex; flex-wrap: wrap; gap: 1.1rem; align-items: flex-start; }
+    .phone {
+      width: 220px; height: 440px; border: 2.5px solid var(--ink); border-radius: 28px;
+      background: var(--card); position: relative; overflow: hidden; flex-shrink: 0;
+      box-shadow: 0 16px 36px rgba(15,23,42,.12);
+    }
+    .phone .notch {
+      width: 38%; height: 14px; background: var(--ink); border-radius: 0 0 10px 10px; margin: 0 auto;
+    }
+    .phone .top {
+      padding: 8px 10px 6px; border-bottom: 1px solid var(--line);
+      font-size: 10px; font-weight: 700; color: var(--navy-deep);
+    }
+    .phone .top small { display: block; font-weight: 500; color: var(--muted); font-size: 8px; margin-top: 2px; }
+    .phone .body { padding: 8px 10px; height: calc(100% - 14px - 42px - 48px); overflow: hidden; font-size: 9px; color: var(--muted); }
+    .phone .pill {
+      display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 999px;
+      background: #fef3c7; color: #b45309; font-size: 8px; font-weight: 700; margin-bottom: 6px;
+    }
+    .phone .block {
+      background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 7px; margin-bottom: 6px;
+    }
+    .phone .block strong { display: block; color: var(--ink); font-size: 9.5px; margin-bottom: 2px; }
+    .phone .cta {
+      display: block; text-align: center; padding: 9px; border-radius: 10px; margin-bottom: 5px;
+      font-size: 10px; font-weight: 700; background: var(--navy); color: #fff;
+    }
+    .phone .cta.signal { background: var(--signal); }
+    .phone .cta.ghost { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+    .phone .cta.ok { background: var(--ok); }
+    .phone .rail {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 6px;
+    }
+    .phone .tabs {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 48px;
+      border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(3, 1fr);
+      background: #fff; font-size: 8px; text-align: center; align-items: center; color: var(--muted);
+    }
+    .phone .tabs .on { color: var(--navy); font-weight: 700; }
+    .cap { width: 220px; font-size: .72rem; color: var(--muted); margin-top: .35rem; line-height: 1.35; }
+    .desk {
+      width: min(560px, 100%); min-height: 320px; border: 1px solid var(--line); border-radius: 14px;
+      background: #fff; overflow: hidden; box-shadow: 0 10px 28px rgba(15,23,42,.08); flex-shrink: 0;
+      display: grid; grid-template-columns: 1.15fr 0.85fr;
+    }
+    .desk .main { padding: 12px; border-right: 1px solid var(--line); }
+    .desk .side { padding: 12px; background: var(--bg); }
+    .desk h3 { margin: 0 0 8px; font-size: 13px; color: var(--navy-deep); }
+    .desk .step {
+      display: flex; gap: 8px; align-items: flex-start; margin-bottom: 8px; font-size: 10px; color: var(--muted);
+    }
+    .desk .step b {
+      width: 18px; height: 18px; border-radius: 999px; background: var(--navy); color: #fff;
+      font-size: 9px; display: grid; place-items: center; flex-shrink: 0;
+    }
+    .desk .step.on b { background: var(--signal); }
+    .desk .step.done b { background: var(--ok); }
+    .desk .hist {
+      border-left: 2px solid var(--navy); padding-left: 8px; margin: 6px 0; font-size: 9px;
+    }
+    .desk .hist strong { color: var(--ink); display: block; }
+    .flow {
+      display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; margin: 0 0 1rem;
+      font-size: .78rem; color: var(--muted);
+    }
+    .flow em {
+      font-style: normal; background: var(--soft); color: var(--navy-deep);
+      padding: .2rem .45rem; border-radius: 6px; font-weight: 600;
+    }
+    .ar { font-family: "IBM Plex Sans Arabic", sans-serif; direction: rtl; text-align: right; }
+    footer.page {
+      max-width: 1280px; margin: 1.5rem auto 3rem; padding: 1rem 1.5rem;
+      border: 1.5px solid var(--navy); border-radius: 12px; background: #fff;
+      font-size: .9rem; color: var(--muted); line-height: 1.5;
+    }
+    footer.page strong { color: var(--navy-deep); }
+  </style>
+</head>
+<body>
+  <header class="page">
+    <h1>UAT closeout — WO job rail + Report attach flow</h1>
+    <p>
+      Concept D / Harbor Navy. Technician sequence: status → do work (report) → capture codes → structured history.
+      Inspector notes &amp; photos attach into the report, not a separate maze. Port to Pencil when
+      <code>orbit-mobile-first-layouts.pen</code> (or a new board) is open in the editor.
+    </p>
+    <span class="badge">Program A UAT · #3 + #7 · ship after 1 → 9 → 4 → 8</span>
+  </header>
+
+  <div class="decisions">
+    <span>#2 Assets↔Inventory: No</span>
+    <span>#5 Labor: hide nav</span>
+    <span>#6 Locations: hide nav</span>
+    <span>#3+#7: proceed + tweak</span>
+  </div>
+
+  <!-- Mobile WO sequence -->
+  <section>
+    <h2>1 · Mobile — Work order job sequence</h2>
+    <p class="note">Three tabs only: <strong>Job</strong> (status + context) · <strong>Report</strong> (checklist + attach) · <strong>History</strong> (diagnosis timeline). Sticky primary CTA always = next legal status.</p>
+    <div class="flow">
+      <em>1 Open</em> → <em>2 Start</em> → <em>3 Report + notes/photos</em> → <em>4 Codes / downtime</em> → <em>5 Complete</em>
+    </div>
+    <div class="row">
+      <div>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="top">Chiller AHU-12<small>Site North · Urgent</small></div>
+          <div class="body">
+            <div class="pill">● In progress</div>
+            <div class="rail">
+              <div class="cta ghost">Hold</div>
+              <div class="cta signal">Complete →</div>
+            </div>
+            <div class="block"><strong>Asset</strong>AHU-12 · Floor 3 mech</div>
+            <div class="block"><strong>Next up</strong>Fill report, then Complete</div>
+            <div class="block"><strong>Quick facts</strong>Downtime · Failure · Symptom</div>
+          </div>
+          <div class="tabs"><span class="on">Job</span><span>Report</span><span>History</span></div>
+        </div>
+        <p class="cap"><strong>A · Job tab</strong> — only allowed transitions as big buttons. Context folded under. No long status dropdown.</p>
+      </div>
+      <div>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="top">Report<small>Template: HVAC corrective</small></div>
+          <div class="body">
+            <div class="block"><strong>1 · Findings</strong>Compressor noise…</div>
+            <div class="block"><strong>2 · Actions</strong>☐ Replaced belt</div>
+            <div class="cta">+ Inspector note</div>
+            <div class="cta ghost">📷 Attach photo</div>
+            <div class="cta ok">Submit report</div>
+          </div>
+          <div class="tabs"><span>Job</span><span class="on">Report</span><span>History</span></div>
+        </div>
+        <p class="cap"><strong>B · Report tab</strong> — checklist is the job. Note &amp; photo land in report fields / evidence, not Documents-first.</p>
+      </div>
+      <div>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="top">History<small>For later diagnosis / AI</small></div>
+          <div class="body">
+            <div class="block"><strong>14:02 Started</strong>Tech · Sara</div>
+            <div class="block"><strong>14:40 Note</strong>“Belt frayed at pulley”</div>
+            <div class="block"><strong>15:10 Codes</strong>MECH_FAIL · NOISE</div>
+            <div class="block"><strong>15:12 Downtime</strong>70 min</div>
+            <div class="block"><strong>15:15 Completed</strong>Report submitted</div>
+          </div>
+          <div class="tabs"><span>Job</span><span>Report</span><span class="on">History</span></div>
+        </div>
+        <p class="cap"><strong>C · History tab</strong> — structured events (status, note, codes, downtime), not raw audit JSON.</p>
+      </div>
+      <div>
+        <div class="phone ar">
+          <div class="notch"></div>
+          <div class="top">مبرد AHU-12<small>الموقع الشمالي · عاجل</small></div>
+          <div class="body">
+            <div class="pill">● قيد التنفيذ</div>
+            <div class="rail">
+              <div class="cta ghost">إيقاف</div>
+              <div class="cta signal">← إكمال</div>
+            </div>
+            <div class="block"><strong>الأصل</strong>AHU-12 · الطابق 3</div>
+            <div class="block"><strong>التالي</strong>تعبئة التقرير ثم الإكمال</div>
+          </div>
+          <div class="tabs"><span class="on">المهمة</span><span>التقرير</span><span>السجل</span></div>
+        </div>
+        <p class="cap ar"><strong>D · AR / RTL</strong> — نفس التسلسل؛ أزرار الحالة الكبيرة فقط.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Desktop WO -->
+  <section>
+    <h2>2 · Desktop — split job / diagnosis</h2>
+    <p class="note">Left = do the work (stepper + sticky CTA). Right = diagnosis history always visible for supervisors.</p>
+    <div class="row">
+      <div class="desk">
+        <div class="main">
+          <h3>WO-1842 · Chiller AHU-12</h3>
+          <div class="step done"><b>✓</b><div><strong>Assigned → In progress</strong><br/>Started 14:02</div></div>
+          <div class="step on"><b>2</b><div><strong>Report</strong><br/>Checklist + inspector note / photo</div></div>
+          <div class="step"><b>3</b><div><strong>Codes &amp; downtime</strong><br/>Failure · Symptom · window</div></div>
+          <div class="step"><b>4</b><div><strong>Complete</strong><br/>Primary CTA unlocks after report submit</div></div>
+          <div style="margin-top:10px;display:flex;gap:6px;">
+            <div class="phone" style="width:auto;height:auto;border:0;box-shadow:none;flex:1;">
+              <div class="cta signal" style="margin:0;">Complete work order</div>
+            </div>
+          </div>
+        </div>
+        <div class="side">
+          <h3>Diagnosis history</h3>
+          <div class="hist"><strong>Status · In progress</strong>Sara · 14:02</div>
+          <div class="hist"><strong>Inspector note</strong>Belt frayed at pulley</div>
+          <div class="hist"><strong>Photo ×2</strong>linked to report §Findings</div>
+          <div class="hist"><strong>MECH_FAIL / NOISE</strong>70 min downtime</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Report template admin vs field -->
+  <section>
+    <h2>3 · Report templates — admin builder vs field attach</h2>
+    <p class="note">Technicians never open Template Builder on site. Admin keeps templates; field only sees “fill + attach”.</p>
+    <div class="row">
+      <div>
+        <div class="phone" style="height:380px;">
+          <div class="notch"></div>
+          <div class="top">Templates (admin)<small>HVAC corrective</small></div>
+          <div class="body">
+            <div class="block"><strong>Sections</strong>Findings · Actions · Parts</div>
+            <div class="block"><strong>Field types</strong>text · checklist · photo · note</div>
+            <div class="block"><strong>Inspector note slot</strong>maps → Findings.comments</div>
+            <div class="block"><strong>Photo slot</strong>maps → Findings.photos</div>
+            <div class="cta ghost">Save template</div>
+          </div>
+        </div>
+        <p class="cap"><strong>E · Admin</strong> — declare where “+ note” and “📷 photo” land (named slots).</p>
+      </div>
+      <div>
+        <div class="phone" style="height:380px;">
+          <div class="notch"></div>
+          <div class="top">On-site attach<small>No template UI</small></div>
+          <div class="body">
+            <div class="block"><strong>Findings</strong>Compressor noise on start</div>
+            <div class="cta">+ Inspector note</div>
+            <div style="background:var(--soft);border:1px dashed var(--navy);border-radius:10px;padding:8px;margin-bottom:6px;color:var(--navy-deep);">
+              Note drafts here → saves into report field
+            </div>
+            <div class="cta ghost">📷 Photo → Findings.photos</div>
+            <div class="cta ok">Save draft / Submit</div>
+          </div>
+        </div>
+        <p class="cap"><strong>F · Field</strong> — one sheet; attach actions write into the active report, then submit.</p>
+      </div>
+      <div class="desk" style="grid-template-columns:1fr;min-height:220px;">
+        <div class="main">
+          <h3>Tweak (locked for UAT)</h3>
+          <div class="step on"><b>1</b><div>Complete CTA stays disabled until report <em>submitted</em> (or explicitly waived by admin role).</div></div>
+          <div class="step"><b>2</b><div>Parts panel collapses under Report → “Parts used” accordion (not a third maze).</div></div>
+          <div class="step"><b>3</b><div>Diagnostics (codes/downtime) sit on Job tab as a short strip, also echoed in History.</div></div>
+          <div class="step"><b>4</b><div>Documents list becomes “Evidence” under History (read-only list of report photos + PDFs).</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="page">
+    <strong>Pencil port:</strong> Open <code>designs/orbit-mobile-first-layouts.pen</code> (or create
+    <code>designs/uat-wo-report-flow.pen</code>) in the Cursor/Pencil editor, then ask to
+    “port UAT WO+Report frames from uat-wo-report-flow.html”. Frames to create:
+    Mobile Job / Report / History / AR · Desktop split · Admin template slots · Field attach.
+    <br /><br />
+    <strong>Next code (ship order):</strong> #1 Clients label → #9 Orbit - Tenant → #4 Commercial CRUD → #8 Asset types → implement this #3+#7 → #5/#6 hide nav.
+  </footer>
+</body>
+</html>

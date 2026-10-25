@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 from fastapi.responses import FileResponse
 from sqlalchemy import false, func, select
 from sqlalchemy.orm import Session, joinedload
@@ -74,6 +74,7 @@ from ._common import (
     _assert_patch_fields_allowed,
     _create_roles,
     _reload_wo_with_users,
+    _report_pdf_storage_path,
     _request_roles,
     _sync_maintenance_report_pdf_export,
     _validate_assignee,
@@ -238,7 +239,8 @@ def download_work_order_document_file(
     document_id: UUID,
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
-) -> FileResponse:
+) -> Response:
+    """Serve a work-order document. Report PDFs are always regenerated (incl. verified/closed)."""
     wo = _access_wo(db, current, work_order_id)
     doc = db.get(WorkOrderDocument, document_id)
     if not doc or doc.work_order_id != wo.id:
@@ -248,13 +250,41 @@ def download_work_order_document_file(
             status.HTTP_400_BAD_REQUEST,
             detail="DOWNLOAD_ONLY_FOR_SERVER_GENERATED_PDFS",
         )
-    path = _report_pdf_storage_path(doc.id)
-    if not path.is_file():
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="FILE_MISSING")
-    return FileResponse(
-        path,
-        media_type=doc.file_type or "application/pdf",
-        filename=doc.file_name,
+
+    report = wo.report
+    if report is None:
+        report = db.scalars(
+            select(MaintenanceReport).where(MaintenanceReport.work_order_id == wo.id)
+        ).first()
+    if report is None:
+        # Fall back to previously stored bytes if the report row is gone.
+        path = _report_pdf_storage_path(doc.id)
+        if not path.is_file():
+            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="FILE_MISSING")
+        return FileResponse(
+            path,
+            media_type=doc.file_type or "application/pdf",
+            filename=doc.file_name,
+        )
+
+    name = (doc.file_name or "").lower()
+    pdf_lang = "ar" if ("-ar-" in name or "_ar_" in name) else "en"
+    wo = _reload_wo_with_users(db, wo.id)
+    pdf_bytes = _sync_maintenance_report_pdf_export(
+        db, wo=wo, report=report, current=current, pdf_lang=pdf_lang
+    )
+    db.commit()
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="maintenance-report-{pdf_lang}-{stamp}.pdf"'
+            ),
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+        },
     )
 
 
