@@ -7,7 +7,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, getAccessToken } from "@/lib/api";
+import { queryKeys } from "@/lib/queryKeys";
 import type { User } from "@/lib/types";
 
 type AuthStatus = "loading" | "authenticated" | "anonymous";
@@ -23,28 +25,62 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-/** Dedupes concurrent /users/me calls across StrictMode double-mount and consumers. */
-let inflight: Promise<User> | null = null;
-
-function fetchMeOnce(): Promise<User> {
-  if (!inflight) {
-    inflight = apiFetch<User>("/users/me").finally(() => {
-      inflight = null;
-    });
-  }
-  return inflight;
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUserState] = useState<User | null>(null);
-  const [status, setStatus] = useState<AuthStatus>(() =>
-    getAccessToken() ? "loading" : "anonymous"
-  );
+  const queryClient = useQueryClient();
+  const [tokenPresent, setTokenPresent] = useState(() => Boolean(getAccessToken()));
 
-  const setUser = useCallback((next: User | null) => {
-    setUserState(next);
-    setStatus(next ? "authenticated" : "anonymous");
-  }, []);
+  useEffect(() => {
+    const syncToken = () => {
+      const next = Boolean(getAccessToken());
+      setTokenPresent(next);
+      if (!next) {
+        // Drop cached tenant data on logout / token clear.
+        queryClient.clear();
+      }
+    };
+    window.addEventListener("fms-auth-token-changed", syncToken);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "access_token") syncToken();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("fms-auth-token-changed", syncToken);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [queryClient]);
+
+  const meQuery = useQuery({
+    queryKey: queryKeys.me,
+    queryFn: () => apiFetch<User>("/users/me"),
+    enabled: tokenPresent,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    retry: false,
+    refetchOnWindowFocus: true,
+  });
+
+  // Recover if cache was seeded from login UserPublic (no features) before this fix.
+  useEffect(() => {
+    if (!tokenPresent || !meQuery.data || Array.isArray(meQuery.data.features)) return;
+    void queryClient.invalidateQueries({ queryKey: queryKeys.me });
+  }, [tokenPresent, meQuery.data, queryClient]);
+
+  const setUser = useCallback(
+    (next: User | null) => {
+      if (next) {
+        queryClient.setQueryData(queryKeys.me, next);
+        // Login/refresh return UserPublic without subscription `features`.
+        // Invalidate so GET /users/me fills the full profile (nav feature gates).
+        if (!Array.isArray(next.features)) {
+          void queryClient.invalidateQueries({ queryKey: queryKeys.me });
+        }
+      } else {
+        queryClient.setQueryData(queryKeys.me, null);
+        queryClient.removeQueries({ queryKey: queryKeys.me });
+      }
+    },
+    [queryClient]
+  );
 
   const refresh = useCallback(async (): Promise<User | null> => {
     if (!getAccessToken()) {
@@ -52,60 +88,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     }
     try {
-      const next = await fetchMeOnce();
-      setUserState(next);
-      setStatus("authenticated");
-      return next;
+      const result = await queryClient.fetchQuery({
+        queryKey: queryKeys.me,
+        queryFn: () => apiFetch<User>("/users/me"),
+        staleTime: 0,
+      });
+      return result;
     } catch {
-      setUserState(null);
-      setStatus("anonymous");
+      setUser(null);
       return null;
     }
-  }, [setUser]);
+  }, [queryClient, setUser]);
 
-  useEffect(() => {
-    let cancelled = false;
+  const user = tokenPresent ? (meQuery.data ?? null) : null;
 
-    const sync = async () => {
-      if (!getAccessToken()) {
-        if (!cancelled) {
-          setUserState(null);
-          setStatus("anonymous");
-        }
-        return;
-      }
-      if (!cancelled) setStatus((s) => (s === "authenticated" ? s : "loading"));
-      try {
-        const next = await fetchMeOnce();
-        if (!cancelled) {
-          setUserState(next);
-          setStatus("authenticated");
-        }
-      } catch {
-        if (!cancelled) {
-          setUserState(null);
-          setStatus("anonymous");
-        }
-      }
-    };
-
-    void sync();
-
-    const onAuthChange = () => {
-      void sync();
-    };
-    window.addEventListener("fms-auth-token-changed", onAuthChange);
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "access_token") onAuthChange();
-    };
-    window.addEventListener("storage", onStorage);
-
-    return () => {
-      cancelled = true;
-      window.removeEventListener("fms-auth-token-changed", onAuthChange);
-      window.removeEventListener("storage", onStorage);
-    };
-  }, []);
+  let status: AuthStatus;
+  if (!tokenPresent) {
+    status = "anonymous";
+  } else if (meQuery.isPending || (meQuery.isFetching && !meQuery.data && !meQuery.isError)) {
+    status = "loading";
+  } else if (user) {
+    status = "authenticated";
+  } else {
+    status = "anonymous";
+  }
 
   const value = useMemo<AuthContextValue>(
     () => ({

@@ -1,7 +1,9 @@
 ﻿import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
+import { queryKeys } from "@/lib/queryKeys";
 import type { Company } from "@/lib/types";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { CompanyCreateModal } from "@/features/companies/components/CompanyCreateModal";
@@ -36,9 +38,8 @@ function mapClientToCompany(c: ClientApi): Company {
 export default function CompaniesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [includeArchived, setIncludeArchived] = useState(false);
@@ -52,26 +53,22 @@ export default function CompaniesPage() {
     }
   }, [searchParams, setSearchParams]);
 
-  const loadCompanies = (archived: boolean) => {
-    setLoading(true);
-    void (async () => {
-      try {
-        const url = archived ? "/clients?include_archived=true" : "/clients";
-        const data = await apiFetch<ClientApi[]>(url);
-        setCompanies(data.map(mapClientToCompany));
-      } catch (error) {
-        console.error("Failed to fetch companies", error);
-        setCompanies([]);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  };
+  const clientsQuery = useQuery({
+    queryKey: queryKeys.clients(includeArchived),
+    queryFn: async () => {
+      const url = includeArchived ? "/clients?include_archived=true" : "/clients";
+      const data = await apiFetch<ClientApi[]>(url);
+      return data.map(mapClientToCompany);
+    },
+    staleTime: 60_000,
+  });
 
-  useEffect(() => {
-    loadCompanies(includeArchived);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [includeArchived]);
+  const companies = clientsQuery.data ?? [];
+  const loading = clientsQuery.isPending;
+
+  const loadCompanies = () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.clients(includeArchived) });
+  };
 
   const filteredCompanies = companies.filter((company) => {
     const query = searchQuery.toLowerCase();
@@ -263,7 +260,7 @@ export default function CompaniesPage() {
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onCreated={(companyId) => {
-          loadCompanies(includeArchived);
+          loadCompanies();
           if (companyId) navigate(`/companies/${companyId}`);
         }}
       />

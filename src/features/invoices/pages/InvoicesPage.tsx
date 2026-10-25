@@ -1,8 +1,10 @@
-﻿import { useEffect, useState, type MouseEvent } from "react";
+﻿import { useState, type MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch, downloadAuthenticatedFile, resolveApiError } from "@/lib/api";
+import { queryKeys } from "@/lib/queryKeys";
 import type { Invoice } from "@/lib/types";
 import { formatMoneyAmount } from "@/lib/formatCurrency";
 import { InvoicePreviewModal } from "@/features/invoices/components/InvoicePreviewModal";
@@ -12,24 +14,25 @@ import { SlideNotice } from "@/shared/components/SlideNotice";
 export function InvoicesPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const [rows, setRows] = useState<Invoice[]>([]);
+  const queryClient = useQueryClient();
   const [err, setErr] = useState<string | null>(null);
   const [generateOpen, setGenerateOpen] = useState(false);
 
+  const invoicesQuery = useQuery({
+    queryKey: queryKeys.invoices,
+    queryFn: () => apiFetch<Invoice[]>("/invoices"),
+    staleTime: 30_000,
+  });
+
+  const rows = invoicesQuery.data ?? [];
   const loadInvoices = () => {
-    void (async () => {
-      try {
-        const res = await apiFetch<Invoice[]>("/invoices");
-        setRows(res);
-      } catch (e) {
-        setErr(resolveApiError(e, t, i18n.language, t("error_generic")));
-      }
-    })();
+    void queryClient.invalidateQueries({ queryKey: queryKeys.invoices });
   };
 
-  useEffect(() => {
-    loadInvoices();
-  }, []);
+  const listErr = invoicesQuery.isError
+    ? resolveApiError(invoicesQuery.error, t, i18n.language, t("error_generic"))
+    : null;
+  const displayErr = err ?? listErr;
 
   async function handleDownload(inv: Invoice, e: MouseEvent) {
     e.stopPropagation();
@@ -53,7 +56,7 @@ export function InvoicesPage() {
         </button>
       </div>
 
-      <SlideNotice text={err} tone="error" />
+      <SlideNotice text={displayErr} tone="error" />
 
       <ul className="space-y-2 lg:hidden">
         {rows.map((inv) => {

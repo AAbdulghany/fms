@@ -4,6 +4,8 @@ import type { User } from "./types";
 export function hasFeature(user: User | null | undefined, feature: string): boolean {
   if (!user) return false;
   if (user.is_platform_admin) return true;
-  const features = user.features ?? [];
-  return features.includes(feature);
+  // Login payload is UserPublic without `features` — treat as unknown (allow) until /me loads.
+  // Explicit empty array means the tenant truly has no modules.
+  if (user.features === undefined) return true;
+  return user.features.includes(feature);
 }

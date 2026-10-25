@@ -18,7 +18,7 @@ function formatLoginError(err: unknown, t: (key: string) => string, lang: string
 export function LoginPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { setUser } = useAuth();
+  const { setUser, refresh } = useAuth();
   const [identifier, setIdentifier] = useState("super@demo.com");
   const [password, setPassword] = useState(`super${DEMO_SUFFIX}`);
   const [error, setError] = useState<string | null>(null);
@@ -47,14 +47,15 @@ export function LoginPage() {
         must_change_password?: boolean;
         user: User;
       }>("/auth/login", { method: "POST", json: { identifier, password } });
-      // Seed auth before tokens so the token-change listener does not flash loading.
-      setUser(res.user);
+      // Tokens first, then load full /users/me (includes subscription features for nav).
       setTokens(res.access_token, res.refresh_token);
+      setUser(res.user);
+      const me = (await refresh()) ?? res.user;
       // Prefer persisted UI language over user profile locale
       applyLanguage(getStoredLanguage(), i18n);
       if (res.must_change_password) {
         navigate("/profile?must_change=1", { replace: true });
-      } else if (isPlatformStaff(res.user)) {
+      } else if (isPlatformStaff(me)) {
         navigate("/platform/maintenance-companies", { replace: true });
       } else {
         navigate("/", { replace: true });

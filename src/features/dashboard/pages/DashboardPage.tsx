@@ -1,15 +1,16 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 
 import { apiFetch } from "@/lib/api";
+import { queryKeys } from "@/lib/queryKeys";
 import { useAuth } from "@/contexts/AuthContext";
 import { displayWorkOrderTitle, urgencyBadgeClass, workOrderStatusPillClass } from "@/lib/workOrderDisplay";
 import type {
   PaginatedWorkOrders,
   DashboardStats,
   DashboardSummary,
-  WorkOrder,
 } from "@/lib/types";
 import { StatsCard } from "@/shared/components/StatsCard";
 import { stat } from "@/shared/lib/palette";
@@ -18,52 +19,39 @@ export function DashboardPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [recentWOs, setRecentWOs] = useState<WorkOrder[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  const fetchDashboard = async () => {
-    setLoading(true);
-    try {
-      const [summary, wo] = await Promise.all([
-        apiFetch<DashboardSummary>("/dashboard/summary"),
-        apiFetch<PaginatedWorkOrders>("/work-orders?page_size=5"),
-      ]);
-      setRecentWOs(wo.data.slice(0, 5));
+  const summaryQuery = useQuery({
+    queryKey: queryKeys.dashboardSummary,
+    queryFn: () => apiFetch<DashboardSummary>("/dashboard/summary"),
+    staleTime: 60_000,
+  });
 
-      const dashStats: DashboardStats = {
-        active_wo_count: summary.open_work_orders,
-        companies_count: summary.clients_count ?? undefined,
-        sites_count: summary.sites_count ?? undefined,
-        assets_count: summary.assets_count ?? undefined,
-        pending_invoices_draft: summary.pending_invoices_draft ?? undefined,
-        my_tasks_count: summary.my_assigned_open ?? undefined,
-        in_progress_count: summary.in_progress_count ?? summary.my_in_progress ?? undefined,
-        completed_week_count: summary.completed_this_week,
-        assets_at_eol_count: summary.assets_at_eol ?? undefined,
-        overdue_maintenance_count: summary.overdue_count ?? undefined,
-      };
+  const recentWoQuery = useQuery({
+    queryKey: queryKeys.workOrdersRecent(5),
+    queryFn: () => apiFetch<PaginatedWorkOrders>("/work-orders?page_size=5"),
+    staleTime: 30_000,
+  });
 
-      setStats(dashStats);
-    } catch (error) {
-      console.error("Failed to fetch dashboard data", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void fetchDashboard();
-
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        void fetchDashboard();
-      }
+  const stats = useMemo<DashboardStats | null>(() => {
+    const summary = summaryQuery.data;
+    if (!summary) return null;
+    return {
+      active_wo_count: summary.open_work_orders,
+      companies_count: summary.clients_count ?? undefined,
+      sites_count: summary.sites_count ?? undefined,
+      assets_count: summary.assets_count ?? undefined,
+      pending_invoices_draft: summary.pending_invoices_draft ?? undefined,
+      my_tasks_count: summary.my_assigned_open ?? undefined,
+      in_progress_count: summary.in_progress_count ?? summary.my_in_progress ?? undefined,
+      completed_week_count: summary.completed_this_week,
+      assets_at_eol_count: summary.assets_at_eol ?? undefined,
+      overdue_maintenance_count: summary.overdue_count ?? undefined,
     };
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [summaryQuery.data]);
+
+  const recentWOs = recentWoQuery.data?.data.slice(0, 5) ?? [];
+  const loading = summaryQuery.isPending || recentWoQuery.isPending;
+  const failed = summaryQuery.isError || recentWoQuery.isError;
 
   if (loading) {
     return (
@@ -73,7 +61,7 @@ export function DashboardPage() {
     );
   }
 
-  if (!user || !stats) {
+  if (!user || !stats || failed) {
     return (
       <div className="text-center text-neutral-600">
         <p>{t("error")}</p>
