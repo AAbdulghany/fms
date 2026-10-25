@@ -1,15 +1,20 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { usePwaInstall } from "@/features/pwa/usePwaInstall";
 
 export function InstallOrbitBanner() {
   const { t } = useTranslation();
-  const { visible, mode, dismiss, promptInstall, canPrompt } = usePwaInstall();
+  const { visible, mode, dismiss, promptInstall, canPrompt, showManualHint } = usePwaInstall();
+  const [iosStepsOpen, setIosStepsOpen] = useState(false);
 
   if (!visible || !mode) return null;
 
+  const primaryLabel =
+    mode === "ios" ? t("pwa_install_ios_cta") || "Add to Home Screen" : t("pwa_install_cta");
+
   return (
     <div
-      className="fixed inset-x-0 bottom-14 z-50 border-t border-primary-200 bg-neutral-0 p-3 shadow-[0_-4px_16px_rgba(28,25,23,0.08)] lg:hidden"
+      className="fixed inset-x-0 bottom-14 z-50 border-t border-primary-200 bg-neutral-0 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_16px_rgba(28,25,23,0.08)] lg:hidden"
       role="dialog"
       aria-label={t("pwa_install_title")}
     >
@@ -26,19 +31,35 @@ export function InstallOrbitBanner() {
           <p className="mt-0.5 text-xs text-neutral-600">
             {mode === "ios" ? t("pwa_install_ios_hint") : t("pwa_install_body")}
           </p>
+          {mode === "ios" && iosStepsOpen && (
+            <ol className="mt-2 list-decimal space-y-1 ps-4 text-xs text-neutral-700">
+              <li>{t("pwa_install_ios_step1") || "Tap the Share button in Safari."}</li>
+              <li>{t("pwa_install_ios_step2") || "Scroll and tap Add to Home Screen."}</li>
+              <li>{t("pwa_install_ios_step3") || "Confirm Add — Orbit appears on your home screen."}</li>
+            </ol>
+          )}
+          {mode === "chromium" && showManualHint && !canPrompt && (
+            <p className="mt-2 rounded-md bg-neutral-100 px-2 py-1.5 text-xs text-neutral-700">
+              {t("pwa_install_menu_hint") || "Use your browser menu → Install app / Add to Home screen."}
+            </p>
+          )}
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            {mode === "chromium" && canPrompt && (
-              <button
-                type="button"
-                className="rounded-md bg-primary-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-600"
-                onClick={() => void promptInstall()}
-              >
-                {t("pwa_install_cta")}
-              </button>
-            )}
             <button
               type="button"
-              className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100"
+              className="min-h-9 rounded-md bg-primary-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-600"
+              onClick={() => {
+                if (mode === "ios") {
+                  setIosStepsOpen(true);
+                  return;
+                }
+                void promptInstall();
+              }}
+            >
+              {primaryLabel}
+            </button>
+            <button
+              type="button"
+              className="min-h-9 rounded-md border border-neutral-300 px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100"
               onClick={dismiss}
             >
               {t("pwa_install_dismiss")}

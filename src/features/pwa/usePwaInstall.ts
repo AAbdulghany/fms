@@ -46,6 +46,7 @@ export function usePwaInstall() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
   const [mode, setMode] = useState<PwaInstallMode>(null);
+  const [showManualHint, setShowManualHint] = useState(false);
   const deferredRef = useRef<BeforeInstallPromptEvent | null>(null);
   const dwellReady = useRef(false);
   const visitsOk = useRef(false);
@@ -61,16 +62,15 @@ export function usePwaInstall() {
     const tryShow = () => {
       if (!dwellReady.current || !visitsOk.current || !canOfferInstall()) return;
 
-      if (deferredRef.current) {
-        setMode("chromium");
+      if (isIosDevice()) {
+        setMode("ios");
         setVisible(true);
         return;
       }
 
-      if (isIosDevice()) {
-        setMode("ios");
-        setVisible(true);
-      }
+      // Android / desktop Chrome (narrow): show even before beforeinstallprompt fires
+      setMode("chromium");
+      setVisible(true);
     };
 
     const onBeforeInstall = (event: Event) => {
@@ -97,16 +97,30 @@ export function usePwaInstall() {
   const dismiss = () => {
     localStorage.setItem(DISMISS_KEY, "1");
     setVisible(false);
+    setShowManualHint(false);
   };
 
   const promptInstall = async () => {
-    if (!deferred) return;
-    await deferred.prompt();
-    await deferred.userChoice;
-    deferredRef.current = null;
-    setDeferred(null);
-    setVisible(false);
+    const event = deferredRef.current || deferred;
+    if (event) {
+      await event.prompt();
+      await event.userChoice;
+      deferredRef.current = null;
+      setDeferred(null);
+      setVisible(false);
+      setShowManualHint(false);
+      return;
+    }
+    // No native prompt — surface browser-menu install hint
+    setShowManualHint(true);
   };
 
-  return { visible, mode, dismiss, promptInstall, canPrompt: Boolean(deferred) };
+  return {
+    visible,
+    mode,
+    dismiss,
+    promptInstall,
+    canPrompt: Boolean(deferred),
+    showManualHint,
+  };
 }

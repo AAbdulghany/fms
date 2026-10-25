@@ -14,6 +14,8 @@ import CompanyDetailPage from "@/features/companies/pages/CompanyDetailPage";
 import SiteDetailPage from "@/features/companies/pages/SiteDetailPage";
 import AssetsPage from "@/features/assets/pages/AssetsPage";
 import AssetDetailPage from "@/features/assets/pages/AssetDetailPage";
+import ScanAssetPage from "@/features/assets/pages/ScanAssetPage";
+import MaintenanceCalendarPage from "@/features/assets/pages/MaintenanceCalendarPage";
 import UsersPage from "@/features/users/pages/UsersPage";
 import LaborPage from "@/features/labor/pages/LaborPage";
 import LocationsPage from "@/features/locations/pages/LocationsPage";
@@ -24,6 +26,8 @@ import { ProfilePage } from "@/features/users/pages/ProfilePage";
 import ReportTemplatesPage from "@/features/reports/pages/ReportTemplatesPage";
 import AssetTypesPage from "@/features/assets/pages/AssetTypesPage";
 import AssetTagLandingPage from "@/features/assets/pages/AssetTagLandingPage";
+import CommercialTermsPage from "@/features/billing/pages/CommercialTermsPage";
+import InventoryPage from "@/features/billing/pages/InventoryPage";
 
 /** Application route table — pages live under src/features/…/pages/. */
 export function AppRoutes() {
@@ -88,9 +92,26 @@ export function AppRoutes() {
       />
 
       <Route
+        path="/scan"
+        element={
+          <ProtectedRoute
+            allowedRoles={["super_admin", "company_admin", "client_admin", "site_manager", "technician"]}
+          >
+            <Layout>
+              <FeatureRoute feature="assets">
+                <ScanAssetPage />
+              </FeatureRoute>
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/assets"
         element={
-          <ProtectedRoute allowedRoles={["super_admin", "company_admin", "client_admin", "site_manager"]}>
+          <ProtectedRoute
+            allowedRoles={["super_admin", "company_admin", "client_admin", "site_manager", "technician"]}
+          >
             <Layout>
               <FeatureRoute feature="assets">
                 <AssetsPage />
@@ -101,9 +122,24 @@ export function AppRoutes() {
       />
 
       <Route
-        path="/assets/:id"
+        path="/assets/maintenance-calendar"
         element={
           <ProtectedRoute allowedRoles={["super_admin", "company_admin", "client_admin", "site_manager"]}>
+            <Layout>
+              <FeatureRoute feature="assets">
+                <MaintenanceCalendarPage />
+              </FeatureRoute>
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/assets/:id"
+        element={
+          <ProtectedRoute
+            allowedRoles={["super_admin", "company_admin", "client_admin", "site_manager", "technician"]}
+          >
             <Layout>
               <FeatureRoute feature="assets">
                 <AssetDetailPage />
@@ -147,6 +183,36 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       />
+
+      <Route
+        path="/billing/commercial-terms"
+        element={
+          <ProtectedRoute allowedRoles={["super_admin", "company_admin"]}>
+            <Layout>
+              <FeatureRoute feature="invoices">
+                <CommercialTermsPage />
+              </FeatureRoute>
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/billing/inventory"
+        element={
+          <ProtectedRoute allowedRoles={["super_admin", "company_admin"]}>
+            <Layout>
+              <FeatureRoute feature="invoices">
+                <InventoryPage />
+              </FeatureRoute>
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      {/* Legacy billing URLs → merged pages */}
+      <Route path="/billing/parts" element={<Navigate to="/billing/inventory" replace />} />
+      <Route path="/billing/tax" element={<Navigate to="/billing/commercial-terms" replace />} />
+      <Route path="/billing/pricing" element={<Navigate to="/billing/commercial-terms" replace />} />
+      <Route path="/billing/contracts" element={<Navigate to="/billing/commercial-terms" replace />} />
 
       <Route
         path="/invoices/:id"
