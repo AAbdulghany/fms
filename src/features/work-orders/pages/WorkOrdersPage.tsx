@@ -9,6 +9,8 @@ import { useTranslation } from "react-i18next";
 
 import { apiFetch } from "@/lib/api";
 
+import { useAuth } from "@/contexts/AuthContext";
+
 import type { PaginatedWorkOrders, WorkOrder } from "@/lib/types";
 
 import { displayWorkOrderTitle, urgencyBadgeClass, workOrderStatusPillClass } from "@/lib/workOrderDisplay";
@@ -18,17 +20,6 @@ import { FilterBar } from "@/shared/components/FilterBar";
 import { WorkOrderRequestReviewModal } from "@/features/work-orders/components/WorkOrderRequestReviewModal";
 import { StartNextHero } from "@/features/work-orders/components/StartNextHero";
 
-
-
-interface UserMe {
-
-  id: string;
-
-  role: string;
-
-  client_id?: string | null;
-
-}
 
 
 
@@ -128,11 +119,11 @@ export function WorkOrdersPage() {
 
   const navigate = useNavigate();
 
+  const { user: me } = useAuth();
+
   const [rows, setRows] = useState<WorkOrder[]>([]);
 
   const [err, setErr] = useState<string | null>(null);
-
-  const [me, setMe] = useState<UserMe | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -237,24 +228,6 @@ export function WorkOrdersPage() {
     } catch (e) {
 
       setErr(e instanceof Error ? e.message : "Error");
-
-    }
-
-  };
-
-
-
-  const fetchMe = async () => {
-
-    try {
-
-      const user = await apiFetch<UserMe>("/users/me");
-
-      setMe(user);
-
-    } catch (e) {
-
-      console.error("Failed to fetch user", e);
 
     }
 
@@ -367,8 +340,6 @@ export function WorkOrdersPage() {
 
 
   useEffect(() => {
-
-    void fetchMe();
 
     void fetchCompanies();
 

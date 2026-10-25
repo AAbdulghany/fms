@@ -1,7 +1,8 @@
 ﻿import { FormEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "@/lib/api";
-import type { Employee, User, UserRole } from "@/lib/types";
+import { useAuth } from "@/contexts/AuthContext";
+import type { Employee, UserRole } from "@/lib/types";
 import { creatableRolesFor } from "@/lib/roles";
 
 function visibleRolesForFilter(actorRole: UserRole): UserRole[] {
@@ -190,7 +191,7 @@ function AddUserModal({ open, onClose, onCreated, actorRole }: AddUserModalProps
 
 export default function UsersPage() {
   const { t } = useTranslation();
-  const [me, setMe] = useState<User | null>(null);
+  const { user: me } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -213,7 +214,6 @@ export default function UsersPage() {
   };
 
   useEffect(() => {
-    void apiFetch<User>("/users/me").then(setMe).catch(() => setMe(null));
     loadEmployees();
   }, []);
 

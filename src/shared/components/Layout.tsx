@@ -1,9 +1,9 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
-import { apiFetch, clearTokens } from "@/lib/api";
+import { clearTokens } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import { applyLanguage, getStoredLanguage } from "@/lib/language";
-import type { User } from "@/lib/types";
 import { Sidebar } from "@/shared/components/Sidebar";
 import { MobileBottomNav } from "@/shared/components/MobileBottomNav";
 import ClockWidget from "@/shared/components/ClockWidget";
@@ -20,8 +20,8 @@ export function Layout({ children }: LayoutProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
   const shellRef = useRef<HTMLDivElement>(null);
   const isRTL = i18n.dir() === "rtl";
 
@@ -48,22 +48,6 @@ export function Layout({ children }: LayoutProps) {
       viewport.removeEventListener("resize", apply);
       viewport.removeEventListener("scroll", apply);
       window.removeEventListener("resize", apply);
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function loadUser() {
-      try {
-        const data = await apiFetch<User>("/users/me");
-        if (!cancelled) setUser(data);
-      } catch {
-        if (!cancelled) setUser(null);
-      }
-    }
-    void loadUser();
-    return () => {
-      cancelled = true;
     };
   }, []);
 

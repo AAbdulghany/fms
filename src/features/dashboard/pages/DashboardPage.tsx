@@ -3,10 +3,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiFetch } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import { displayWorkOrderTitle, urgencyBadgeClass, workOrderStatusPillClass } from "@/lib/workOrderDisplay";
 import type {
   PaginatedWorkOrders,
-  User,
   DashboardStats,
   DashboardSummary,
   WorkOrder,
@@ -17,7 +17,7 @@ import { stat } from "@/shared/lib/palette";
 export function DashboardPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentWOs, setRecentWOs] = useState<WorkOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,12 +25,10 @@ export function DashboardPage() {
   const fetchDashboard = async () => {
     setLoading(true);
     try {
-      const userData = await apiFetch<User>("/users/me");
-      setUser(userData);
-
-      const summary = await apiFetch<DashboardSummary>("/dashboard/summary");
-
-      const wo = await apiFetch<PaginatedWorkOrders>("/work-orders?page_size=5");
+      const [summary, wo] = await Promise.all([
+        apiFetch<DashboardSummary>("/dashboard/summary"),
+        apiFetch<PaginatedWorkOrders>("/work-orders?page_size=5"),
+      ]);
       setRecentWOs(wo.data.slice(0, 5));
 
       const dashStats: DashboardStats = {

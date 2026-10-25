@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiFetch } from "@/lib/api";
-import type { User } from "@/lib/types";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface LaborEntryRow {
   id: string;
@@ -35,7 +35,7 @@ const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export default function LaborPage() {
   const { t } = useTranslation();
-  const [me, setMe] = useState<User | null>(null);
+  const { user: me } = useAuth();
   const [entries, setEntries] = useState<LaborEntryRow[]>([]);
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [schedules, setSchedules] = useState<ScheduleRow[]>([]);
@@ -48,8 +48,6 @@ export default function LaborPage() {
   useEffect(() => {
     void (async () => {
       try {
-        const u = await apiFetch<User>("/users/me");
-        setMe(u);
         const [e, p, s] = await Promise.all([
           apiFetch<LaborEntryRow[]>("/labor/entries"),
           apiFetch<ProfileRow[]>("/labor/profiles").catch(() => []),

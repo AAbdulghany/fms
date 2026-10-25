@@ -1,7 +1,7 @@
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
-import { apiFetch } from "@/lib/api";
-import type { User, UserRole } from "@/lib/types";
+import { useAuth } from "@/contexts/AuthContext";
+import type { UserRole } from "@/lib/types";
 import { hasAnyRole } from "@/lib/roles";
 import { hasFeature } from "@/lib/features";
 import { FeatureUnavailablePage } from "@/features/shared/pages/FeatureUnavailablePage";
@@ -13,31 +13,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, allowedRoles, requiredFeature }: ProtectedRouteProps) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    async function checkAuth() {
-      const token = localStorage.getItem("access_token");
-      if (!token) {
-        setLoading(false);
-        setError(true);
-        return;
-      }
-
-      try {
-        const data = await apiFetch<User>("/users/me");
-        setUser(data);
-      } catch (err) {
-        console.error("Auth check failed", err);
-        setError(true);
-      } finally {
-        setLoading(false);
-      }
-    }
-    void checkAuth();
-  }, []);
+  const { user, loading, status } = useAuth();
 
   if (loading) {
     return (
@@ -50,7 +26,7 @@ export function ProtectedRoute({ children, allowedRoles, requiredFeature }: Prot
     );
   }
 
-  if (error || !user) {
+  if (status === "anonymous" || !user) {
     return <Navigate to="/login" replace />;
   }
 

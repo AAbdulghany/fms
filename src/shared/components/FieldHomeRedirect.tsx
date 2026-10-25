@@ -1,30 +1,16 @@
 ﻿import { Navigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api";
-import type { User } from "@/lib/types";
+import { useAuth } from "@/contexts/AuthContext";
 
 const FIELD_ROLES = new Set(["technician", "site_manager", "manager", "company_engineer"]);
 
 /** Concept D: field roles land on Queue (/work-orders); office roles keep dashboard. */
 export function FieldHomeRedirect() {
-  const [target, setTarget] = useState<string | null>(null);
+  const { user, loading } = useAuth();
 
-  useEffect(() => {
-    let cancelled = false;
-    void apiFetch<User>("/users/me")
-      .then((u) => {
-        if (!cancelled) setTarget(FIELD_ROLES.has(u.role) ? "/work-orders" : "/dashboard");
-      })
-      .catch(() => {
-        if (!cancelled) setTarget("/dashboard");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (!target) {
+  if (loading) {
     return <div className="p-6 text-sm text-neutral-500">…</div>;
   }
+
+  const target = user && FIELD_ROLES.has(user.role) ? "/work-orders" : "/dashboard";
   return <Navigate to={target} replace />;
 }

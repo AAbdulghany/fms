@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { apiFetch } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import { SlideNotices } from "@/shared/components/SlideNotice";
 import type { User } from "@/lib/types";
 
@@ -11,35 +12,25 @@ export function ProfilePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const mustChange = searchParams.get("must_change") === "1";
+  const { user, setUser, loading: authLoading } = useAuth();
 
-  const [user, setUser] = useState<User | null>(null);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [jobTitle, setJobTitle] = useState("");
   const [accreditation, setAccreditation] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    void (async () => {
-      try {
-        const u = await apiFetch<User & { username?: string }>("/users/me");
-        setUser(u);
-        setFullName(u.full_name);
-        setPhone(u.phone ?? "");
-        setJobTitle(u.job_title ?? "");
-        setAccreditation(u.accreditation ?? "");
-      } catch (e) {
-        setErr(e instanceof Error ? e.message : t("error"));
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [t]);
+    if (!user) return;
+    setFullName(user.full_name);
+    setPhone(user.phone ?? "");
+    setJobTitle(user.job_title ?? "");
+    setAccreditation(user.accreditation ?? "");
+  }, [user]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -69,7 +60,7 @@ export function ProfilePage() {
       };
       if (password) body.password = password;
       const updated = await apiFetch<User>("/users/me", { method: "PATCH", json: body });
-      setUser(updated);
+      setUser(updated as User);
       setPassword("");
       setConfirmPassword("");
       setMsg(t("profile_saved"));
@@ -83,7 +74,7 @@ export function ProfilePage() {
     }
   }
 
-  if (loading) {
+  if (authLoading || !user) {
     return (
       <div className="flex min-h-[240px] items-center justify-center">
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />

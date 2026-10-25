@@ -1,7 +1,8 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "@/lib/api";
-import type { AssetCriticality, AssetType, User, UserRole } from "@/lib/types";
+import { useAuth } from "@/contexts/AuthContext";
+import type { AssetCriticality, AssetType, UserRole } from "@/lib/types";
 import { AssetTypePicker } from "@/features/assets/components/AssetTypePicker";
 import { localizedName } from "@/features/assets/hooks/useAssetTypes";
 
@@ -42,8 +43,8 @@ export function AssetRegisterModal({
 }: Props) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
+  const { user: me } = useAuth();
 
-  const [me, setMe] = useState<User | null>(null);
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [sites, setSites] = useState<SiteRow[]>([]);
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
@@ -166,12 +167,11 @@ export function AssetRegisterModal({
     setClientId(initialClientId || "");
     void (async () => {
       try {
-        const user = await apiFetch<User>("/users/me");
-        setMe(user);
+        if (!me) return;
         const tmplData = await apiFetch<TemplateRow[]>("/report-templates");
         setTemplates(tmplData);
 
-        if (PICK_CLIENT_ROLES.has(user.role)) {
+        if (PICK_CLIENT_ROLES.has(me.role)) {
           const clientData = await apiFetch<ClientRow[]>("/clients");
           setClients(clientData);
           const cid = initialClientId || (clientData.length === 1 ? clientData[0].id : "");
@@ -187,13 +187,13 @@ export function AssetRegisterModal({
         } else {
           const siteData = await apiFetch<SiteRow[]>("/sites");
           setSites(siteData);
-          if (user.role === "client_admin" && user.client_id) {
-            setClientId(user.client_id);
+          if (me.role === "client_admin" && me.client_id) {
+            setClientId(me.client_id);
           } else if (siteData.length === 1) {
             setClientId(siteData[0].client_id);
             setSiteId(initialSiteId || siteData[0].id);
           }
-          if (user.client_id) {
+          if (me.client_id) {
             try {
               const clientData = await apiFetch<ClientRow[]>("/clients");
               setClients(clientData);
@@ -208,7 +208,7 @@ export function AssetRegisterModal({
         setTemplates([]);
       }
     })();
-  }, [open, initialSiteId, initialClientId]);
+  }, [open, initialSiteId, initialClientId, me]);
 
   useEffect(() => {
     if (!open || !canPickClient || !clientId) return;

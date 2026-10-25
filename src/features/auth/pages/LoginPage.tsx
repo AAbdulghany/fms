@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiFetch, setTokens, getAccessToken, resolveApiError } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import { isPlatformStaff } from "@/lib/roles";
 import { applyLanguage, getStoredLanguage } from "@/lib/language";
 import type { User } from "@/lib/types";
@@ -17,6 +18,7 @@ function formatLoginError(err: unknown, t: (key: string) => string, lang: string
 export function LoginPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const { setUser } = useAuth();
   const [identifier, setIdentifier] = useState("super@demo.com");
   const [password, setPassword] = useState(`super${DEMO_SUFFIX}`);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +47,8 @@ export function LoginPage() {
         must_change_password?: boolean;
         user: User;
       }>("/auth/login", { method: "POST", json: { identifier, password } });
+      // Seed auth before tokens so the token-change listener does not flash loading.
+      setUser(res.user);
       setTokens(res.access_token, res.refresh_token);
       // Prefer persisted UI language over user profile locale
       applyLanguage(getStoredLanguage(), i18n);

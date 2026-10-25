@@ -3,13 +3,10 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiFetch, downloadAuthenticatedFile, openAuthenticatedBlob, resolveApiError } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import { formatMoneyAmount } from "@/lib/formatCurrency";
 import type { Invoice } from "@/lib/types";
 import { SlideNotices } from "@/shared/components/SlideNotice";
-
-interface UserMe {
-  role: string;
-}
 
 const CURRENCIES = ["SAR", "EGP", "USD", "EUR"] as const;
 
@@ -22,8 +19,8 @@ export function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const { user: me } = useAuth();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
-  const [me, setMe] = useState<UserMe | null>(null);
   const [billingEmail, setBillingEmail] = useState("");
   const [issueDate, setIssueDate] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -59,12 +56,8 @@ export function InvoiceDetailPage() {
     setErr(null);
     setLoading(true);
     try {
-      const [inv, user] = await Promise.all([
-        apiFetch<Invoice>(`/invoices/${id}`),
-        apiFetch<UserMe>("/users/me"),
-      ]);
+      const inv = await apiFetch<Invoice>(`/invoices/${id}`);
       setInvoice(inv);
-      setMe(user);
       syncForm(inv);
     } catch (e) {
       setErr(resolveApiError(e, t, i18n.language, t("error_generic")));

@@ -1,7 +1,8 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "@/lib/api";
-import type { AssetCriticality, AssetLifecycleStatus, AssetType, AssetTypeRef, User } from "@/lib/types";
+import { useAuth } from "@/contexts/AuthContext";
+import type { AssetCriticality, AssetLifecycleStatus, AssetType, AssetTypeRef } from "@/lib/types";
 import { AssetTypePicker } from "@/features/assets/components/AssetTypePicker";
 
 type AssetOutApi = {
@@ -35,8 +36,8 @@ type Props = {
 
 export function AssetEditModal({ open, assetId, onClose, onSaved }: Props) {
   const { t } = useTranslation();
+  const { user: me } = useAuth();
 
-  const [me, setMe] = useState<User | null>(null);
   const [assetTypes, setAssetTypes] = useState<AssetType[]>([]);
   const [assetTypesLoading, setAssetTypesLoading] = useState(false);
 
@@ -61,12 +62,6 @@ export function AssetEditModal({ open, assetId, onClose, onSaved }: Props) {
   const [clientId, setClientId] = useState<string | null>(null);
 
   const touched = useRef<Set<string>>(new Set());
-
-  // ── Load current user ────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!open) return;
-    void apiFetch<User>("/users/me").then(setMe).catch(() => null);
-  }, [open]);
 
   // ── Load asset types ─────────────────────────────────────────────────────
   useEffect(() => {

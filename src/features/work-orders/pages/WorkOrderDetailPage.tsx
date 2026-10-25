@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { apiFetch, apiFetchBlob, downloadAuthenticatedFile, resolveApiError } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import { displayWorkOrderTitle } from "@/lib/workOrderDisplay";
 import type { AuditLog, Comment, MaintenanceReport, ReportTemplate, WorkOrder, WorkOrderDocument, WorkOrderStatus, WorkOrderUserBrief } from "@/lib/types";
 import { WorkOrderRequestReviewModal } from "@/features/work-orders/components/WorkOrderRequestReviewModal";
@@ -12,11 +13,6 @@ import {
 } from "@/features/work-orders/components/WorkOrderJobDashboard";
 import { WorkOrderSteppedReport } from "@/features/work-orders/components/WorkOrderSteppedReport";
 import { SlideNotices } from "@/shared/components/SlideNotice";
-
-interface UserMe {
-  id: string;
-  role: string;
-}
 
 /** Must match backend `REPORT_PDF_DOC_DESCRIPTION` in work_orders.py */
 const REPORT_PDF_DOC = "report_pdf_export";
@@ -51,12 +47,12 @@ type TemplateRow = ReportTemplate & { code?: string };
 export function WorkOrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { t, i18n } = useTranslation();
+  const { user: me } = useAuth();
   const [wo, setWo] = useState<WorkOrder | null>(null);
   const [report, setReport] = useState<MaintenanceReport | null>(null);
   const [template, setTemplate] = useState<ReportTemplate | null>(null);
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
   const [photos, setPhotos] = useState<Record<string, File[]>>({});
-  const [me, setMe] = useState<UserMe | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [nextStatus, setNextStatus] = useState<WorkOrderStatus | "">("");
@@ -170,14 +166,6 @@ export function WorkOrderDetailPage() {
     try {
       const w = await apiFetch<WorkOrder>(`/work-orders/${id}`);
       setWo(w);
-
-      // Load /users/me on its own — a failure in history/comments/etc. must not
-      // leave `me` null (Assign to me depends on me.id).
-      void apiFetch<UserMe>("/users/me")
-        .then((user) => setMe(user))
-        .catch(() => {
-          /* keep prior me if any */
-        });
 
       void Promise.all([
         apiFetch<AuditLog[]>(`/work-orders/${id}/history`),

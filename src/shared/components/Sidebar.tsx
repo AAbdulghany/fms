@@ -1,8 +1,6 @@
-import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { apiFetch } from "@/lib/api";
-import type { User } from "@/lib/types";
+import { useAuth } from "@/contexts/AuthContext";
 import { hasAnyRole, isPlatformStaff } from "@/lib/roles";
 import { hasFeature } from "@/lib/features";
 import { NAV_ITEMS } from "@/shared/navigation/navItems";
@@ -17,23 +15,8 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose, onLogout }: SidebarProps) {
   const { t, i18n } = useTranslation();
   const location = useLocation();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading } = useAuth();
   const isRTL = i18n.dir() === "rtl";
-
-  useEffect(() => {
-    async function fetchUser() {
-      try {
-        const data = await apiFetch<User>("/users/me");
-        setUser(data);
-      } catch (error) {
-        console.error("Failed to fetch user", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    void fetchUser();
-  }, []);
 
   const visibleItems = NAV_ITEMS.filter((item) => {
     if (item.hiddenInNav) return false;

@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "@/lib/api";
-import type { User } from "@/lib/types";
+import { useAuth } from "@/contexts/AuthContext";
 import { hasAnyRole } from "@/lib/roles";
 import { AssetWorkOrderPanel } from "@/features/assets/components/AssetWorkOrderPanel";
 import type { MaintenanceCalendarEvent } from "@/features/assets/components/MaintenanceCalendar";
@@ -42,6 +42,7 @@ function eventDate(ev: MaintenanceCalendarEvent): Date {
 
 export default function MaintenanceCalendarPage() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const now = new Date();
   const [level, setLevel] = useState<Level>("year");
   const [year, setYear] = useState(now.getFullYear());
@@ -52,7 +53,6 @@ export default function MaintenanceCalendarPage() {
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [clients, setClients] = useState<{ id: string; legal_name: string }[]>([]);
   const [clientFilter, setClientFilter] = useState("");
-  const [user, setUser] = useState<User | null>(null);
   type OpenWo = {
     id: string;
     title: string;
@@ -66,18 +66,18 @@ export default function MaintenanceCalendarPage() {
   const [openWos, setOpenWos] = useState<OpenWo[]>([]);
 
   useEffect(() => {
+    if (!user || !hasAnyRole(user.role, ["super_admin", "company_admin"])) {
+      setClients([]);
+      return;
+    }
     void (async () => {
       try {
-        const me = await apiFetch<User>("/users/me");
-        setUser(me);
-        if (hasAnyRole(me.role, ["super_admin", "company_admin"])) {
-          setClients(await apiFetch<{ id: string; legal_name: string }[]>("/clients"));
-        }
+        setClients(await apiFetch<{ id: string; legal_name: string }[]>("/clients"));
       } catch (err) {
-        console.error("Failed to load user context", err);
+        console.error("Failed to load clients", err);
       }
     })();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     void (async () => {
