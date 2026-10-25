@@ -5,15 +5,16 @@ import { apiFetch } from "@/lib/api";
 import type { User } from "@/lib/types";
 import { hasAnyRole, isPlatformStaff } from "@/lib/roles";
 import { hasFeature } from "@/lib/features";
-import { OrbitLogo } from "@/shared/components/OrbitLogo";
 import { NAV_ITEMS } from "@/shared/navigation/navItems";
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Phone More drawer — logout lives here so the top bar stays slim. */
+  onLogout?: () => void;
 }
 
-export function Sidebar({ isOpen, onClose }: SidebarProps) {
+export function Sidebar({ isOpen, onClose, onLogout }: SidebarProps) {
   const { t, i18n } = useTranslation();
   const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
@@ -35,6 +36,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   }, []);
 
   const visibleItems = NAV_ITEMS.filter((item) => {
+    if (item.hiddenInNav) return false;
     if (!user || !hasAnyRole(user.role, item.allowedRoles)) return false;
     if (item.platformAdminOnly && !isPlatformStaff(user)) return false;
     if (item.requiredFeature && !hasFeature(user, item.requiredFeature)) return false;
@@ -53,20 +55,27 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     return location.pathname.startsWith(path);
   };
 
+  // Phone drawer sits between the header and the tab bar.
+  // English slides in from the right; Arabic slides in from the left.
   return (
     <>
       <aside
-        className={`max-lg:fixed ${isRTL ? "max-lg:right-0 max-lg:left-auto" : "max-lg:left-0"} max-lg:top-14 max-lg:bottom-0 max-lg:z-30 w-64 shrink-0 transform ${isRTL ? "border-l" : "border-r"} border-neutral-200 bg-neutral-0 shadow-lg transition-transform duration-300 lg:relative lg:top-auto lg:z-auto lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:translate-x-0 lg:self-stretch ${
-          isOpen ? "translate-x-0" : isRTL ? "translate-x-full" : "-translate-x-full"
+        className={`w-64 shrink-0 border-e border-neutral-200 bg-neutral-0 shadow-lg transition-transform duration-300 ease-out max-lg:absolute max-lg:inset-y-0 max-lg:z-30 lg:sticky lg:top-0 lg:z-auto lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:translate-x-0 lg:self-stretch lg:overflow-hidden ${
+          isRTL ? "max-lg:left-0" : "max-lg:right-0"
+        } ${
+          isOpen
+            ? "max-lg:translate-x-0"
+            : isRTL
+              ? "max-lg:-translate-x-full"
+              : "max-lg:translate-x-full"
         }`}
       >
         <div className="flex h-full min-h-0 w-full flex-col">
-          <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-4 lg:hidden">
-            <OrbitLogo iconSize={24} />
+          <div className="flex h-8 shrink-0 items-center justify-end lg:hidden">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md p-2 text-neutral-600 hover:bg-neutral-100"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-neutral-800 hover:bg-neutral-100"
               aria-label={t("close_menu")}
             >
               <svg
@@ -90,7 +99,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
             </div>
           ) : (
-            <nav className="flex-1 overflow-y-auto px-2 py-4">
+            <nav className="flex-1 overflow-y-auto px-2 py-1 lg:py-4">
               <ul className="space-y-1">
                 {visibleItems.map((item) => (
                   <li key={item.path}>
@@ -121,7 +130,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           )}
 
           {user && (
-            <div className="border-t border-neutral-200 px-4 py-3">
+            <div className="shrink-0 border-t border-neutral-200 px-4 py-3">
               <Link
                 to="/profile"
                 onClick={onClose}
@@ -137,6 +146,18 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <div className="mt-1 inline-block rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700">
                 {t(`role_${user.role}`)}
               </div>
+              {onLogout && (
+                <button
+                  type="button"
+                  className="mt-3 flex min-h-11 w-full items-center justify-center rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                  onClick={() => {
+                    onClose();
+                    onLogout();
+                  }}
+                >
+                  {t("logout")}
+                </button>
+              )}
             </div>
           )}
         </div>
