@@ -55,6 +55,11 @@
   --color-info-main: #3b82f6;
   --color-info-dark: #1d4ed8;
 
+  --color-hold-light: #ede9fe;
+  --color-hold-dark: #6d28d9;
+  --color-verified-bg: #065f46;
+  --color-verified-fg: #ecfdf5;
+
   /* Work order status accent (reference / charts; UI pills use Tailwind in workOrderDisplay.ts) */
   --status-created: #94a3b8;
   --status-assigned: #3b82f6;
