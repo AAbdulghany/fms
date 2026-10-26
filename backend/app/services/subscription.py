@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import time
 from datetime import date
+from threading import Lock
 from typing import Any
+from uuid import UUID
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -21,6 +24,18 @@ DEFAULT_SUBSCRIPTION: dict[str, Any] = {
     "features": ["assets", "invoices", "csv_import"],
 }
 
+# Process-local TTL cache — cuts subscription DB hits on every authenticated request (P10).
+_SUB_CACHE_TTL_S = 45.0
+_sub_cache: dict[UUID, tuple[float, dict[str, Any]]] = {}
+_sub_cache_lock = Lock()
+
+
+def invalidate_subscription_cache(tenant_id: UUID | None) -> None:
+    if tenant_id is None:
+        return
+    with _sub_cache_lock:
+        _sub_cache.pop(tenant_id, None)
+
 
 def _env_bypasses_license() -> bool:
     return get_settings().bypasses_license
@@ -35,13 +50,19 @@ def _tenant_subscription_row(db: Session, tenant_id) -> TenantSubscription | Non
 
 
 def get_subscription(db: Session, tenant: Tenant) -> dict[str, Any]:
+    now = time.monotonic()
+    with _sub_cache_lock:
+        hit = _sub_cache.get(tenant.id)
+        if hit is not None and hit[0] > now:
+            return dict(hit[1])
+
     row = _tenant_subscription_row(db, tenant.id)
     if row and row.package:
         pkg = row.package
         limits = pkg.limits_json or {}
         overrides = row.overrides_json or {}
         features = overrides.get("features") or pkg.features_json or []
-        return {
+        sub = {
             "plan": pkg.code,
             "package_id": pkg.id,
             "status": row.status,
@@ -50,10 +71,14 @@ def get_subscription(db: Session, tenant: Tenant) -> dict[str, Any]:
             "max_users": overrides.get("max_users", limits.get("max_users", 25)),
             "features": list(features),
         }
+    else:
+        settings = tenant.settings_json or {}
+        legacy = settings.get("subscription") or {}
+        sub = {**DEFAULT_SUBSCRIPTION, **legacy}
 
-    settings = tenant.settings_json or {}
-    sub = settings.get("subscription") or {}
-    return {**DEFAULT_SUBSCRIPTION, **sub}
+    with _sub_cache_lock:
+        _sub_cache[tenant.id] = (now + _SUB_CACHE_TTL_S, dict(sub))
+    return sub
 
 
 def assign_tenant_subscription(
@@ -85,11 +110,13 @@ def assign_tenant_subscription(
         )
         db.add(row)
     db.flush()
+    invalidate_subscription_cache(tenant.id)
     return row
 
 
 def update_subscription(db: Session, tenant: Tenant, patch: dict[str, Any]) -> dict[str, Any]:
     """Update tenant license — table-first when package_id or plan provided."""
+    invalidate_subscription_cache(tenant.id)
     if patch.get("package_id"):
         assign_tenant_subscription(
             db,
