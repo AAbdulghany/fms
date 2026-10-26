@@ -42,48 +42,81 @@ _ACTIVE_WO_STATUSES = {
 
 
 def _client_to_out(db: Session, c: Client) -> ClientOut:
-    sites_count = int(
-        db.scalar(
-            select(func.count())
-            .select_from(Site)
-            .where(Site.client_id == c.id, Site.status == "active")
-        )
-        or 0
+    """Single-client enrichment (create/get/update). Prefer `_clients_to_out` for lists."""
+    return _clients_to_out(db, [c])[0]
+
+
+def _clients_to_out(db: Session, clients: list[Client]) -> list[ClientOut]:
+    """Batch sites/WO/admin/vertical enrichment — O(1) queries vs client count."""
+    if not clients:
+        return []
+
+    from app.models.asset_types import Vertical
+
+    ids = [c.id for c in clients]
+    sites_map = dict(
+        db.execute(
+            select(Site.client_id, func.count())
+            .where(Site.client_id.in_(ids), Site.status == "active")
+            .group_by(Site.client_id)
+        ).all()
     )
-    active_wo_count = int(
-        db.scalar(
-            select(func.count())
-            .select_from(WorkOrder)
+    wo_map = dict(
+        db.execute(
+            select(WorkOrder.client_id, func.count())
             .where(
-                WorkOrder.client_id == c.id,
+                WorkOrder.client_id.in_(ids),
                 WorkOrder.status.in_(_ACTIVE_WO_STATUSES),
             )
-        )
-        or 0
+            .group_by(WorkOrder.client_id)
+        ).all()
     )
-    admin = db.scalar(
+    admin_by_client: dict[UUID, User] = {}
+    for u in db.scalars(
         select(User)
         .where(
-            User.client_id == c.id,
+            User.client_id.in_(ids),
             User.role == UserRole.client_admin,
             User.is_active.is_(True),
         )
         .order_by(User.created_at.asc())
-        .limit(1)
+    ).all():
+        if u.client_id is not None and u.client_id not in admin_by_client:
+            admin_by_client[u.client_id] = u
+
+    vertical_ids = {c.vertical_id for c in clients if c.vertical_id}
+    verticals = (
+        {
+            v.id: v
+            for v in db.scalars(select(Vertical).where(Vertical.id.in_(vertical_ids))).all()
+        }
+        if vertical_ids
+        else {}
     )
-    return ClientOut(
-        id=c.id,
-        legal_name=c.legal_name,
-        code=c.code,
-        billing_email=c.billing_email,
-        status=c.status,
-        activity_type=c.activity_type,
-        vertical_code=client_vertical_code(db, c),
-        sites_count=sites_count,
-        active_wo_count=active_wo_count,
-        primary_contact_email=admin.email if admin else c.billing_email,
-        primary_contact_phone=admin.phone if admin else None,
-    )
+
+    out: list[ClientOut] = []
+    for c in clients:
+        admin = admin_by_client.get(c.id)
+        if c.vertical_id and c.vertical_id in verticals:
+            vcode = verticals[c.vertical_id].code
+        else:
+            vcode = c.activity_type
+        out.append(
+            ClientOut(
+                id=c.id,
+                legal_name=c.legal_name,
+                code=c.code,
+                billing_email=c.billing_email,
+                status=c.status,
+                activity_type=c.activity_type,
+                vertical_code=vcode,
+                sites_count=int(sites_map.get(c.id, 0)),
+                active_wo_count=int(wo_map.get(c.id, 0)),
+                primary_contact_email=admin.email if admin else c.billing_email,
+                primary_contact_phone=admin.phone if admin else None,
+            )
+        )
+    return out
 
 
 @router.get("", response_model=list[ClientOut])
@@ -110,7 +143,7 @@ def list_clients(
             return []
         q = q.where(Client.id.in_(client_ids))
     clients = list(db.scalars(q).all())
-    return [_client_to_out(db, c) for c in clients]
+    return _clients_to_out(db, clients)
 
 
 @router.post("", response_model=ClientOut)
