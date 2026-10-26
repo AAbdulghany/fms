@@ -53,13 +53,21 @@ def _wo_in_tenant(db: Session, tenant_id: UUID, wo_id: UUID) -> WorkOrder:
 def list_profiles(
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
+    page: int = Query(1, ge=1),
+    page_size: int = Query(200, ge=1, le=500),
 ) -> list[TechnicianProfile]:
     q = select(TechnicianProfile).where(TechnicianProfile.tenant_id == current.tenant_id)
     if current.role == UserRole.technician:
         q = q.where(TechnicianProfile.user_id == current.id)
     elif current.role not in (UserRole.super_admin, UserRole.company_admin, UserRole.manager):
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
-    return list(db.scalars(q.order_by(TechnicianProfile.created_at.desc())).all())
+    return list(
+        db.scalars(
+            q.order_by(TechnicianProfile.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        ).all()
+    )
 
 
 @router.post("/profiles", response_model=TechnicianProfileOut)
@@ -131,6 +139,8 @@ def list_labor_entries(
     current: Annotated[User, Depends(get_current_user)],
     work_order_id: UUID | None = Query(None),
     user_id: UUID | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(500, ge=1, le=1000),
 ) -> list[LaborEntry]:
     q = select(LaborEntry).where(LaborEntry.tenant_id == current.tenant_id)
     if work_order_id:
@@ -141,7 +151,13 @@ def list_labor_entries(
         q = q.where(LaborEntry.user_id == current.id)
     elif current.role not in (UserRole.super_admin, UserRole.company_admin, UserRole.manager):
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
-    return list(db.scalars(q.order_by(LaborEntry.work_date.desc())).all())
+    return list(
+        db.scalars(
+            q.order_by(LaborEntry.work_date.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        ).all()
+    )
 
 
 @router.post("/entries", response_model=LaborEntryOut)
@@ -190,6 +206,8 @@ def list_schedules(
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
     user_id: UUID | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(500, ge=1, le=1000),
 ) -> list[TechnicianSchedule]:
     if current.role not in (
         UserRole.super_admin,
@@ -203,7 +221,13 @@ def list_schedules(
         q = q.where(TechnicianSchedule.user_id == current.id)
     elif user_id:
         q = q.where(TechnicianSchedule.user_id == user_id)
-    return list(db.scalars(q.order_by(TechnicianSchedule.user_id, TechnicianSchedule.day_of_week)).all())
+    return list(
+        db.scalars(
+            q.order_by(TechnicianSchedule.user_id, TechnicianSchedule.day_of_week)
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        ).all()
+    )
 
 
 @router.post("/schedules", response_model=TechnicianScheduleOut)

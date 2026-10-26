@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -105,6 +105,8 @@ def list_users(
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
     _: Annotated[User, _tenant_admin],
+    page: int = Query(1, ge=1),
+    page_size: int = Query(500, ge=1, le=1000),
 ) -> list[UserListOut]:
     """List users in the tenant; hide platform staff from non-platform viewers."""
     q = select(User).where(User.tenant_id == current.tenant_id)
@@ -113,7 +115,7 @@ def list_users(
             User.is_platform_admin.is_(False),
             User.role.notin_([UserRole.super_user, UserRole.sw_dev]),
         )
-    q = q.order_by(User.created_at.desc())
+    q = q.order_by(User.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
     users = db.scalars(q).all()
     return [UserListOut.from_user(u) for u in users]
 

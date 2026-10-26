@@ -56,6 +56,8 @@ def list_sites(
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
     client_id: UUID | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(500, ge=1, le=1000),
 ) -> list[SiteOut]:
     q = select(Site).where(Site.tenant_id == current.tenant_id)
     if client_id:
@@ -67,8 +69,12 @@ def list_sites(
         if not scoped:
             return []
         q = q.where(Site.id.in_(scoped))
-    q = q.options(joinedload(Site.client))
-    sites = list(db.scalars(q).all())
+    q = (
+        q.options(joinedload(Site.client))
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
+    sites = list(db.scalars(q).unique().all())
     return [_site_to_out(s) for s in sites]
 
 
