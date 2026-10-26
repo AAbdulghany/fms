@@ -4,6 +4,9 @@
 **Applies to:** All waves from Wave 3 onward  
 **Related:** [WAVE_GOVERNANCE.md](WAVE_GOVERNANCE.md) · [PIPELINE_ARCHITECTURE.md](PIPELINE_ARCHITECTURE.md)
 
+**Product-wide scenarios (multi-user):** [../testing/FULL_SCENARIO_CATALOG.md](../testing/FULL_SCENARIO_CATALOG.md)  
+**What runs on every push/merge to `main`:** [../testing/REGRESSION_SUITE.md](../testing/REGRESSION_SUITE.md)
+
 Every wave ticket and PR must map work to **one or more** of the tiers below. Do not mix tiers in a single test file without labeling.
 
 ---
@@ -26,24 +29,24 @@ Every wave ticket and PR must map work to **one or more** of the tiers below. Do
 
 ### Regression test cases
 
-- **Scope:** Entire backend suite + frontend build; wave-scoped files `test_wave{N}_*.py`.
-- **Format:** pytest module docstring lists ticket IDs covered.
-- **Pass rule:** 0 failures on PR; no skipped tests without documented reason.
-- **Not for:** UI-only flows without API equivalent (use E2E).
+- **Scope:** Full `pytest -q` + `npm run build` + Playwright **smoke** under `tests/e2e/regression/` (persona handoffs).
+- **Catalog:** Tagged **REG** in [FULL_SCENARIO_CATALOG.md](../testing/FULL_SCENARIO_CATALOG.md); gate list in [REGRESSION_SUITE.md](../testing/REGRESSION_SUITE.md).
+- **Pass rule:** 0 failures on PR / push to `main`; no skipped tests in the REG path without documented reason.
+- **Not for:** Exhaustive role×screen matrix (FULL / UAT).
 
 ### E2E scenarios
 
-- **Scope:** Multi-step user journeys visible in the SPA (login → action → assert DOM/network).
-- **Format:** Scenario ID (`GP-01`, `INV-03`, `AST-01`) in `WAVE{N}_E2E.md` + matching `test()` in Playwright.
-- **Pass rule:** Green in `playwright-e2e-pilot.yml` or explicitly skipped with backend substitute + sign-off note.
+- **Scope:** Multi-step user journeys with named seed actors (admin → tech → admin, etc.).
+- **Format:** Catalog ID (`SC-GP-HOSP`, `SC-AUTH-02`) + Playwright under `tests/e2e/regression` (smoke) or `tests/e2e/domains` (full).
+- **Pass rule:** REG green on push to `main`; full suite via `workflow_dispatch` `suite=full` or local.
 - **Not for:** Unit-level validation logic (use Acceptance pytest).
 
 ### Full test cases
 
-- **Scope:** Master matrix: every scenario × role × environment × expected result.
-- **Format:** Markdown table linking scenario ID → acceptance / regression / E2E automation ID.
-- **Pass rule:** Wave sign-off requires matrix reviewed; gaps marked `manual` or `deferred` with owner.
-- **Purpose:** Audit trail for UAT, Rex review, and release notes — not a fourth test runner.
+- **Scope:** Master multi-user catalog: every journey × persona × corner case.
+- **Format:** [FULL_SCENARIO_CATALOG.md](../testing/FULL_SCENARIO_CATALOG.md) (wave matrices kept as historical).
+- **Pass rule:** Sign-off reviews catalog coverage; gaps marked `MANUAL` or `deferred` with owner.
+- **Purpose:** Audit trail for UAT and release — not a fourth test runner.
 
 ---
 

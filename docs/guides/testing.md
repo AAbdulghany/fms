@@ -1,6 +1,10 @@
 # Testing
 
-How to run automated tests for Orbit (FMS). Authoritative strategy: [TEST_STRATEGY.md](../phase3-restructure/TEST_STRATEGY.md).
+How to run automated tests for Orbit (FMS).
+
+**Scenario catalog (multi-user):** [../testing/FULL_SCENARIO_CATALOG.md](../testing/FULL_SCENARIO_CATALOG.md)  
+**Main regression gate:** [../testing/REGRESSION_SUITE.md](../testing/REGRESSION_SUITE.md)  
+**Strategy:** [TEST_STRATEGY.md](../phase3-restructure/TEST_STRATEGY.md)
 
 ---
 
@@ -8,60 +12,33 @@ How to run automated tests for Orbit (FMS). Authoritative strategy: [TEST_STRATE
 
 | Tier | Tool | Location | When |
 |------|------|----------|------|
-| **Acceptance** | Focused pytest | `backend/tests/test_*.py` | Ticket PR |
-| **Regression** | Full pytest + `npm run build` | CI | Every PR |
-| **E2E** | Playwright | `tests/e2e/*.spec.ts` | Wave branch / nightly |
-| **Full matrix** | Traceability tables | `WAVE*_FULL_TEST_MATRIX.md` | Wave sign-off |
+| **Acceptance** | Focused pytest | `backend/tests/` | Ticket PR |
+| **Regression** | Full pytest + `npm run build` + E2E smoke | CI on PR + push to `main` | Every PR / merge to main |
+| **E2E (full)** | Playwright domains | `tests/e2e/domains/` | Manual `suite=full` / local |
+| **Full scenarios** | Catalog | `docs/testing/FULL_SCENARIO_CATALOG.md` | UAT / sign-off |
 
 ---
 
 ## Backend (pytest)
 
-From repository root:
-
 ```powershell
 uv run pytest backend/tests/ -q
 ```
 
-From `backend/`:
+CI ([`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)):
 
-```powershell
-cd backend
-pytest -q
-```
-
-CI (`.github/workflows/ci.yml`):
-
+- Runs on **PR** and **push** to `main`, `dev`, `feature/**`
 - Python 3.12, `DATABASE_URL=sqlite:///:memory:`
 - `pytest -q --tb=line`
-
-**Current count:** 219+ tests (wave + domain modules).
-
-### Notable test modules
-
-| Module | Covers |
-|--------|--------|
-| `test_rbac.py`, `test_rbac_roles.py` | Role matrix |
-| `test_isolation.py`, `test_tenancy.py` | Multi-tenant isolation |
-| `test_wave3_assets.py` | Assets feature gate |
-| `test_wave4_invoices.py` | Invoice gate + validation |
-| `test_report_pdf_rbac.py` | Report PDF access control |
-| `test_api_errors.py` | Bilingual API errors (NT-131) |
-| `test_work_order_requests.py` | WO request flow |
-
-Shared fixtures: `backend/conftest.py`, `backend/tests/api_helpers.py`.
 
 ---
 
 ## Frontend
 
-No unit test suite today. **Regression tier** uses:
-
 ```powershell
+npm run check:imports
 npm run build
 ```
-
-(`tsc -b && vite build`)
 
 ---
 
@@ -69,92 +46,49 @@ npm run build
 
 Config: `playwright.config.ts` → `testDir: ./tests/e2e`.
 
-### Which URL to use
+| Suite | Path | CI default |
+|-------|------|------------|
+| **Regression smoke** | `tests/e2e/regression/` | Push to `main` |
+| **Domain / full** | `tests/e2e/domains/` | `workflow_dispatch` → `suite=full` |
 
-| How you run the app | Start command | `E2E_BASE_URL` |
-|---------------------|---------------|----------------|
-| **Pilot Docker** (recommended for E2E) | `docker compose -f docker-compose-pilot.yml up -d --build` | `http://localhost:9081` |
-| **Local full Docker** | `docker compose -f docker-compose-local.yml up -d --build` | `http://localhost:9080` |
-| **Hybrid** (Docker DB + host API/UI) | hybrid compose + `uvicorn` + `npm run dev` | `http://localhost:5173` |
+### Which URL
 
-Default in `playwright.config.ts` is **`http://localhost:9081`** (pilot stack) when `E2E_BASE_URL` is unset.
+| Stack | `E2E_BASE_URL` |
+|-------|----------------|
+| Pilot Docker (recommended) | `http://localhost:9081` |
+| Local Docker | `http://localhost:9080` |
+| Hybrid Vite | `http://localhost:5173` |
 
-### Prerequisites (pilot stack — recommended)
+### Run REG locally
 
 ```powershell
 docker compose -f docker-compose-pilot.yml up -d --build
-docker compose -f docker-compose-pilot.yml logs migrate --tail 10
-```
-
-Wait for `Migrate complete.` and open http://localhost:9081 once to confirm.
-
-### Run locally
-
-```powershell
 npm ci
 npx playwright install chromium
-
 $env:E2E_BASE_URL = "http://localhost:9081"
 $env:E2E_DEMO_PASSWORD_SUFFIX = "123"
-npx playwright test tests/e2e/
+npx playwright test tests/e2e/regression
 ```
 
-**Hybrid dev** (only if Vite + uvicorn are already running):
-
-```powershell
-$env:E2E_BASE_URL = "http://localhost:5173"
-npx playwright test tests/e2e/domains/assets/wave3-assets.spec.ts
-```
-
-Single suite:
-
-```powershell
-npx playwright test tests/e2e/domains/assets/wave3-assets.spec.ts
-```
-
-### E2E specs
-
-| File | Wave | Scenarios |
-|------|------|-----------|
-| `wave3-assets.spec.ts` | 3 | AST-01–06 |
-| `wave4-golden-path.spec.ts` | 4 | GP-03–GP-12 |
-| `wave4-invoices.spec.ts` | 4 | INV-01–06 |
-| `wave4-workflows.spec.ts` | 4 | WO-03, WO-04 |
-| `wave4-errors.spec.ts` | 4 | ERR spot-checks |
-
-Plan docs: `docs/phase3-restructure/WAVE3_E2E.md`, `WAVE4_E2E.md`.
-
-Fixtures: `tests/e2e/fixtures/auth.ts` — seed users compose passwords from `E2E_DEMO_PASSWORD_SUFFIX` (must match the stack's `SEED_PASSWORD_SUFFIX`).
-
-### CI
-
-[`.github/workflows/playwright-e2e-pilot.yml`](../../.github/workflows/playwright-e2e-pilot.yml):
-
-- Runs on **push to `main`** (including when a PR is merged into main) and manual dispatch
-- Starts `docker-compose-pilot.yml`, waits for API `:9001` and web `:9081`
-- Runs **all** Playwright specs under `tests/e2e/`
-- On failure: writes `test-results/e2e-failure-summary.json` + GitHub job summary
-- Uploads `test-results/` and `playwright-report/` artifacts
+Fixtures: `tests/e2e/fixtures/auth.ts` — `DEMO_USERS` (admin, tech, client, site, super).
 
 ---
 
-## Pre-PR checklist
+## Pre-merge checklist
 
 ```powershell
-# Regression
 uv run pytest backend/tests/ -q
+npm run check:imports
 npm run build
-
-# Optional E2E (pilot stack up)
-docker compose -f docker-compose-pilot.yml up -d --build
-$env:E2E_BASE_URL="http://localhost:9081"
-npx playwright test tests/e2e/domains/assets/wave3-assets.spec.ts
+# Optional REG E2E with pilot up
+npx playwright test tests/e2e/regression
 ```
 
 ---
 
 ## Related
 
-- [local-development.md](./local-development.md) — run API/UI for manual testing
-- [pilot-stack.md](./pilot-stack.md) — Docker stack for E2E
-- [tests/e2e/README.md](../../tests/e2e/README.md) — spec table
+- [local-development.md](./local-development.md)
+- [pilot-stack.md](./pilot-stack.md)
+- [docker-seed-profiles.md](./docker-seed-profiles.md)
+- [tests/e2e/README.md](../../tests/e2e/README.md)

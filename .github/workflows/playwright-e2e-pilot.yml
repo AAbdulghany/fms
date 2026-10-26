@@ -1,9 +1,9 @@
-# Playwright E2E — pilot stack (tests/e2e)
+# Playwright E2E — pilot stack
 #
-# Runs after a PR is merged into main (push to main).
-# Also: manual dispatch for ad-hoc runs.
+# Default on push to main: REGRESSION smoke only (tests/e2e/regression).
+# Full domains suite: workflow_dispatch with suite=full.
 #
-# Caching: npm (setup-node), Playwright browsers (~/.cache/ms-playwright).
+# See docs/testing/REGRESSION_SUITE.md
 
 name: Playwright E2E (pilot stack)
 
@@ -12,6 +12,14 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      suite:
+        description: "E2E suite to run"
+        type: choice
+        options:
+          - regression
+          - full
+        default: regression
 
 concurrency:
   group: playwright-e2e-pilot-${{ github.workflow }}-${{ github.ref }}
@@ -25,27 +33,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check E2E scenarios exist
-        id: check
+      - name: Resolve suite path
+        id: suite
         run: |
-          count=$(find tests/e2e -name '*.spec.ts' | wc -l | tr -d ' ')
+          SUITE="${{ github.event.inputs.suite || 'regression' }}"
+          if [ "$SUITE" = "full" ]; then
+            echo "path=tests/e2e" >> "$GITHUB_OUTPUT"
+            echo "label=full (regression + domains)" >> "$GITHUB_OUTPUT"
+          else
+            echo "path=tests/e2e/regression" >> "$GITHUB_OUTPUT"
+            echo "label=regression smoke" >> "$GITHUB_OUTPUT"
+          fi
+          echo "suite=$SUITE" >> "$GITHUB_OUTPUT"
+          count=$(find tests/e2e/regression -name '*.spec.ts' 2>/dev/null | wc -l | tr -d ' ')
           echo "spec_count=$count" >> "$GITHUB_OUTPUT"
           if [ "$count" -gt 0 ]; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "Found $count Playwright spec(s) under tests/e2e/"
-            find tests/e2e -name '*.spec.ts' | sort
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
+          echo "suite=$SUITE path=$( [ "$SUITE" = full ] && echo tests/e2e || echo tests/e2e/regression ) specs=$count"
 
-      - name: No E2E scenarios yet
-        if: steps.check.outputs.exists != 'true'
+      - name: No regression specs
+        if: steps.suite.outputs.exists != 'true'
         run: |
-          echo "::warning::No *.spec.ts under tests/e2e/ — skipping E2E job"
+          echo "::warning::No *.spec.ts under tests/e2e/regression — skipping E2E job"
           exit 0
 
       - name: Start pilot stack
-        if: steps.check.outputs.exists == 'true'
+        if: steps.suite.outputs.exists == 'true'
         run: |
           docker compose -f docker-compose-pilot.yml up -d --build
           echo "Waiting for API health…"
@@ -54,22 +70,22 @@ jobs:
           timeout 60 bash -c 'until curl -sf -o /dev/null http://localhost:9081/; do sleep 3; done'
 
       - uses: actions/setup-node@v4
-        if: steps.check.outputs.exists == 'true'
+        if: steps.suite.outputs.exists == 'true'
         with:
           node-version: "20"
           cache: npm
 
       - name: Install npm dependencies
-        if: steps.check.outputs.exists == 'true'
+        if: steps.suite.outputs.exists == 'true'
         run: npm ci
 
       - name: Get Playwright version
-        if: steps.check.outputs.exists == 'true'
+        if: steps.suite.outputs.exists == 'true'
         id: pw
         run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
 
       - name: Cache Playwright browsers
-        if: steps.check.outputs.exists == 'true'
+        if: steps.suite.outputs.exists == 'true'
         id: playwright-cache
         uses: actions/cache@v4
         with:
@@ -77,16 +93,16 @@ jobs:
           key: ${{ runner.os }}-playwright-${{ steps.pw.outputs.version }}-chromium
 
       - name: Install Playwright browsers
-        if: steps.check.outputs.exists == 'true' && steps.playwright-cache.outputs.cache-hit != 'true'
+        if: steps.suite.outputs.exists == 'true' && steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
 
       - name: Install Playwright OS deps (browsers cached)
-        if: steps.check.outputs.exists == 'true' && steps.playwright-cache.outputs.cache-hit == 'true'
+        if: steps.suite.outputs.exists == 'true' && steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      - name: Run E2E scenarios (tests/e2e)
+      - name: Run E2E (${{ steps.suite.outputs.label }})
         id: e2e
-        if: steps.check.outputs.exists == 'true'
+        if: steps.suite.outputs.exists == 'true'
         env:
           CI: "true"
           E2E_BASE_URL: http://localhost:9081
@@ -94,7 +110,7 @@ jobs:
         run: |
           mkdir -p test-results
           set +e
-          npx playwright test tests/e2e
+          npx playwright test ${{ steps.suite.outputs.path }}
           code=$?
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           if [ ! -f test-results/e2e-results.json ]; then
@@ -103,11 +119,11 @@ jobs:
           exit $code
 
       - name: Write JSON failure summary
-        if: always() && steps.check.outputs.exists == 'true' && steps.e2e.outcome == 'failure'
+        if: always() && steps.suite.outputs.exists == 'true' && steps.e2e.outcome == 'failure'
         run: node scripts/e2e-json-summary.mjs test-results/e2e-results.json
 
       - name: Upload Playwright artifacts
-        if: always() && steps.check.outputs.exists == 'true'
+        if: always() && steps.suite.outputs.exists == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: playwright-e2e-${{ github.run_id }}
@@ -118,5 +134,5 @@ jobs:
           retention-days: 14
 
       - name: Teardown
-        if: always() && steps.check.outputs.exists == 'true'
+        if: always() && steps.suite.outputs.exists == 'true'
         run: docker compose -f docker-compose-pilot.yml down -v
