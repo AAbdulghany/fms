@@ -13,9 +13,8 @@ test.describe("REG — Assets & calendar", () => {
   test("SC-AST-01 P-ADMIN assets page + register control", async ({ page }) => {
     await login(page, DEMO_USERS.companyAdmin.email, DEMO_USERS.companyAdmin.password);
     await page.goto("/assets");
-    await expect(page.getByTestId("register-asset-button").or(page.getByTestId("register-asset-button-mobile"))).toBeVisible({
-      timeout: 20_000,
-    });
+    // Desktop + mobile buttons both exist in DOM; assert the desktop control.
+    await expect(page.getByTestId("register-asset-button")).toBeVisible({ timeout: 20_000 });
     await expect(page.getByTestId("open-maintenance-calendar")).toBeVisible();
   });
 

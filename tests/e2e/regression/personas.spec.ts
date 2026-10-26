@@ -53,7 +53,7 @@ test.describe("REG — Personas (multi-user)", () => {
   test("SC-TEN-01 P-TECH blocked from companies", async ({ page }) => {
     await login(page, DEMO_USERS.technician.email, DEMO_USERS.technician.password);
     await page.goto("/companies");
-    await expect(page.getByText(/access denied|ليس لديك صلاحية|permission/i)).toBeVisible({
+    await expect(page.getByRole("heading", { name: /access denied/i })).toBeVisible({
       timeout: 15_000,
     });
   });
