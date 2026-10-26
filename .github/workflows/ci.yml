@@ -30,7 +30,7 @@ jobs:
       - name: Pytest
         run: pytest -q --tb=line
         env:
-          DATABASE_URL: sqlite:///:memory:
+          DATABASE_URL: "sqlite:///:memory:"
           APP_ENV: development
 
   frontend:

@@ -35,14 +35,17 @@ jobs:
 
       - name: Resolve suite path
         id: suite
+        env:
+          # inputs only set on workflow_dispatch; default regression on push
+          INPUT_SUITE: ${{ github.event.inputs.suite }}
         run: |
-          SUITE="${{ github.event.inputs.suite || 'regression' }}"
+          SUITE="${INPUT_SUITE:-regression}"
           if [ "$SUITE" = "full" ]; then
             echo "path=tests/e2e" >> "$GITHUB_OUTPUT"
-            echo "label=full (regression + domains)" >> "$GITHUB_OUTPUT"
+            echo "label=full-regression-and-domains" >> "$GITHUB_OUTPUT"
           else
             echo "path=tests/e2e/regression" >> "$GITHUB_OUTPUT"
-            echo "label=regression smoke" >> "$GITHUB_OUTPUT"
+            echo "label=regression-smoke" >> "$GITHUB_OUTPUT"
           fi
           echo "suite=$SUITE" >> "$GITHUB_OUTPUT"
           count=$(find tests/e2e/regression -name '*.spec.ts' 2>/dev/null | wc -l | tr -d ' ')
@@ -52,7 +55,7 @@ jobs:
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
-          echo "suite=$SUITE path=$( [ "$SUITE" = full ] && echo tests/e2e || echo tests/e2e/regression ) specs=$count"
+          echo "Resolved suite=$SUITE specs=$count"
 
       - name: No regression specs
         if: steps.suite.outputs.exists != 'true'
