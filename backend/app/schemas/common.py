@@ -6,7 +6,13 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from app.schemas.work_orders import WorkOrderOut
+from app.schemas.auth import UserBrief
+from app.schemas.work_orders import (
+    CommentOut,
+    DocumentOut,
+    MaintenanceReportOut,
+    WorkOrderOut,
+)
 
 
 class PaginatedMeta(BaseModel):
@@ -32,3 +38,14 @@ class AuditLogOut(BaseModel):
     before_json: Optional[dict[str, Any]] = None
     after_json: Optional[dict[str, Any]] = None
     created_at: datetime
+
+
+class WorkOrderDetailOut(BaseModel):
+    """Single-round-trip payload for the work-order detail page (P9)."""
+
+    work_order: WorkOrderOut
+    history: list[AuditLogOut]
+    comments: list[CommentOut]
+    assignable_users: list[UserBrief]
+    documents: list[DocumentOut]
+    report: Optional[MaintenanceReportOut] = None

@@ -42,6 +42,7 @@ from app.schemas import (
     ReportAnswersUpdate,
     UserBrief,
     WorkOrderCreate,
+    WorkOrderDetailOut,
     WorkOrderOut,
     WorkOrderUpdate,
 )
@@ -84,6 +85,129 @@ from ._common import (
     validate_tags,
 )
 from .router import router
+
+_ASSIGNABLE_ROLES = (
+    UserRole.site_manager,
+    UserRole.client_admin,
+    UserRole.technician,
+    UserRole.company_engineer,
+    UserRole.manager,
+    UserRole.company_admin,
+)
+
+
+@router.get("/{work_order_id}/detail", response_model=WorkOrderDetailOut)
+def get_work_order_detail(
+    work_order_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current: Annotated[User, Depends(get_current_user)],
+) -> WorkOrderDetailOut:
+    """Bundle WO + history/comments/assignable/documents/report for detail page (P9)."""
+    wo = db.execute(
+        select(WorkOrder)
+        .where(WorkOrder.id == work_order_id)
+        .options(*_wo_load_options(), joinedload(WorkOrder.report))
+    ).scalar_one_or_none()
+    if not wo or wo.tenant_id != current.tenant_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="NOT_FOUND")
+    if current.role == UserRole.technician and wo.assignee_user_id != current.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
+    if current.role == UserRole.client_admin and current.client_id and wo.client_id != current.client_id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
+    if current.role == UserRole.site_manager:
+        scoped = db.scalars(
+            select(UserSiteScope.site_id).where(UserSiteScope.user_id == current.id)
+        ).all()
+        if scoped and wo.site_id not in scoped:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="FORBIDDEN")
+
+    logs = db.scalars(
+        select(AuditLog)
+        .where(AuditLog.entity_type == "work_order", AuditLog.entity_id == str(wo.id))
+        .options(joinedload(AuditLog.actor_user))
+        .order_by(AuditLog.created_at.desc())
+    ).all()
+    history = [
+        AuditLogOut(
+            id=log.id,
+            actor_user_id=log.actor_user_id,
+            actor_name=(log.actor_user.full_name or log.actor_user.email) if log.actor_user else None,
+            action=log.action,
+            entity_type=log.entity_type,
+            entity_id=log.entity_id,
+            before_json=log.before_json,
+            after_json=log.after_json,
+            created_at=log.created_at,
+        )
+        for log in logs
+    ]
+
+    comment_rows = db.scalars(
+        select(Comment)
+        .where(Comment.work_order_id == wo.id)
+        .options(joinedload(Comment.user))
+        .order_by(Comment.created_at.asc())
+    ).all()
+    comments = [
+        CommentOut(
+            id=c.id,
+            work_order_id=c.work_order_id,
+            user_id=c.user_id,
+            user_name=(c.user.full_name or c.user.email) if c.user else None,
+            content=c.content,
+            created_at=c.created_at,
+            updated_at=c.updated_at,
+        )
+        for c in comment_rows
+    ]
+
+    assignable_users = [
+        UserBrief.model_validate(u)
+        for u in db.scalars(
+            select(User)
+            .where(
+                User.tenant_id == current.tenant_id,
+                User.is_active.is_(True),
+                User.role.in_(_ASSIGNABLE_ROLES),
+            )
+            .order_by(User.full_name)
+        ).all()
+    ]
+
+    doc_rows = db.scalars(
+        select(WorkOrderDocument)
+        .where(WorkOrderDocument.work_order_id == wo.id)
+        .options(joinedload(WorkOrderDocument.uploaded_by))
+        .order_by(WorkOrderDocument.created_at.desc())
+    ).all()
+    documents = [
+        DocumentOut(
+            id=d.id,
+            work_order_id=d.work_order_id,
+            uploaded_by_user_id=d.uploaded_by_user_id,
+            uploaded_by_name=(
+                (d.uploaded_by.full_name or d.uploaded_by.email) if d.uploaded_by else None
+            ),
+            file_name=d.file_name,
+            file_size=d.file_size,
+            file_type=d.file_type,
+            file_url=d.file_url,
+            description=d.description,
+            created_at=d.created_at,
+        )
+        for d in doc_rows
+    ]
+
+    report = MaintenanceReportOut.model_validate(wo.report) if wo.report else None
+    return WorkOrderDetailOut(
+        work_order=_work_order_to_out(wo),
+        history=history,
+        comments=comments,
+        assignable_users=assignable_users,
+        documents=documents,
+        report=report,
+    )
+
 
 @router.get("/{work_order_id}/history", response_model=list[AuditLogOut])
 def get_work_order_history(

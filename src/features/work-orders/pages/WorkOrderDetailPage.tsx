@@ -125,7 +125,7 @@ export function WorkOrderDetailPage() {
   const [inspectorNote, setInspectorNote] = useState("");
   const [savingNote, setSavingNote] = useState(false);
 
-  const loadReportData = async (w: WorkOrder, woId: string) => {
+  const loadTemplate = async (w: WorkOrder) => {
     let resolvedTemplate: ReportTemplate | null = null;
     if (w.template_id) {
       try {
@@ -147,16 +147,6 @@ export function WorkOrderDetailPage() {
       }
     }
     setTemplate(resolvedTemplate);
-
-    try {
-      const r = await apiFetch<MaintenanceReport>(`/work-orders/${woId}/report`);
-      setReport(r);
-      const aj = (r.answers_json as Record<string, unknown>) || {};
-      setAnswers(aj);
-    } catch {
-      setReport(null);
-      setAnswers({});
-    }
   };
 
   const load = async () => {
@@ -164,26 +154,28 @@ export function WorkOrderDetailPage() {
     setErr(null);
     setWo(null);
     try {
-      const w = await apiFetch<WorkOrder>(`/work-orders/${id}`);
-      setWo(w);
-
-      void Promise.all([
-        apiFetch<AuditLog[]>(`/work-orders/${id}/history`),
-        apiFetch<Comment[]>(`/work-orders/${id}/comments`),
-        apiFetch<WorkOrderUserBrief[]>(`/work-orders/${id}/assignable-users`),
-        apiFetch<WorkOrderDocument[]>(`/work-orders/${id}/documents`),
-      ])
-        .then(([hist, comm, assignable, docs]) => {
-          setHistory(hist);
-          setComments(comm);
-          setAssignableUsers(assignable);
-          setDocuments(docs);
-        })
-        .catch(() => {
-          /* secondary data — page remains usable */
-        });
-
-      void loadReportData(w, id);
+      type DetailBundle = {
+        work_order: WorkOrder;
+        history: AuditLog[];
+        comments: Comment[];
+        assignable_users: WorkOrderUserBrief[];
+        documents: WorkOrderDocument[];
+        report: MaintenanceReport | null;
+      };
+      const detail = await apiFetch<DetailBundle>(`/work-orders/${id}/detail`);
+      setWo(detail.work_order);
+      setHistory(detail.history);
+      setComments(detail.comments);
+      setAssignableUsers(detail.assignable_users);
+      setDocuments(detail.documents);
+      if (detail.report) {
+        setReport(detail.report);
+        setAnswers((detail.report.answers_json as Record<string, unknown>) || {});
+      } else {
+        setReport(null);
+        setAnswers({});
+      }
+      void loadTemplate(detail.work_order);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Error");
     }

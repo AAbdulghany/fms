@@ -124,6 +124,7 @@ __all__ = [
     "UserPatchMe",
     "UserPublic",
     "WorkOrderCreate",
+    "WorkOrderDetailOut",
     "WorkOrderOut",
     "WorkOrderUpdate",
 ]
