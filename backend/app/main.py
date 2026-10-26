@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 
 from app.api.routes import (
     auth,
@@ -56,6 +57,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# Compress JSON/HTML responses (outermost so CORS-annotated bodies are gzipped).
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 api = settings.api_v1_prefix
 app.include_router(auth.router, prefix=api)

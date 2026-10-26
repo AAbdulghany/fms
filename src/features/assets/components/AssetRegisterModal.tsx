@@ -434,8 +434,8 @@ export function AssetRegisterModal({
                   }
                 }
               }}
-              typeName={assetTypeName}
-              onTypeNameChange={setAssetTypeName}
+              freeTextCategory={assetTypeName}
+              onFreeTextChange={setAssetTypeName}
               loading={assetTypesLoading}
               userRole={me?.role}
               required

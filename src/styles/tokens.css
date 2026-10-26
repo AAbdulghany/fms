@@ -114,7 +114,7 @@
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
 
-  /* Shell pattern — Pat1 wide blueprint grid (opacity 0–1, cell size) */
-  --orbit-pattern-opacity: 0.22;
+  /* Shell pattern — disabled (set opacity > 0 to re-enable Pat1 grid) */
+  --orbit-pattern-opacity: 0;
   --orbit-pattern-size: 48px;
 }

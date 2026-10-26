@@ -49,10 +49,6 @@ function startOfWeek(d: Date): Date {
   return x;
 }
 
-function sameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
-
 function daysInMonth(year: number, month1: number): number {
   return new Date(year, month1, 0).getDate();
 }

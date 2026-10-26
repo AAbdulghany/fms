@@ -53,13 +53,13 @@ export function Layout({ children }: LayoutProps) {
 
   const toggleLang = () => {
     const next = i18n.language === "ar" ? "en" : "ar";
-    applyLanguage(next, i18n);
+    void applyLanguage(next, i18n);
   };
 
   const handleLogout = () => {
     const lang = getStoredLanguage();
     clearTokens();
-    applyLanguage(lang, i18n);
+    void applyLanguage(lang, i18n);
     navigate("/login");
   };
 

@@ -25,7 +25,7 @@ export function LoginPage() {
   const [signInOpen, setSignInOpen] = useState(false);
 
   useEffect(() => {
-    applyLanguage(getStoredLanguage(), i18n);
+    void applyLanguage(getStoredLanguage(), i18n);
   }, [i18n]);
 
   useEffect(() => {
@@ -34,7 +34,7 @@ export function LoginPage() {
 
   const toggleLang = () => {
     const next = i18n.language === "ar" ? "en" : "ar";
-    applyLanguage(next, i18n);
+    void applyLanguage(next, i18n);
   };
 
   async function onSubmit(e: FormEvent) {
@@ -52,7 +52,7 @@ export function LoginPage() {
       setUser(res.user);
       const me = (await refresh()) ?? res.user;
       // Prefer persisted UI language over user profile locale
-      applyLanguage(getStoredLanguage(), i18n);
+      await applyLanguage(getStoredLanguage(), i18n);
       if (res.must_change_password) {
         navigate("/profile?must_change=1", { replace: true });
       } else if (isPlatformStaff(me)) {

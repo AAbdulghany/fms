@@ -77,23 +77,9 @@
     @apply min-h-screen bg-neutral-50 text-neutral-600;
   }
 
-  /* Concept D — Pat1 wide blueprint grid (soft, spacious). */
+  /* App shell — flat neutral fill (blueprint grid disabled). */
   .orbit-app-shell {
-    --orbit-pattern-line: color-mix(
-      in srgb,
-      var(--color-neutral-400) calc(var(--orbit-pattern-opacity, 0.22) * 100%),
-      transparent
-    );
     background-color: var(--color-neutral-50);
-    background-image:
-      linear-gradient(var(--orbit-pattern-line) 1px, transparent 1px),
-      linear-gradient(90deg, var(--orbit-pattern-line) 1px, transparent 1px);
-    background-size: var(--orbit-pattern-size, 48px) var(--orbit-pattern-size, 48px);
-  }
-
-  .orbit-app-shell header,
-  .orbit-app-shell aside,
-  .orbit-app-shell nav {
     background-image: none;
   }
 }

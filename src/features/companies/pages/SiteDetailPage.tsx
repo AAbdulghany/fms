@@ -87,7 +87,7 @@ export default function SiteDetailPage() {
           company_name: siteData.company_name,
         });
 
-        const assetsData = await apiFetch<AssetOutApi[]>(`/sites/${id}/assets`);
+        const assetsData = await apiFetch<AssetOutApi[]>(`/assets?site_id=${id}`);
         setAssets(assetsData.map(mapToDisplayAsset));
 
         const woData = await apiFetch<PaginatedWorkOrders>(`/work-orders?site_id=${id}&page_size=50`);
