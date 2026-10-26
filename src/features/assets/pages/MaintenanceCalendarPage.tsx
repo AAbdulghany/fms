@@ -83,13 +83,6 @@ export default function MaintenanceCalendarPage() {
     void (async () => {
       setLoading(true);
       try {
-        try {
-          await apiFetch<{ created: number }>("/assets/maintenance-schedules/ensure-next-actions", {
-            method: "POST",
-          });
-        } catch {
-          /* non-blocking */
-        }
         const params = new URLSearchParams({ view: "yearly", year: String(year) });
         if (clientFilter) params.set("client_id", clientFilter);
         const [data, woPage] = await Promise.all([
