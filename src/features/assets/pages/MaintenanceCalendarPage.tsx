@@ -14,12 +14,33 @@ import type { MaintenanceCalendarEvent } from "@/features/assets/components/Main
 
 type Level = "year" | "month" | "week" | "day";
 
+type CalendarWo = {
+  id: string;
+  title: string;
+  asset_id?: string | null;
+  asset_name?: string | null;
+  status: string;
+  source?: string;
+  due_at?: string | null;
+  opened_at?: string;
+};
+
+type CalendarChip = {
+  key: string;
+  label: string;
+  workOrderId?: string;
+  finished?: boolean;
+};
+
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const FINISHED_WO = new Set(["completed", "verified", "closed"]);
+const HIDDEN_WO = new Set(["cancelled", "declined"]);
 
 function startOfWeek(d: Date): Date {
   const x = new Date(d);
@@ -40,6 +61,28 @@ function eventDate(ev: MaintenanceCalendarEvent): Date {
   return new Date(ev.due_at);
 }
 
+function woDate(w: CalendarWo): Date | null {
+  const raw = w.due_at || w.opened_at;
+  if (!raw) return null;
+  return new Date(raw);
+}
+
+function isFinishedWo(status: string): boolean {
+  return FINISHED_WO.has(status);
+}
+
+function chipClass(finished?: boolean): string {
+  return finished
+    ? "truncate rounded bg-success-light px-1.5 py-0.5 text-[11px] font-medium text-success-dark hover:underline"
+    : "truncate rounded bg-primary-100 px-1.5 py-0.5 text-[11px] font-medium text-primary-900 hover:underline";
+}
+
+function chipClassDense(finished?: boolean): string {
+  return finished
+    ? "truncate rounded bg-success-light px-1 text-[10px] font-medium text-success-dark hover:underline"
+    : "truncate rounded bg-primary-100 px-1 text-[10px] font-medium text-primary-900 hover:underline";
+}
+
 export default function MaintenanceCalendarPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -53,17 +96,8 @@ export default function MaintenanceCalendarPage() {
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [clients, setClients] = useState<{ id: string; legal_name: string }[]>([]);
   const [clientFilter, setClientFilter] = useState("");
-  type OpenWo = {
-    id: string;
-    title: string;
-    asset_id?: string | null;
-    asset_name?: string | null;
-    status: string;
-    source?: string;
-    due_at?: string | null;
-    opened_at?: string;
-  };
-  const [openWos, setOpenWos] = useState<OpenWo[]>([]);
+  /** Preventive WOs for the year — open + finished (linked/green); exclude cancelled/declined. */
+  const [calendarWos, setCalendarWos] = useState<CalendarWo[]>([]);
 
   useEffect(() => {
     if (!user || !hasAnyRole(user.role, ["super_admin", "company_admin"])) {
@@ -87,7 +121,9 @@ export default function MaintenanceCalendarPage() {
         if (clientFilter) params.set("client_id", clientFilter);
         const [data, woPage] = await Promise.all([
           apiFetch<MaintenanceCalendarEvent[]>(`/assets/maintenance-calendar?${params.toString()}`),
-          apiFetch<{ data: OpenWo[] }>("/work-orders?page_size=100").catch(() => ({ data: [] as OpenWo[] })),
+          apiFetch<{ data: CalendarWo[] }>("/work-orders?page_size=100").catch(() => ({
+            data: [] as CalendarWo[],
+          })),
         ]);
         // One projected event per asset per month (calendar display dedupe)
         const seen = new Set<string>();
@@ -99,16 +135,18 @@ export default function MaintenanceCalendarPage() {
           deduped.push(ev);
         }
         setEvents(deduped);
-        const terminal = new Set(["completed", "verified", "closed", "cancelled", "declined"]);
-        setOpenWos(
-          (woPage.data || []).filter(
-            (w) => w.source === "preventive" && !terminal.has(w.status)
-          )
+        // Keep open + finished preventive WOs whose due/opened date falls in this year.
+        setCalendarWos(
+          (woPage.data || []).filter((w) => {
+            if (w.source !== "preventive" || HIDDEN_WO.has(w.status)) return false;
+            const d = woDate(w);
+            return d != null && d.getFullYear() === year;
+          })
         );
       } catch (err) {
         console.error("Failed to load maintenance calendar", err);
         setEvents([]);
-        setOpenWos([]);
+        setCalendarWos([]);
       } finally {
         setLoading(false);
       }
@@ -168,25 +206,31 @@ export default function MaintenanceCalendarPage() {
     return map;
   }, [events]);
 
-  const openWosByMonth = useMemo(() => {
-    const map = new Map<number, OpenWo[]>();
-    for (const w of openWos) {
-      const raw = w.due_at || w.opened_at;
-      if (!raw) continue;
-      const d = new Date(raw);
-      if (d.getFullYear() !== year) continue;
+  const wosByMonth = useMemo(() => {
+    const map = new Map<number, CalendarWo[]>();
+    for (const w of calendarWos) {
+      const d = woDate(w);
+      if (!d || d.getFullYear() !== year) continue;
       const m = d.getMonth();
       const bucket = map.get(m);
       if (bucket) bucket.push(w);
       else map.set(m, [w]);
     }
     return map;
-  }, [openWos, year]);
+  }, [calendarWos, year]);
 
-  const monthEvents = useMemo(
-    () => eventsByMonth.get(month - 1) ?? [],
-    [eventsByMonth, month]
-  );
+  const wosByDayKey = useMemo(() => {
+    const map = new Map<string, CalendarWo[]>();
+    for (const w of calendarWos) {
+      const d = woDate(w);
+      if (!d) continue;
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      const bucket = map.get(key);
+      if (bucket) bucket.push(w);
+      else map.set(key, [w]);
+    }
+    return map;
+  }, [calendarWos]);
 
   const focusDate = useMemo(
     () => new Date(year, month - 1, focusDay),
@@ -206,9 +250,25 @@ export default function MaintenanceCalendarPage() {
     return out;
   }, [events, weekStart]);
 
+  const weekWos = useMemo(() => {
+    const end = new Date(weekStart);
+    end.setDate(end.getDate() + 7);
+    const out: CalendarWo[] = [];
+    for (const w of calendarWos) {
+      const d = woDate(w);
+      if (d && d >= weekStart && d < end) out.push(w);
+    }
+    return out;
+  }, [calendarWos, weekStart]);
+
   const dayEvents = useMemo(
     () => eventsByDayKey.get(`${year}-${month - 1}-${focusDay}`) ?? [],
     [eventsByDayKey, year, month, focusDay]
+  );
+
+  const dayWos = useMemo(
+    () => wosByDayKey.get(`${year}-${month - 1}-${focusDay}`) ?? [],
+    [wosByDayKey, year, month, focusDay]
   );
 
   function openMonth(m: number) {
@@ -390,7 +450,7 @@ export default function MaintenanceCalendarPage() {
             <YearGrid
               year={year}
               counts={countsByMonth}
-              openWosByMonth={openWosByMonth}
+              wosByMonth={wosByMonth}
               eventsByMonth={eventsByMonth}
               currentMonth={now.getFullYear() === year ? now.getMonth() + 1 : null}
               onOpenMonth={openMonth}
@@ -400,6 +460,7 @@ export default function MaintenanceCalendarPage() {
               year={year}
               month={month}
               eventsByDayKey={eventsByDayKey}
+              wosByDayKey={wosByDayKey}
               today={now}
               onDayClick={(d) => openDay(year, month, d)}
               onWeekClick={(d) => openWeek(year, month, d)}
@@ -417,6 +478,7 @@ export default function MaintenanceCalendarPage() {
                     })
               }
               events={level === "week" ? weekEvents : dayEvents}
+              workOrders={level === "week" ? weekWos : dayWos}
               selectedAssetId={selectedAssetId}
               onSelect={setSelectedAssetId}
               emptyLabel={t("no_events_this_month") || "No scheduled maintenance"}
@@ -432,46 +494,38 @@ export default function MaintenanceCalendarPage() {
 
 function YearGrid({
   counts,
-  openWosByMonth,
+  wosByMonth,
   eventsByMonth,
   currentMonth,
   onOpenMonth,
 }: {
   year: number;
   counts: number[];
-  openWosByMonth: Map<
-    number,
-    {
-      id: string;
-      title: string;
-      asset_id?: string | null;
-      asset_name?: string | null;
-      due_at?: string | null;
-      opened_at?: string;
-    }[]
-  >;
+  wosByMonth: Map<number, CalendarWo[]>;
   eventsByMonth: Map<number, MaintenanceCalendarEvent[]>;
   currentMonth: number | null;
   onOpenMonth: (m: number) => void;
 }) {
-  function previewsForMonth(monthIdx: number): { key: string; label: string }[] {
-    const fromWo = openWosByMonth.get(monthIdx) ?? [];
-    // Deduplicate by asset within the month
+  function previewsForMonth(monthIdx: number): CalendarChip[] {
+    const fromWo = wosByMonth.get(monthIdx) ?? [];
     const seen = new Set<string>();
-    const out: { key: string; label: string }[] = [];
+    const out: CalendarChip[] = [];
     for (const w of fromWo) {
       const key = w.asset_id || w.id;
       if (seen.has(key)) continue;
       seen.add(key);
-      out.push({ key, label: w.asset_name || w.title });
+      out.push({
+        key: w.id,
+        label: w.asset_name || w.title,
+        workOrderId: w.id,
+        finished: isFinishedWo(w.status),
+      });
     }
-    if (out.length === 0) {
-      // Fall back to unique scheduled assets (already month-deduped upstream)
-      for (const ev of eventsByMonth.get(monthIdx) ?? []) {
-        if (seen.has(ev.asset_id)) continue;
-        seen.add(ev.asset_id);
-        out.push({ key: ev.asset_id, label: ev.asset_name });
-      }
+    // Schedule announcements only when no WO covers that asset this month
+    for (const ev of eventsByMonth.get(monthIdx) ?? []) {
+      if (seen.has(ev.asset_id)) continue;
+      seen.add(ev.asset_id);
+      out.push({ key: ev.asset_id, label: ev.asset_name });
     }
     return out;
   }
@@ -507,11 +561,21 @@ function YearGrid({
             ) : (
               <ul className="space-y-1">
                 {previews.slice(0, 4).map((p) => (
-                  <li
-                    key={p.key}
-                    className="truncate rounded bg-primary-100 px-1.5 py-0.5 text-[11px] text-primary-900"
-                  >
-                    {p.label}
+                  <li key={p.key}>
+                    {p.workOrderId ? (
+                      <Link
+                        to={`/work-orders/${p.workOrderId}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className={`block ${chipClass(p.finished)}`}
+                        title={p.finished ? "Finished work order" : "Open work order"}
+                      >
+                        {p.label}
+                      </Link>
+                    ) : (
+                      <span className="block truncate rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] text-neutral-600">
+                        {p.label}
+                      </span>
+                    )}
                   </li>
                 ))}
                 {previews.length > 4 && (
@@ -530,6 +594,7 @@ function MonthGrid({
   year,
   month,
   eventsByDayKey,
+  wosByDayKey,
   today,
   onDayClick,
   onWeekClick,
@@ -537,6 +602,7 @@ function MonthGrid({
   year: number;
   month: number;
   eventsByDayKey: Map<string, MaintenanceCalendarEvent[]>;
+  wosByDayKey: Map<string, CalendarWo[]>;
   today: Date;
   onDayClick: (day: number) => void;
   onWeekClick: (day: number) => void;
@@ -551,6 +617,31 @@ function MonthGrid({
   const weeks: (number | null)[][] = [];
   for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
   const monthIdx = month - 1;
+
+  function chipsForDay(day: number): CalendarChip[] {
+    const key = `${year}-${monthIdx}-${day}`;
+    const dayWos = wosByDayKey.get(key) ?? [];
+    const dayEvs = eventsByDayKey.get(key) ?? [];
+    const seen = new Set<string>();
+    const out: CalendarChip[] = [];
+    for (const w of dayWos) {
+      const assetKey = w.asset_id || w.id;
+      if (seen.has(assetKey)) continue;
+      seen.add(assetKey);
+      out.push({
+        key: w.id,
+        label: w.asset_name || w.title,
+        workOrderId: w.id,
+        finished: isFinishedWo(w.status),
+      });
+    }
+    for (const ev of dayEvs) {
+      if (seen.has(ev.asset_id)) continue;
+      seen.add(ev.asset_id);
+      out.push({ key: `${ev.schedule_id}-${ev.due_at}`, label: ev.asset_name });
+    }
+    return out;
+  }
 
   return (
     <div data-testid="calendar-month-grid">
@@ -575,7 +666,7 @@ function MonthGrid({
               </button>
               {week.map((day, di) => {
                 if (day == null) return <div key={di} className="min-h-[72px] rounded-lg bg-neutral-50/50" />;
-                const dayEvs = eventsByDayKey.get(`${year}-${monthIdx}-${day}`) ?? [];
+                const chips = chipsForDay(day);
                 const isToday =
                   today.getFullYear() === year &&
                   today.getMonth() + 1 === month &&
@@ -598,16 +689,26 @@ function MonthGrid({
                       {day}
                     </div>
                     <ul className="space-y-0.5">
-                      {dayEvs.slice(0, 3).map((ev) => (
-                        <li
-                          key={`${ev.schedule_id}-${ev.due_at}`}
-                          className="truncate rounded bg-primary-100 px-1 text-[10px] text-primary-900"
-                        >
-                          {ev.asset_name}
+                      {chips.slice(0, 3).map((chip) => (
+                        <li key={chip.key}>
+                          {chip.workOrderId ? (
+                            <Link
+                              to={`/work-orders/${chip.workOrderId}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className={`block ${chipClassDense(chip.finished)}`}
+                              title={chip.finished ? "Finished work order" : "Open work order"}
+                            >
+                              {chip.label}
+                            </Link>
+                          ) : (
+                            <span className="block truncate rounded bg-neutral-100 px-1 text-[10px] text-neutral-600">
+                              {chip.label}
+                            </span>
+                          )}
                         </li>
                       ))}
-                      {dayEvs.length > 3 && (
-                        <li className="text-[10px] text-neutral-500">+{dayEvs.length - 3}</li>
+                      {chips.length > 3 && (
+                        <li className="text-[10px] text-neutral-500">+{chips.length - 3}</li>
                       )}
                     </ul>
                   </button>
@@ -624,50 +725,100 @@ function MonthGrid({
 function TaskList({
   title,
   events,
+  workOrders,
   selectedAssetId,
   onSelect,
   emptyLabel,
 }: {
   title: string;
   events: MaintenanceCalendarEvent[];
+  workOrders: CalendarWo[];
   selectedAssetId: string | null;
   onSelect: (id: string) => void;
   emptyLabel: string;
 }) {
-  const sorted = [...events].sort(
-    (a, b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime()
-  );
+  type Row = {
+    key: string;
+    assetId: string;
+    label: string;
+    subtitle: string;
+    when: Date;
+    workOrderId?: string;
+    finished?: boolean;
+  };
+
+  const rows: Row[] = [];
+  const coveredAssets = new Set<string>();
+  for (const w of workOrders) {
+    const d = woDate(w);
+    if (!d) continue;
+    const assetId = w.asset_id || w.id;
+    coveredAssets.add(assetId);
+    rows.push({
+      key: w.id,
+      assetId,
+      label: w.asset_name || w.title,
+      subtitle: isFinishedWo(w.status) ? w.status.replace(/_/g, " ") : "preventive",
+      when: d,
+      workOrderId: w.id,
+      finished: isFinishedWo(w.status),
+    });
+  }
+  for (const ev of events) {
+    if (coveredAssets.has(ev.asset_id)) continue;
+    rows.push({
+      key: `${ev.schedule_id}-${ev.due_at}`,
+      assetId: ev.asset_id,
+      label: ev.asset_name,
+      subtitle: ev.frequency,
+      when: eventDate(ev),
+    });
+  }
+  rows.sort((a, b) => a.when.getTime() - b.when.getTime());
+
   return (
     <div data-testid="calendar-task-list">
       <h2 className="mb-3 text-lg font-semibold text-neutral-900">{title}</h2>
-      {sorted.length === 0 ? (
+      {rows.length === 0 ? (
         <p className="py-10 text-center text-sm text-neutral-400">{emptyLabel}</p>
       ) : (
         <ul className="divide-y divide-neutral-100">
-          {sorted.map((ev) => (
-            <li key={`${ev.schedule_id}-${ev.due_at}`}>
-              <button
-                type="button"
-                data-testid={`calendar-asset-${ev.asset_id}`}
-                className={`flex w-full items-center justify-between gap-3 px-2 py-3 text-start text-sm hover:bg-primary-50 ${
-                  selectedAssetId === ev.asset_id ? "bg-primary-50" : ""
+          {rows.map((row) => (
+            <li key={row.key}>
+              <div
+                className={`flex w-full items-center justify-between gap-3 px-2 py-3 text-sm ${
+                  selectedAssetId === row.assetId ? "bg-primary-50" : ""
                 }`}
-                onClick={() => onSelect(ev.asset_id)}
               >
-                <div>
-                  <div className="font-medium text-neutral-900">{ev.asset_name}</div>
-                  <div className="text-xs text-neutral-500">{ev.frequency}</div>
+                <button
+                  type="button"
+                  data-testid={`calendar-asset-${row.assetId}`}
+                  className="min-w-0 flex-1 text-start hover:opacity-80"
+                  onClick={() => onSelect(row.assetId)}
+                >
+                  <div className="font-medium text-neutral-900">{row.label}</div>
+                  <div className="text-xs text-neutral-500">{row.subtitle}</div>
+                </button>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <div className="text-xs text-neutral-600">
+                    {row.when.toLocaleString(undefined, {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
+                  {row.workOrderId ? (
+                    <Link
+                      to={`/work-orders/${row.workOrderId}`}
+                      className={chipClass(row.finished)}
+                    >
+                      {row.finished ? "Finished WO" : "Open WO"}
+                    </Link>
+                  ) : null}
                 </div>
-                <div className="shrink-0 text-xs text-neutral-600">
-                  {new Date(ev.due_at).toLocaleString(undefined, {
-                    weekday: "short",
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </div>
-              </button>
+              </div>
             </li>
           ))}
         </ul>
