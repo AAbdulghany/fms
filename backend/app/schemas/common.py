@@ -7,6 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 from app.schemas.auth import UserBrief
+from app.schemas.templates import ReportTemplateOut
 from app.schemas.work_orders import (
     CommentOut,
     DocumentOut,
@@ -49,3 +50,4 @@ class WorkOrderDetailOut(BaseModel):
     assignable_users: list[UserBrief]
     documents: list[DocumentOut]
     report: Optional[MaintenanceReportOut] = None
+    template: Optional[ReportTemplateOut] = None

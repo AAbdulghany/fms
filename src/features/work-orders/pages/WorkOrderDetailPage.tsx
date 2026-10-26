@@ -42,8 +42,6 @@ function statusAllowsReport(status: WorkOrderStatus): boolean {
   return REPORT_UNLOCKED_STATUSES.has(status);
 }
 
-type TemplateRow = ReportTemplate & { code?: string };
-
 export function WorkOrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { t, i18n } = useTranslation();
@@ -125,30 +123,6 @@ export function WorkOrderDetailPage() {
   const [inspectorNote, setInspectorNote] = useState("");
   const [savingNote, setSavingNote] = useState(false);
 
-  const loadTemplate = async (w: WorkOrder) => {
-    let resolvedTemplate: ReportTemplate | null = null;
-    if (w.template_id) {
-      try {
-        const catQ = w.asset_category
-          ? `?asset_category=${encodeURIComponent(w.asset_category)}`
-          : "";
-        resolvedTemplate = await apiFetch<ReportTemplate>(`/report-templates/${w.template_id}${catQ}`);
-      } catch {
-        resolvedTemplate = null;
-      }
-    }
-    if (!resolvedTemplate) {
-      try {
-        const templates = await apiFetch<TemplateRow[]>("/report-templates");
-        resolvedTemplate =
-          templates.find((tmpl) => tmpl.code === "STD-INSP") ?? templates[0] ?? null;
-      } catch {
-        resolvedTemplate = null;
-      }
-    }
-    setTemplate(resolvedTemplate);
-  };
-
   const load = async () => {
     if (!id) return;
     setErr(null);
@@ -161,6 +135,7 @@ export function WorkOrderDetailPage() {
         assignable_users: WorkOrderUserBrief[];
         documents: WorkOrderDocument[];
         report: MaintenanceReport | null;
+        template: ReportTemplate | null;
       };
       const detail = await apiFetch<DetailBundle>(`/work-orders/${id}/detail`);
       setWo(detail.work_order);
@@ -168,6 +143,7 @@ export function WorkOrderDetailPage() {
       setComments(detail.comments);
       setAssignableUsers(detail.assignable_users);
       setDocuments(detail.documents);
+      setTemplate(detail.template ?? null);
       if (detail.report) {
         setReport(detail.report);
         setAnswers((detail.report.answers_json as Record<string, unknown>) || {});
@@ -175,7 +151,6 @@ export function WorkOrderDetailPage() {
         setReport(null);
         setAnswers({});
       }
-      void loadTemplate(detail.work_order);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Error");
     }

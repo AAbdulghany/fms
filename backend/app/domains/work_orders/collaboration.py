@@ -40,6 +40,7 @@ from app.schemas import (
     PaginatedMeta,
     PaginatedWorkOrders,
     ReportAnswersUpdate,
+    ReportTemplateOut,
     UserBrief,
     WorkOrderCreate,
     WorkOrderDetailOut,
@@ -199,6 +200,33 @@ def get_work_order_detail(
     ]
 
     report = MaintenanceReportOut.model_validate(wo.report) if wo.report else None
+
+    # Resolve template the same way as GET /report-templates/{id}?asset_category=…
+    # plus STD-INSP / first-active fallback used by the detail page.
+    template_out: ReportTemplateOut | None = None
+    tmpl: ReportTemplate | None = None
+    if wo.template_id:
+        candidate = db.get(ReportTemplate, wo.template_id)
+        if candidate and candidate.tenant_id == current.tenant_id:
+            tmpl = candidate
+    if tmpl is None:
+        tmpl = resolve_default_report_template(db, current.tenant_id)
+    if tmpl is not None:
+        asset_category = wo.asset.category if wo.asset else None
+        if asset_category:
+            effective = resolve_effective_schema(tmpl.schema_json or {}, asset_category)
+            template_out = ReportTemplateOut(
+                id=tmpl.id,
+                name=tmpl.name,
+                code=tmpl.code,
+                version=tmpl.version,
+                definition=effective,
+                maintenance_types=tmpl.maintenance_types or [],
+                is_active=tmpl.is_active,
+            )
+        else:
+            template_out = ReportTemplateOut.model_validate(tmpl)
+
     return WorkOrderDetailOut(
         work_order=_work_order_to_out(wo),
         history=history,
@@ -206,6 +234,7 @@ def get_work_order_detail(
         assignable_users=assignable_users,
         documents=documents,
         report=report,
+        template=template_out,
     )
 
 
