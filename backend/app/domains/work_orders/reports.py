@@ -51,6 +51,7 @@ from app.services.report_context import merge_report_answers, resolve_report_ins
 from app.services.report_schema_resolve import resolve_effective_schema
 from app.services.report_template_defaults import resolve_default_report_template
 from app.services.report_validation import validate_required_fields
+from app.services.report_pdf_jobs import export_maintenance_report_pdf
 from app.services.wo_notifications import (
     notify_work_order_assigned,
     notify_work_order_created,
@@ -75,7 +76,6 @@ from ._common import (
     _create_roles,
     _reload_wo_with_users,
     _request_roles,
-    _sync_maintenance_report_pdf_export,
     _validate_assignee,
     _wo_load_options,
     _work_order_status_allows_report,
@@ -102,6 +102,7 @@ def upsert_report_draft(
     body: ReportAnswersUpdate,
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
+    background_tasks: BackgroundTasks,
 ) -> MaintenanceReport:
     wo = _access_wo(db, current, work_order_id)
     if current.role not in (
@@ -163,18 +164,13 @@ def upsert_report_draft(
         db.add(r)
     db.commit()
     db.refresh(r)
-    wo = _reload_wo_with_users(db, wo.id)
-    try:
-        _sync_maintenance_report_pdf_export(
-            db,
-            wo=wo_detail if wo_detail else wo,
-            report=r,
-            current=current,
-            pdf_lang=body.pdf_lang,
-        )
-        db.commit()
-    except Exception:
-        db.rollback()
+    background_tasks.add_task(
+        export_maintenance_report_pdf,
+        work_order_id,
+        r.id,
+        current.id,
+        body.pdf_lang,
+    )
     return r
 
 
@@ -273,6 +269,7 @@ def submit_report(
     work_order_id: UUID,
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
+    background_tasks: BackgroundTasks,
     pdf_lang: str | None = Query(None),
 ) -> MaintenanceReport:
     wo = _access_wo(db, current, work_order_id)
@@ -365,11 +362,11 @@ def submit_report(
     r.submitted_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(r)
-    try:
-        _sync_maintenance_report_pdf_export(
-            db, wo=wo, report=r, current=current, pdf_lang=pdf_lang
-        )
-        db.commit()
-    except Exception:
-        db.rollback()
+    background_tasks.add_task(
+        export_maintenance_report_pdf,
+        work_order_id,
+        r.id,
+        current.id,
+        pdf_lang,
+    )
     return r

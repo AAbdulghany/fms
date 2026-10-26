@@ -110,17 +110,22 @@ def test_company_engineer_can_start_report(db_session, tenant, wo_in_progress):
     wo_in_progress.assignee_user_id = engineer.id
     db_session.commit()
 
+    from fastapi import BackgroundTasks
+
     r = upsert_report_draft(
         wo_in_progress.id,
         ReportAnswersUpdate(answers={"note": "engineer"}),
         db_session,
         engineer,
+        BackgroundTasks(),
     )
     assert r.status.value == "draft"
     assert r.answers_json == {"note": "engineer"}
 
 
 def test_start_report_draft_while_in_progress(db_session, technician, wo_in_progress):
+    from fastapi import BackgroundTasks
+
     from app.api.routes.work_orders import upsert_report_draft
 
     r = upsert_report_draft(
@@ -128,6 +133,7 @@ def test_start_report_draft_while_in_progress(db_session, technician, wo_in_prog
         ReportAnswersUpdate(answers={"note": "ok"}),
         db_session,
         technician,
+        BackgroundTasks(),
     )
     assert r.status.value == "draft"
     assert r.answers_json == {"note": "ok"}
@@ -141,12 +147,15 @@ def test_cannot_start_report_while_assigned(db_session, technician, wo_in_progre
 
     from fastapi import HTTPException
 
+    from fastapi import BackgroundTasks
+
     with pytest.raises(HTTPException) as exc:
         upsert_report_draft(
             wo_in_progress.id,
             ReportAnswersUpdate(answers={}),
             db_session,
             technician,
+            BackgroundTasks(),
         )
     assert exc.value.detail == "REPORT_NOT_ALLOWED_AT_THIS_STATUS"
 
@@ -168,11 +177,14 @@ def test_start_report_assigns_default_template_when_missing(db_session, technici
     db_session.add(wo)
     db_session.commit()
 
+    from fastapi import BackgroundTasks
+
     r = upsert_report_draft(
         wo.id,
         ReportAnswersUpdate(answers={"note": "started"}),
         db_session,
         technician,
+        BackgroundTasks(),
     )
     db_session.refresh(wo)
     assert wo.template_id == template.id

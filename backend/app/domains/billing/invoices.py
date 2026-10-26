@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload, selectinload
 
@@ -17,7 +17,7 @@ from app.services.billing import (
     extract_invoice_charges,
     recalculate_draft_invoice,
 )
-from app.services.email import send_invoice_email
+from app.services.invoice_delivery import deliver_invoice_email
 from app.services.pdf import render_invoice_pdf
 
 router = APIRouter(
@@ -263,6 +263,7 @@ def send_invoice(
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[User, Depends(get_current_user)],
     _: Annotated[User, _finance],
+    background_tasks: BackgroundTasks,
     body: SendInvoiceBody | None = None,
 ) -> InvoiceOut:
     inv = _access_invoice(db, current, invoice_id)
@@ -275,13 +276,7 @@ def send_invoice(
     )
     if not to_email:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="NO_BILLING_EMAIL")
-    pdf_bytes = render_invoice_pdf(db, invoice=inv)
-    send_invoice_email(
-        to_email,
-        inv.number,
-        pdf_bytes,
-        client_name=client.legal_name if client else "",
-    )
+    # Mark sent + commit first; PDF/SMTP run after the response (P18).
     inv.status = InvoiceStatus.sent
     inv.issued_at = datetime.now(timezone.utc)
     write_audit(
@@ -295,6 +290,12 @@ def send_invoice(
     )
     db.commit()
     db.refresh(inv)
+    background_tasks.add_task(
+        deliver_invoice_email,
+        inv.id,
+        to_email,
+        client.legal_name if client else "",
+    )
     return _invoice_out(db, inv)
 
 
