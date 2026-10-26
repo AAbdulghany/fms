@@ -4,7 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.api.deps import get_current_user, require_feature, require_roles
 from app.database import get_db
@@ -38,9 +38,17 @@ def _access_invoice(db: Session, current: User, inv_id: UUID) -> Invoice:
     return inv
 
 
-def _invoice_out(db: Session, inv: Invoice) -> InvoiceOut:
-    client = db.get(Client, inv.client_id)
-    wo = db.get(WorkOrder, inv.work_order_id)
+def _invoice_out(
+    db: Session,
+    inv: Invoice,
+    *,
+    client: Client | None = None,
+    wo: WorkOrder | None = None,
+) -> InvoiceOut:
+    if client is None:
+        client = db.get(Client, inv.client_id)
+    if wo is None:
+        wo = inv.work_order if "work_order" in inv.__dict__ else db.get(WorkOrder, inv.work_order_id)
     meta = inv.metadata_json or {}
     charges = extract_invoice_charges(inv)
     base = InvoiceOut.model_validate(inv)
@@ -58,6 +66,21 @@ def _invoice_out(db: Session, inv: Invoice) -> InvoiceOut:
     )
 
 
+def _invoice_outs(db: Session, rows: list[Invoice]) -> list[InvoiceOut]:
+    """Batch-enrich invoices (one Client query for the page)."""
+    client_ids = {inv.client_id for inv in rows}
+    clients: dict[UUID, Client] = {}
+    if client_ids:
+        clients = {
+            c.id: c
+            for c in db.scalars(select(Client).where(Client.id.in_(client_ids))).all()
+        }
+    return [
+        _invoice_out(db, inv, client=clients.get(inv.client_id), wo=inv.work_order)
+        for inv in rows
+    ]
+
+
 @router.get("", response_model=list[InvoiceOut])
 def list_invoices(
     db: Annotated[Session, Depends(get_db)],
@@ -66,13 +89,15 @@ def list_invoices(
     client_id: UUID | None = Query(None),
     date_from: datetime | None = Query(None),
     date_to: datetime | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(200, ge=1, le=500),
 ) -> list[InvoiceOut]:
     q = select(Invoice).where(Invoice.tenant_id == current.tenant_id)
-    
+
     # Role-based filtering
     if current.role == UserRole.client_admin and current.client_id:
         q = q.where(Invoice.client_id == current.client_id)
-    
+
     # P2-F1 Additional filters
     if status:
         try:
@@ -80,19 +105,24 @@ def list_invoices(
             q = q.where(Invoice.status == st)
         except ValueError:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="INVALID_STATUS")
-    
+
     if client_id:
         q = q.where(Invoice.client_id == client_id)
-    
+
     if date_from:
         q = q.where(Invoice.issued_at >= date_from)
-    
+
     if date_to:
         q = q.where(Invoice.issued_at <= date_to)
-    
-    q = q.options(selectinload(Invoice.line_items)).order_by(Invoice.number.desc())
-    rows = db.scalars(q).all()
-    return [_invoice_out(db, inv) for inv in rows]
+
+    q = (
+        q.options(selectinload(Invoice.line_items), joinedload(Invoice.work_order))
+        .order_by(Invoice.number.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
+    rows = list(db.scalars(q).unique().all())
+    return _invoice_outs(db, rows)
 
 
 @router.get("/{invoice_id}", response_model=InvoiceOut)
