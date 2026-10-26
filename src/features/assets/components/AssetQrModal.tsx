@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { getAccessToken } from "@/lib/api";
+import { apiFetchBlob, resolveApiError } from "@/lib/api";
 import { AssetStickerPreview } from "@/features/assets/components/AssetStickerPreview";
 
 type Props = {
@@ -31,6 +31,31 @@ function resolveDeepLink(assetId: string, qrPayload?: string | null): string {
   return `${window.location.origin}/assets/${assetId}`;
 }
 
+async function copyText(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    /* fall through */
+  }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 export function AssetQrModal({
   open,
   assetId,
@@ -41,14 +66,24 @@ export function AssetQrModal({
   qrPayload,
   onClose,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [design, setDesign] = useState<StickerDesign>("a");
   const [sizeMm, setSizeMm] = useState<number>(70);
   const [printing, setPrinting] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     setSizeMm(design === "c" ? 80 : 70);
   }, [design]);
+
+  useEffect(() => {
+    if (!open) {
+      setCopied(false);
+      setActionError(null);
+      setPrinting(false);
+    }
+  }, [open]);
 
   if (!open) return null;
 
@@ -56,21 +91,44 @@ export function AssetQrModal({
   const presets = design === "c" ? SIZE_PRESETS_C : SIZE_PRESETS_A;
   const sizeHint = design === "c" ? t("sticker_size_hint_c") : t("sticker_size_hint");
 
+  async function copyLink() {
+    setActionError(null);
+    const ok = await copyText(deepLink);
+    if (ok) {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } else {
+      setActionError(t("copy_failed") || "Could not copy link");
+    }
+  }
+
   async function printLabel() {
     setPrinting(true);
+    setActionError(null);
+    // Open the tab synchronously so popup blockers allow the PDF.
+    const printWindow = window.open("about:blank", "_blank");
     try {
-      const token = getAccessToken();
       const qs = new URLSearchParams({
         size_mm: String(sizeMm),
         design,
       });
-      const res = await fetch(`/api/v1/assets/${assetId}/label-sheet?${qs}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (!res.ok) return;
-      const blob = await res.blob();
+      const blob = await apiFetchBlob(`/assets/${assetId}/label-sheet?${qs.toString()}`);
       const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener,noreferrer");
+      if (printWindow && !printWindow.closed) {
+        printWindow.location.href = url;
+      } else {
+        // Popup blocked — fall back to download.
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `label-${labelCode || assetId}.pdf`;
+        a.click();
+      }
+      window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
+    } catch (err) {
+      printWindow?.close();
+      setActionError(
+        resolveApiError(err, t, i18n.language, t("print_label_failed") || "Could not print label")
+      );
     } finally {
       setPrinting(false);
     }
@@ -118,6 +176,12 @@ export function AssetQrModal({
         >
           {deepLink}
         </p>
+
+        {actionError ? (
+          <p className="mt-2 text-center text-sm text-error-main" role="alert">
+            {actionError}
+          </p>
+        ) : null}
 
         <div className="mt-4">
           <p className="mb-1.5 text-sm font-medium text-neutral-700">{t("sticker_design")}</p>
@@ -189,10 +253,10 @@ export function AssetQrModal({
             type="button"
             className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
             onClick={() => {
-              void navigator.clipboard.writeText(deepLink);
+              void copyLink();
             }}
           >
-            {t("copy_link")}
+            {copied ? t("copied") || "Copied" : t("copy_link")}
           </button>
           <button
             type="button"

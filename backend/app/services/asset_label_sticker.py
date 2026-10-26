@@ -10,11 +10,11 @@ Layout and RGB brand colors match the in-app ``AssetStickerPreview`` so preview 
 
 from __future__ import annotations
 
+import math
+import re
 from io import BytesIO
 from pathlib import Path
 
-from reportlab.graphics import renderPDF
-from reportlab.graphics.shapes import Drawing, Group, Shape
 from reportlab.lib.colors import Color, HexColor, white
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
@@ -24,10 +24,27 @@ from app.models import Asset
 from app.services.arabic_utils import contains_arabic, reshape_text
 from app.services.pdf_fonts import ensure_pdf_fonts
 
-_SYMBOL_SVG = Path(__file__).resolve().parents[1] / "static" / "brand" / "orbit-symbol.svg"
 _FONT_DIR = Path(__file__).resolve().parents[1] / "static" / "fonts"
 _NOTO_PATH = _FONT_DIR / "NotoSansArabic-Regular.ttf"
-_SYMBOL_DRAWING: Drawing | None = None
+
+# Same path data as FE ``AssetStickerPreview`` PeriapsisMark (viewBox 0 0 256 256).
+_PERIAPSIS_PATHS: tuple[tuple[Color, str], ...] = (
+    (
+        HexColor("#123056"),
+        "M 131.59 25.06 A 103 103 0 1 0 222.1 86.11 L 191.03 99.94 A 69 69 0 1 1 130.41 59.04 Z",
+    ),
+    (HexColor("#123056"), "M 114 42.05 A 17 17 0 1 0 148 42.05 A 17 17 0 1 0 114 42.05 Z"),
+    (HexColor("#123056"), "M 189.56 93.02 A 17 17 0 1 0 223.56 93.02 A 17 17 0 1 0 189.56 93.02 Z"),
+    (
+        HexColor("#e85d04"),
+        "M 167.09 31.7 L 185.09 31.7 A 14 14 0 0 1 199.09 45.7 L 199.09 63.7 "
+        "A 14 14 0 0 1 185.09 77.7 L 167.09 77.7 A 14 14 0 0 1 153.09 63.7 "
+        "L 153.09 45.7 A 14 14 0 0 1 167.09 31.7 Z",
+    ),
+)
+_SVG_PATH_TOKEN = re.compile(
+    r"([MmLlHhVvCcSsQqTtAaZz])|([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)"
+)
 
 # Same hex tokens as FE preview (AssetStickerPreview.tsx)
 _RGB_NAVY = (0x12, 0x30, 0x56)
@@ -276,65 +293,191 @@ def _draw_vector_qr(
     _draw_periapsis_mark(c, cx, cy, eye)
 
 
-def _load_symbol_drawing() -> Drawing | None:
-    """Load the same periapsis SVG used by the FE preview (vector)."""
-    global _SYMBOL_DRAWING
-    if _SYMBOL_DRAWING is not None:
-        return _SYMBOL_DRAWING
-    if not _SYMBOL_SVG.is_file():
-        return None
-    try:
-        from svglib.svglib import svg2rlg
-    except ImportError:
-        return None
-    drawing = svg2rlg(str(_SYMBOL_SVG))
-    if drawing is None:
-        return None
-    _recolor_drawing_brand(drawing)
-    _SYMBOL_DRAWING = drawing
-    return drawing
+def _svg_arc_to_cubics(
+    x1: float,
+    y1: float,
+    rx: float,
+    ry: float,
+    phi_deg: float,
+    large: int,
+    sweep: int,
+    x2: float,
+    y2: float,
+) -> list[tuple[float, float, float, float, float, float]]:
+    """Convert one SVG elliptical arc to cubic Bezier segments (SVG impl notes)."""
+    if rx == 0 or ry == 0 or (x1 == x2 and y1 == y2):
+        return []
+
+    rx, ry = abs(rx), abs(ry)
+    phi = math.radians(phi_deg % 360.0)
+    cos_phi, sin_phi = math.cos(phi), math.sin(phi)
+
+    dx = (x1 - x2) / 2.0
+    dy = (y1 - y2) / 2.0
+    x1p = cos_phi * dx + sin_phi * dy
+    y1p = -sin_phi * dx + cos_phi * dy
+
+    lam = (x1p * x1p) / (rx * rx) + (y1p * y1p) / (ry * ry)
+    if lam > 1:
+        s = math.sqrt(lam)
+        rx, ry = rx * s, ry * s
+
+    rxsq, rysq = rx * rx, ry * ry
+    x1psq, y1psq = x1p * x1p, y1p * y1p
+    num = rxsq * rysq - rxsq * y1psq - rysq * x1psq
+    den = rxsq * y1psq + rysq * x1psq
+    c_factor = 0.0 if den == 0 else math.sqrt(max(0.0, num / den))
+    if large == sweep:
+        c_factor = -c_factor
+    cxp = c_factor * (rx * y1p) / ry
+    cyp = c_factor * (-ry * x1p) / rx
+
+    cx = cos_phi * cxp - sin_phi * cyp + (x1 + x2) / 2.0
+    cy = sin_phi * cxp + cos_phi * cyp + (y1 + y2) / 2.0
+
+    def _angle(ux: float, uy: float, vx: float, vy: float) -> float:
+        n = math.hypot(ux, uy) * math.hypot(vx, vy)
+        if n == 0:
+            return 0.0
+        cos_a = max(-1.0, min(1.0, (ux * vx + uy * vy) / n))
+        ang = math.acos(cos_a)
+        if ux * vy - uy * vx < 0:
+            ang = -ang
+        return ang
+
+    start = _angle(1, 0, (x1p - cxp) / rx, (y1p - cyp) / ry)
+    delta = _angle(
+        (x1p - cxp) / rx,
+        (y1p - cyp) / ry,
+        (-x1p - cxp) / rx,
+        (-y1p - cyp) / ry,
+    )
+    if sweep == 0 and delta > 0:
+        delta -= 2 * math.pi
+    elif sweep == 1 and delta < 0:
+        delta += 2 * math.pi
+
+    segments = max(1, int(math.ceil(abs(delta) / (math.pi / 2))))
+    delta /= segments
+    t = (4.0 / 3.0) * math.tan(delta / 4.0)
+
+    out: list[tuple[float, float, float, float, float, float]] = []
+    for i in range(segments):
+        a1 = start + i * delta
+        a2 = start + (i + 1) * delta
+        cos1, sin1 = math.cos(a1), math.sin(a1)
+        cos2, sin2 = math.cos(a2), math.sin(a2)
+
+        e1x = cos_phi * rx * cos1 - sin_phi * ry * sin1 + cx
+        e1y = sin_phi * rx * cos1 + cos_phi * ry * sin1 + cy
+        e2x = cos_phi * rx * cos2 - sin_phi * ry * sin2 + cx
+        e2y = sin_phi * rx * cos2 + cos_phi * ry * sin2 + cy
+
+        q1x = -cos_phi * rx * sin1 - sin_phi * ry * cos1
+        q1y = -sin_phi * rx * sin1 + cos_phi * ry * cos1
+        q2x = -cos_phi * rx * sin2 - sin_phi * ry * cos2
+        q2y = -sin_phi * rx * sin2 + cos_phi * ry * cos2
+
+        out.append(
+            (
+                e1x + t * q1x,
+                e1y + t * q1y,
+                e2x - t * q2x,
+                e2y - t * q2y,
+                e2x,
+                e2y,
+            )
+        )
+    return out
 
 
-def _recolor_drawing_brand(node: Shape | Group | Drawing) -> None:
-    """Map SVG fills to brand navy / copper (same hex as the FE preview)."""
-    fill = getattr(node, "fillColor", None)
-    if isinstance(fill, Color):
-        r, g, b = float(fill.red), float(fill.green), float(fill.blue)
-        if r > 0.5 and g < 0.5:
-            node.fillColor = COPPER
+def _draw_svg_path(
+    c: canvas.Canvas,
+    d: str,
+    *,
+    map_xy,
+    fill: Color,
+) -> None:
+    """Stroke-free fill of a simple SVG path (M/L/A/Z) in viewBox coords via map_xy."""
+    tokens = _SVG_PATH_TOKEN.findall(d)
+    cmds: list[tuple[str, list[float]]] = []
+    cur_cmd: str | None = None
+    cur_args: list[float] = []
+
+    def _flush() -> None:
+        nonlocal cur_cmd, cur_args
+        if cur_cmd is not None:
+            cmds.append((cur_cmd, cur_args))
+        cur_cmd, cur_args = None, []
+
+    for kind, num in tokens:
+        if kind:
+            _flush()
+            cur_cmd = kind
+            cur_args = []
         else:
-            node.fillColor = NAVY
-    contents = getattr(node, "contents", None)
-    if contents:
-        for child in contents:
-            _recolor_drawing_brand(child)
+            cur_args.append(float(num))
+    _flush()
+
+    path = c.beginPath()
+    cx = cy = 0.0
+    start_x = start_y = 0.0
+    for cmd, args in cmds:
+        absolute = cmd.isupper()
+        op = cmd.upper()
+        i = 0
+        if op == "Z":
+            path.close()
+            cx, cy = start_x, start_y
+            continue
+        while i < len(args):
+            if op == "M":
+                x, y = args[i], args[i + 1]
+                i += 2
+                if not absolute:
+                    x, y = cx + x, cy + y
+                cx, cy = x, y
+                start_x, start_y = x, y
+                path.moveTo(*map_xy(x, y))
+                op = "L"  # subsequent pairs are implicit lineTo
+            elif op == "L":
+                x, y = args[i], args[i + 1]
+                i += 2
+                if not absolute:
+                    x, y = cx + x, cy + y
+                cx, cy = x, y
+                path.lineTo(*map_xy(x, y))
+            elif op == "A":
+                rx, ry, phi, large, sweep, x, y = args[i : i + 7]
+                i += 7
+                if not absolute:
+                    x, y = cx + x, cy + y
+                for c1x, c1y, c2x, c2y, ex, ey in _svg_arc_to_cubics(
+                    cx, cy, rx, ry, phi, int(large), int(sweep), x, y
+                ):
+                    path.curveTo(*map_xy(c1x, c1y), *map_xy(c2x, c2y), *map_xy(ex, ey))
+                cx, cy = x, y
+            else:
+                # Unsupported op — skip remaining args for this command
+                break
+
+    c.setFillColor(fill)
+    c.drawPath(path, fill=1, stroke=0)
 
 
 def _draw_periapsis_mark(c: canvas.Canvas, cx: float, cy: float, size: float) -> None:
-    """Draw the official Orbit periapsis mark (same SVG as the in-app preview)."""
-    drawing = _load_symbol_drawing()
-    if drawing is None:
-        # Minimal fallback if svglib/SVG missing
-        c.setFillColor(NAVY)
-        c.circle(cx, cy, size * 0.35, fill=0, stroke=1)
-        c.setFillColor(COPPER)
-        seat = size * 0.2
-        c.roundRect(cx + size * 0.05, cy + size * 0.05, seat, seat, seat * 0.2, fill=1, stroke=0)
+    """Draw the Orbit periapsis mark with the same paths as the in-app preview."""
+    if size <= 0:
         return
+    scale = size / 256.0
+    half = size / 2.0
 
-    # Clone via svg2rlg cache: scale a copy by mutating a shallow scale transform
-    src_w = float(drawing.width or 256)
-    src_h = float(drawing.height or 256)
-    scale = size / max(src_w, src_h)
+    def map_xy(x: float, y: float) -> tuple[float, float]:
+        # SVG y-down → PDF y-up, centered on (cx, cy)
+        return (cx - half + x * scale, cy + half - y * scale)
 
-    c.saveState()
-    # SVG origin is top-left; reportlab Drawing draws with y-up from bottom-left of draw point
-    origin_x = cx - (src_w * scale) / 2
-    origin_y = cy - (src_h * scale) / 2
-    c.translate(origin_x, origin_y)
-    c.scale(scale, scale)
-    renderPDF.draw(drawing, c, 0, 0)
-    c.restoreState()
+    for fill, d in _PERIAPSIS_PATHS:
+        _draw_svg_path(c, d, map_xy=map_xy, fill=fill)
 
 
 def _draw_meta_lines(

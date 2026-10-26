@@ -31,6 +31,26 @@ def public_tag_url(token: str) -> str:
     return f"/a/{token}"
 
 
+def absolute_qr_payload(payload: str | None, *, app_base: str | None = None) -> str:
+    """Return an absolute URL suitable for QR encoding / print stickers.
+
+    Relative ``/a/<token>`` payloads are prefixed with ``app_base`` (or PUBLIC_APP_URL).
+    Already-absolute http(s) payloads are returned unchanged.
+    """
+    import os
+
+    raw = (payload or "").strip()
+    if not raw:
+        return ""
+    if raw.startswith("http://") or raw.startswith("https://"):
+        return raw
+    base = (app_base or os.environ.get("PUBLIC_APP_URL") or "").rstrip("/")
+    path = raw if raw.startswith("/") else f"/{raw}"
+    if base:
+        return f"{base}{path}"
+    return path
+
+
 def get_active_tag(db: Session, asset_id: UUID) -> AssetTag | None:
     return db.scalar(
         select(AssetTag).where(
