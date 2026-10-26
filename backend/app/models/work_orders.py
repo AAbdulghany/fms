@@ -11,6 +11,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -35,6 +36,13 @@ from app.models._base import (
 
 class WorkOrder(Base):
     __tablename__ = "work_orders"
+    __table_args__ = (
+        Index("ix_work_orders_tenant_status", "tenant_id", "status"),
+        Index("ix_work_orders_tenant_opened", "tenant_id", "opened_at"),
+        Index("ix_work_orders_tenant_site", "tenant_id", "site_id"),
+        Index("ix_work_orders_tenant_assignee", "tenant_id", "assignee_user_id"),
+        Index("ix_work_orders_tenant_client", "tenant_id", "client_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)

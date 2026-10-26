@@ -38,6 +38,8 @@ class Asset(Base):
     __tablename__ = "assets"
     __table_args__ = (
         Index("ix_assets_tenant_asset_type", "tenant_id", "asset_type_id"),
+        Index("ix_assets_tenant_site", "tenant_id", "site_id"),
+        Index("ix_assets_tenant_lifecycle", "tenant_id", "lifecycle_status"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
@@ -75,6 +77,15 @@ class Asset(Base):
 
 class MaintenanceSchedule(Base):
     __tablename__ = "maintenance_schedules"
+    __table_args__ = (
+        Index(
+            "ix_maintenance_schedules_tenant_due",
+            "tenant_id",
+            "is_active",
+            "next_due_at",
+        ),
+        Index("ix_maintenance_schedules_asset", "asset_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)

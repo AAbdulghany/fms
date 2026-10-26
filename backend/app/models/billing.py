@@ -11,6 +11,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -106,7 +107,13 @@ class Invoice(Base):
         back_populates="invoice", cascade="all, delete-orphan"
     )
 
-    __table_args__ = (UniqueConstraint("tenant_id", "number", name="uq_invoice_tenant_number"),)
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "number", name="uq_invoice_tenant_number"),
+        Index("ix_invoices_tenant_status", "tenant_id", "status"),
+        Index("ix_invoices_tenant_issued", "tenant_id", "issued_at"),
+        Index("ix_invoices_tenant_client", "tenant_id", "client_id"),
+    )
+
 
 class InvoiceLineItem(Base):
     __tablename__ = "invoice_line_items"
