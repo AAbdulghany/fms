@@ -124,7 +124,9 @@ def _asset_to_out(asset: Asset) -> AssetOut:
 
     next_due = None
 
-    active_schedules = [s for s in (asset.schedules or []) if s.is_active]
+    # Avoid lazy N+1 when list path deferred schedules
+    _loaded = asset.__dict__.get("schedules")
+    active_schedules = [s for s in (_loaded or []) if s.is_active] if _loaded is not None else []
 
     if active_schedules:
 
@@ -231,13 +233,25 @@ def list_assets(
 
     include_retired: bool = Query(False),
 
+    page: int = Query(1, ge=1),
+
+    page_size: int = Query(500, ge=1, le=1000),
+
 ) -> list[AssetOut]:
 
-    q = select(Asset).where(Asset.tenant_id == current.tenant_id).options(
-        selectinload(Asset.schedules),
+    _view = view if isinstance(view, str) else None
+    _sort = sort if isinstance(sort, str) else None
+    _filter = maintenance_filter if isinstance(maintenance_filter, str) else None
+    need_schedules = _view == "maintenance" or _sort == "next_due" or bool(_filter)
+
+    opts = [
         joinedload(Asset.site).joinedload(Site.client),
         joinedload(Asset.asset_type),
-    )
+    ]
+    if need_schedules:
+        opts.insert(0, selectinload(Asset.schedules))
+
+    q = select(Asset).where(Asset.tenant_id == current.tenant_id).options(*opts)
 
     if not include_retired:
         q = q.where(Asset.lifecycle_status != AssetLifecycleStatus.replaced)
@@ -284,13 +298,13 @@ def list_assets(
 
 
 
-    assets = list(db.scalars(q).all())
+    # Soft page cap for register views; maintenance filter still pages after in-Python filter
+    if not need_schedules:
+        q = q.offset((page - 1) * page_size).limit(page_size)
 
-    _view = view if isinstance(view, str) else None
-    _sort = sort if isinstance(sort, str) else None
-    _filter = maintenance_filter if isinstance(maintenance_filter, str) else None
+    assets = list(db.scalars(q).unique().all())
 
-    if _view == "maintenance" or _sort == "next_due" or _filter:
+    if need_schedules:
 
         now = datetime.now(timezone.utc)
 
@@ -300,7 +314,8 @@ def list_assets(
             return dt
 
         def _active_schedules(a: Asset):
-            return [s for s in (a.schedules or []) if s.is_active]
+            loaded = a.__dict__.get("schedules")
+            return [s for s in (loaded or []) if s.is_active] if loaded is not None else []
 
         def _next_due(a: Asset):
             active = _active_schedules(a)
@@ -308,8 +323,7 @@ def list_assets(
                 return None
             return min(_aware_dt(s.next_due_at) for s in active)
 
-        if _view == "maintenance" or _sort == "next_due" or _filter:
-            assets = [a for a in assets if _active_schedules(a)]
+        assets = [a for a in assets if _active_schedules(a)]
 
         if _filter == "overdue":
             assets = [
@@ -330,6 +344,8 @@ def list_assets(
             ]
 
         assets.sort(key=lambda a: _next_due(a) or datetime.max.replace(tzinfo=timezone.utc))
+        start = (page - 1) * page_size
+        assets = assets[start : start + page_size]
 
 
 

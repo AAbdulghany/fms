@@ -17,7 +17,7 @@ from app.schemas import (
     ClientProvisionResponse,
     ClientUpdate,
 )
-from app.services.asset_types import apply_client_vertical, client_vertical_code
+from app.services.asset_types import apply_client_vertical
 from app.services.audit import write_audit
 from app.services.provisioning import (
     build_manager_username,
