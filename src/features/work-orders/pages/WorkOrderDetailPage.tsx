@@ -137,7 +137,45 @@ export function WorkOrderDetailPage() {
         report: MaintenanceReport | null;
         template: ReportTemplate | null;
       };
-      const detail = await apiFetch<DetailBundle>(`/work-orders/${id}/detail`);
+
+      let detail: DetailBundle;
+      try {
+        detail = await apiFetch<DetailBundle>(`/work-orders/${id}/detail`);
+      } catch {
+        // Stale API without /detail — fall back to parallel GETs.
+        const [work_order, history, comments, assignable_users, documents, report] =
+          await Promise.all([
+            apiFetch<WorkOrder>(`/work-orders/${id}`),
+            apiFetch<AuditLog[]>(`/work-orders/${id}/history`).catch(() => [] as AuditLog[]),
+            apiFetch<Comment[]>(`/work-orders/${id}/comments`).catch(() => [] as Comment[]),
+            apiFetch<WorkOrderUserBrief[]>(`/work-orders/${id}/assignable-users`).catch(
+              () => [] as WorkOrderUserBrief[]
+            ),
+            apiFetch<WorkOrderDocument[]>(`/work-orders/${id}/documents`).catch(
+              () => [] as WorkOrderDocument[]
+            ),
+            apiFetch<MaintenanceReport>(`/work-orders/${id}/report`).catch(() => null),
+          ]);
+        let template: ReportTemplate | null = null;
+        if (work_order.template_id) {
+          const catQ = work_order.asset_category
+            ? `?asset_category=${encodeURIComponent(work_order.asset_category)}`
+            : "";
+          template = await apiFetch<ReportTemplate>(
+            `/report-templates/${work_order.template_id}${catQ}`
+          ).catch(() => null);
+        }
+        detail = {
+          work_order,
+          history,
+          comments,
+          assignable_users,
+          documents,
+          report,
+          template,
+        };
+      }
+
       setWo(detail.work_order);
       setHistory(detail.history);
       setComments(detail.comments);
