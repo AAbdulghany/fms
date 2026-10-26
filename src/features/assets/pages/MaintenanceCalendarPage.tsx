@@ -143,9 +143,49 @@ export default function MaintenanceCalendarPage() {
     return map;
   }, [events]);
 
+  /** monthIdx 0–11 → events (built once; YearGrid/MonthGrid look up instead of scanning). */
+  const eventsByMonth = useMemo(() => {
+    const map = new Map<number, MaintenanceCalendarEvent[]>();
+    for (const ev of events) {
+      const m = eventDate(ev).getMonth();
+      const bucket = map.get(m);
+      if (bucket) bucket.push(ev);
+      else map.set(m, [ev]);
+    }
+    return map;
+  }, [events]);
+
+  /** `${y}-${m0}-${d}` → events for day cells. */
+  const eventsByDayKey = useMemo(() => {
+    const map = new Map<string, MaintenanceCalendarEvent[]>();
+    for (const ev of events) {
+      const d = eventDate(ev);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      const bucket = map.get(key);
+      if (bucket) bucket.push(ev);
+      else map.set(key, [ev]);
+    }
+    return map;
+  }, [events]);
+
+  const openWosByMonth = useMemo(() => {
+    const map = new Map<number, OpenWo[]>();
+    for (const w of openWos) {
+      const raw = w.due_at || w.opened_at;
+      if (!raw) continue;
+      const d = new Date(raw);
+      if (d.getFullYear() !== year) continue;
+      const m = d.getMonth();
+      const bucket = map.get(m);
+      if (bucket) bucket.push(w);
+      else map.set(m, [w]);
+    }
+    return map;
+  }, [openWos, year]);
+
   const monthEvents = useMemo(
-    () => events.filter((ev) => eventDate(ev).getMonth() + 1 === month),
-    [events, month]
+    () => eventsByMonth.get(month - 1) ?? [],
+    [eventsByMonth, month]
   );
 
   const focusDate = useMemo(
@@ -158,15 +198,17 @@ export default function MaintenanceCalendarPage() {
   const weekEvents = useMemo(() => {
     const end = new Date(weekStart);
     end.setDate(end.getDate() + 7);
-    return events.filter((ev) => {
+    const out: MaintenanceCalendarEvent[] = [];
+    for (const ev of events) {
       const d = eventDate(ev);
-      return d >= weekStart && d < end;
-    });
+      if (d >= weekStart && d < end) out.push(ev);
+    }
+    return out;
   }, [events, weekStart]);
 
   const dayEvents = useMemo(
-    () => events.filter((ev) => sameDay(eventDate(ev), focusDate)),
-    [events, focusDate]
+    () => eventsByDayKey.get(`${year}-${month - 1}-${focusDay}`) ?? [],
+    [eventsByDayKey, year, month, focusDay]
   );
 
   function openMonth(m: number) {
@@ -348,8 +390,8 @@ export default function MaintenanceCalendarPage() {
             <YearGrid
               year={year}
               counts={countsByMonth}
-              openWos={openWos}
-              events={events}
+              openWosByMonth={openWosByMonth}
+              eventsByMonth={eventsByMonth}
               currentMonth={now.getFullYear() === year ? now.getMonth() + 1 : null}
               onOpenMonth={openMonth}
             />
@@ -357,7 +399,7 @@ export default function MaintenanceCalendarPage() {
             <MonthGrid
               year={year}
               month={month}
-              events={monthEvents}
+              eventsByDayKey={eventsByDayKey}
               today={now}
               onDayClick={(d) => openDay(year, month, d)}
               onWeekClick={(d) => openWeek(year, month, d)}
@@ -389,34 +431,31 @@ export default function MaintenanceCalendarPage() {
 }
 
 function YearGrid({
-  year,
   counts,
-  openWos,
-  events,
+  openWosByMonth,
+  eventsByMonth,
   currentMonth,
   onOpenMonth,
 }: {
   year: number;
   counts: number[];
-  openWos: {
-    id: string;
-    title: string;
-    asset_id?: string | null;
-    asset_name?: string | null;
-    due_at?: string | null;
-    opened_at?: string;
-  }[];
-  events: MaintenanceCalendarEvent[];
+  openWosByMonth: Map<
+    number,
+    {
+      id: string;
+      title: string;
+      asset_id?: string | null;
+      asset_name?: string | null;
+      due_at?: string | null;
+      opened_at?: string;
+    }[]
+  >;
+  eventsByMonth: Map<number, MaintenanceCalendarEvent[]>;
   currentMonth: number | null;
   onOpenMonth: (m: number) => void;
 }) {
   function previewsForMonth(monthIdx: number): { key: string; label: string }[] {
-    const fromWo = openWos.filter((w) => {
-      const raw = w.due_at || w.opened_at;
-      if (!raw) return false;
-      const d = new Date(raw);
-      return d.getFullYear() === year && d.getMonth() === monthIdx;
-    });
+    const fromWo = openWosByMonth.get(monthIdx) ?? [];
     // Deduplicate by asset within the month
     const seen = new Set<string>();
     const out: { key: string; label: string }[] = [];
@@ -428,7 +467,7 @@ function YearGrid({
     }
     if (out.length === 0) {
       // Fall back to unique scheduled assets (already month-deduped upstream)
-      for (const ev of events.filter((e) => eventDate(e).getMonth() === monthIdx)) {
+      for (const ev of eventsByMonth.get(monthIdx) ?? []) {
         if (seen.has(ev.asset_id)) continue;
         seen.add(ev.asset_id);
         out.push({ key: ev.asset_id, label: ev.asset_name });
@@ -490,14 +529,14 @@ function YearGrid({
 function MonthGrid({
   year,
   month,
-  events,
+  eventsByDayKey,
   today,
   onDayClick,
   onWeekClick,
 }: {
   year: number;
   month: number;
-  events: MaintenanceCalendarEvent[];
+  eventsByDayKey: Map<string, MaintenanceCalendarEvent[]>;
   today: Date;
   onDayClick: (day: number) => void;
   onWeekClick: (day: number) => void;
@@ -511,6 +550,7 @@ function MonthGrid({
   while (cells.length % 7 !== 0) cells.push(null);
   const weeks: (number | null)[][] = [];
   for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+  const monthIdx = month - 1;
 
   return (
     <div data-testid="calendar-month-grid">
@@ -535,7 +575,7 @@ function MonthGrid({
               </button>
               {week.map((day, di) => {
                 if (day == null) return <div key={di} className="min-h-[72px] rounded-lg bg-neutral-50/50" />;
-                const dayEvs = events.filter((e) => eventDate(e).getDate() === day);
+                const dayEvs = eventsByDayKey.get(`${year}-${monthIdx}-${day}`) ?? [];
                 const isToday =
                   today.getFullYear() === year &&
                   today.getMonth() + 1 === month &&
