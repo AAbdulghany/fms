@@ -103,11 +103,13 @@ jobs:
           DEPLOY_PATH: ${{ vars.PILOT_PATH || vars.DEMO_PATH || '/opt/fms' }}
           DEPLOY_REF: ${{ github.ref_name }}
 
+      # GitHub-hosted runners are often blocked by Cloudflare (1010); local health already ran over SSH.
       - name: Verify public pilot URL
         if: ${{ vars.PILOT_URL != '' || vars.DEMO_URL != '' }}
+        continue-on-error: true
         env:
           PUBLIC_URL: ${{ vars.PILOT_URL || vars.DEMO_URL }}
         run: |
-          echo "Checking ${PUBLIC_URL}/api/v1/health"
+          echo "Checking ${PUBLIC_URL}/api/v1/health (best-effort; CF may block Actions IPs)"
           timeout 60 bash -c 'until curl -fsS "${PUBLIC_URL}/api/v1/health"; do sleep 5; done'
           echo "Public health check OK"
