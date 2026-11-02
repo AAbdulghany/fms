@@ -53,13 +53,14 @@ jobs:
             DEPLOY_PATH="${DEPLOY_PATH:-/opt/fms}"
             cd "$DEPLOY_PATH"
 
+            git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
             git fetch origin
             BRANCH=pilot/live
             if [ "${DEPLOY_REF:-}" = "demo/live" ]; then
               BRANCH=demo/live
             fi
             echo "Deploying branch $BRANCH"
-            git checkout "$BRANCH"
+            git checkout -B "$BRANCH" "origin/$BRANCH"
             git pull --ff-only origin "$BRANCH"
 
             ENV_FILE=deploy/pilot/.env
