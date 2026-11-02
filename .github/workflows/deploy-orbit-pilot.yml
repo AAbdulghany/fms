@@ -10,8 +10,8 @@
 #   PILOT_HOST / DEMO_HOST                   — VM hostname or IP
 #   PILOT_USER / DEMO_USER                   — SSH user
 #   PILOT_SSH_PRIVATE_KEY / DEMO_SSH_PRIVATE_KEY
-#   PILOT_PATH / DEMO_PATH (optional)        — clone path on VM (default /opt/fms)
 # Variables (optional):
+#   PILOT_PATH / DEMO_PATH                   — clone path on VM (default /opt/fms)
 #   PILOT_URL / DEMO_URL                     — public URL for the post-deploy health check
 #
 # Branches: pilot/live (canonical). demo/live still deploys until it is retired.
@@ -98,7 +98,7 @@ jobs:
             timeout 180 bash -c "until curl -sf http://127.0.0.1:${WEB_PORT}/api/v1/health; do sleep 5; done"
             echo "Local health check OK"
         env:
-          DEPLOY_PATH: ${{ secrets.PILOT_PATH || secrets.DEMO_PATH }}
+          DEPLOY_PATH: ${{ vars.PILOT_PATH || vars.DEMO_PATH || '/opt/fms' }}
           DEPLOY_REF: ${{ github.ref_name }}
 
       - name: Verify public pilot URL
