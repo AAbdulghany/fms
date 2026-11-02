@@ -38,17 +38,19 @@ The backend rejects any other `APP_ENV` value at startup. `demo` is still accept
 
 ---
 
-## Pilot server (`pilot/live` branch)
+## Pilot server (`main` → pilot VM)
 
-**Always-on stack:** Docker API + nginx web on the VM, **Postgres on Supabase**, HTTPS via Cloudflare Tunnel (`demo.orbittech.co`).
+**Always-on stack:** Docker API + nginx web on the VM, **Postgres on Supabase**, HTTPS via Cloudflare Tunnel (`pilot.orbittech.co`).
+
+Until pilot issues are closed, ship fixes on **`main`**; production cutover is a later step.
 
 1. Create a Supabase project (Postgres only — not Auth). Copy **Transaction pooler** (`:6543`) and **Session/direct** (`:5432`) URIs; convert to `postgresql+psycopg2://…`.
 2. Make sure tests pass (pytest, `npm run build`).
-3. Merge pilot-ready work into **`pilot/live`**. Tag snapshots as `pilot-live-vX.Y.Z`.
+3. Merge pilot-ready work into **`main`**. Tag snapshots as `pilot-live-vX.Y.Z` when useful.
 4. First-time server setup (for example, an Oracle Cloud free VM with Cloudflare Tunnel):
 
 ```bash
-git clone -b pilot/live <repo-url> /opt/fms
+git clone -b main <repo-url> /opt/fms
 cd /opt/fms
 sudo bash deploy/pilot/setup-ubuntu.sh
 cp deploy/pilot/.env.example deploy/pilot/.env && chmod 600 deploy/pilot/.env
@@ -60,8 +62,8 @@ docker compose -f docker-compose-pilot-supabase.yml \
 docker compose -p fms-pilot down --remove-orphans || true
 ```
 
-5. Subsequent deploys run automatically on push to `pilot/live` through [`.github/workflows/deploy-orbit-pilot.yml`](../../.github/workflows/deploy-orbit-pilot.yml).
-6. Smoke: `BASE_URL=https://demo.orbittech.co bash deploy/pilot/smoke-pilot.sh` (health + register company + company login).
+5. Subsequent deploys run automatically on push to `main` through [`.github/workflows/deploy-orbit-pilot.yml`](../../.github/workflows/deploy-orbit-pilot.yml).
+6. Smoke: `BASE_URL=https://pilot.orbittech.co bash deploy/pilot/smoke-pilot.sh` (health + register company + company login).
 
 The live overlay publishes only the web container. nginx proxies `/api`, so the API has no host ports and the DB is remote. Point the Cloudflare Tunnel at `http://localhost:${WEB_PORT}`.
 

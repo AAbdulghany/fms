@@ -1,8 +1,11 @@
 # Deploy Orbit Pilot (always-on, Supabase Postgres)
 #
-# Pulls the pilot branch on the pilot VM and rebuilds:
+# Pulls main on the pilot VM and rebuilds:
 #   docker-compose-pilot-supabase.yml + deploy/pilot/docker-compose.live-supabase.yml
-# Cloudflare Tunnel provides HTTPS (currently demo.orbittech.co) — one-time host setup.
+# Cloudflare Tunnel provides HTTPS (pilot.orbittech.co) — one-time host setup.
+#
+# Until pilot issues are closed, ship fixes on main; this workflow deploys main → pilot.
+# Production cutover comes later (separate workflow / host).
 #
 # Server env: deploy/pilot/.env (from .env.example) with DATABASE_URL + DATABASE_URL_MIGRATE.
 #
@@ -14,7 +17,7 @@
 #   PILOT_PATH / DEMO_PATH                   — clone path on VM (default /opt/fms)
 #   PILOT_URL / DEMO_URL                     — public URL for the post-deploy health check
 #
-# Branches: pilot/live (canonical). demo/live still deploys until it is retired.
+# Branches: main (canonical for pilot). demo/live still deploys until retired.
 # Cutover and rollback: docs/engineering/ENV_REORG_PLAN.md
 # Runbook: docs/guides/pilot-stack.md
 
@@ -23,7 +26,7 @@ name: Deploy Orbit Pilot
 on:
   push:
     branches:
-      - pilot/live
+      - main
       - demo/live
   workflow_dispatch:
 
@@ -55,7 +58,7 @@ jobs:
 
             git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
             git fetch origin
-            BRANCH=pilot/live
+            BRANCH=main
             if [ "${DEPLOY_REF:-}" = "demo/live" ]; then
               BRANCH=demo/live
             fi

@@ -148,7 +148,7 @@ The seed passwords are public knowledge. Use a shared pilot only with seed data,
 
 ## 4. Pilot server (VM)
 
-The `Deploy Orbit Pilot` workflow deploys on every push to `pilot/live` using the **Supabase** compose files. During the transition, pushes to `demo/live` also deploy. See [deploy/pilot/README.md](../../deploy/pilot/README.md) for the server files, and [ENV_REORG_PLAN.md](../engineering/ENV_REORG_PLAN.md) for the cutover steps.
+The `Deploy Orbit Pilot` workflow deploys on every push to `main` using the **Supabase** compose files (pilot VM). During the transition, pushes to `demo/live` also deploy. See [deploy/pilot/README.md](../../deploy/pilot/README.md) for the server files, and [ENV_REORG_PLAN.md](../engineering/ENV_REORG_PLAN.md) for the cutover steps.
 
 Manual equivalent on the server:
 

@@ -16,7 +16,7 @@ Orbit has three environments. "Demo" is retired as an environment name; the sale
 | Seed (`SEED_MODULE`) | `test` (users only) | `pilot` (rich dataset) | none (schema only; create the first super user manually) |
 | Host ports (web / API) | 9080 / 9000 (Docker) or 5173 / 8000 (hybrid) | 9081 / 9001 locally; only `WEB_PORT` on the server | `WEB_PORT` / `API_PORT` |
 | Env templates | `deploy/dev/.env.example`, `backend/.env.example` | `deploy/pilot/.env.example` (live Supabase), `deploy/pilot/.env.supabase.example` (local), `backend/.env.pilot.example` | `deploy/production/.env.example` |
-| Deploy | — | `.github/workflows/deploy-orbit-pilot.yml` on push to `pilot/live` (Supabase compose) | Manual (see [deployment.md](./deployment.md)) |
+| Deploy | — | `.github/workflows/deploy-orbit-pilot.yml` on push to `main` (Supabase compose → pilot VM) | Manual (see [deployment.md](./deployment.md)); after pilot sign-off |
 | Guide | [local-development.md](./local-development.md) | [pilot-stack.md](./pilot-stack.md) | [deployment.md](./deployment.md) |
 
 ## Rules
@@ -35,6 +35,6 @@ Orbit has three environments. "Demo" is retired as an environment name; the sale
 | `DEMO_PASSWORD_SUFFIX` | `SEED_PASSWORD_SUFFIX` | Same |
 | `POST /platform/demo/reset` | `POST /platform/pilot/reset` | After cron jobs are updated |
 | `app.pitch_seed` / `seed_pitch_demo` | `app.cli.pilot_seed` / `seed_pilot` | Next release |
-| Branch `demo/live`, secrets `DEMO_*` | Branch `pilot/live`, secrets `PILOT_*` | After the GitHub cutover (ENV-F01) |
+| Branch `demo/live` / `pilot/live`, secrets `DEMO_*` | Branch `main` → pilot VM, secrets `PILOT_*` | After the GitHub cutover (ENV-F01); production stays manual until pilot sign-off |
 
 Removed files (`docker-compose-demo.yml`, `deploy/demo/`, `backend/.env.demo.example`) and the cutover steps are listed in [ENV_REORG_PLAN.md](../engineering/ENV_REORG_PLAN.md). Pre-reorg docs are in [docs/archive/demo/](../archive/demo/).
