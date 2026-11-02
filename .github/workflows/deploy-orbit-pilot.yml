@@ -1,26 +1,32 @@
-# Deploy Orbit Pilot
+# Deploy Orbit Pilot (always-on, Supabase Postgres)
 #
-# Pulls the pilot branch on the pilot VM and rebuilds the live Docker Compose stack
-# (docker-compose-pilot.yml + deploy/pilot/docker-compose.live.yml).
-# Cloudflare Tunnel provides HTTPS (currently demo.orbittech.co) — one-time host setup.
+# Pulls main on the pilot VM and rebuilds:
+#   docker-compose-pilot-supabase.yml + deploy/pilot/docker-compose.live-supabase.yml
+# Cloudflare Tunnel provides HTTPS (pilot.orbittech.co) — one-time host setup.
+#
+# Until pilot issues are closed, ship fixes on main; this workflow deploys main → pilot.
+# Production cutover comes later (separate workflow / host).
+#
+# Server env: deploy/pilot/.env (from .env.example) with DATABASE_URL + DATABASE_URL_MIGRATE.
 #
 # Secrets (PILOT_* preferred; legacy DEMO_* still read until renamed in GitHub):
 #   PILOT_HOST / DEMO_HOST                   — VM hostname or IP
 #   PILOT_USER / DEMO_USER                   — SSH user
 #   PILOT_SSH_PRIVATE_KEY / DEMO_SSH_PRIVATE_KEY
-#   PILOT_PATH / DEMO_PATH (optional)        — clone path on VM (default /opt/fms)
 # Variables (optional):
+#   PILOT_PATH / DEMO_PATH                   — clone path on VM (default /opt/fms)
 #   PILOT_URL / DEMO_URL                     — public URL for the post-deploy health check
 #
-# Branches: pilot/live (canonical). demo/live still deploys until it is retired.
+# Branches: main (canonical for pilot). demo/live still deploys until retired.
 # Cutover and rollback: docs/engineering/ENV_REORG_PLAN.md
+# Runbook: docs/guides/pilot-stack.md
 
 name: Deploy Orbit Pilot
 
 on:
   push:
     branches:
-      - pilot/live
+      - main
       - demo/live
   workflow_dispatch:
 
@@ -44,60 +50,69 @@ jobs:
           key: ${{ secrets.PILOT_SSH_PRIVATE_KEY || secrets.DEMO_SSH_PRIVATE_KEY }}
           script_stop: true
           envs: DEPLOY_PATH,DEPLOY_REF
+          # Avoid bare `|` in this script: appleboy/drone-ssh mangles pipes into syntax errors.
           script: |
             set -euo pipefail
             DEPLOY_PATH="${DEPLOY_PATH:-/opt/fms}"
             cd "$DEPLOY_PATH"
 
+            git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
             git fetch origin
-            case "$DEPLOY_REF" in
-              pilot/live|demo/live) BRANCH="$DEPLOY_REF" ;;
-              *)
-                if git ls-remote --exit-code --heads origin pilot/live >/dev/null; then
-                  BRANCH=pilot/live
-                else
-                  BRANCH=demo/live
-                fi
-                ;;
-            esac
+            BRANCH=main
+            if [ "${DEPLOY_REF:-}" = "demo/live" ]; then
+              BRANCH=demo/live
+            fi
             echo "Deploying branch $BRANCH"
-            git checkout "$BRANCH"
+            git checkout -B "$BRANCH" "origin/$BRANCH"
             git pull --ff-only origin "$BRANCH"
 
             ENV_FILE=deploy/pilot/.env
             if [ ! -f "$ENV_FILE" ] && [ -f deploy/demo/.env ]; then
-              echo "::notice::Moving server env file deploy/demo/.env -> $ENV_FILE (one-time cutover)"
+              echo "Moving server env file deploy/demo/.env -> $ENV_FILE (one-time cutover)"
               install -m 600 deploy/demo/.env "$ENV_FILE"
             fi
             if [ ! -f "$ENV_FILE" ]; then
-              echo "::error::$ENV_FILE missing — copy deploy/pilot/.env.example and fill it in"
+              echo "ERROR: $ENV_FILE missing — copy deploy/pilot/.env.example and fill Supabase DATABASE_URL(s)"
+              exit 1
+            fi
+            if ! grep -qE '^DATABASE_URL=' "$ENV_FILE"; then
+              echo "ERROR: $ENV_FILE must set DATABASE_URL (Supabase). See deploy/pilot/.env.example"
               exit 1
             fi
 
-            # The pre-reorg project (fms-demo) holds the same host ports. Stop it, keep its volume.
-            docker compose -p fms-demo down --remove-orphans || true
+            # Stop legacy stacks that may hold WEB_PORT / old embedded Postgres.
+            set +e
+            docker compose -p fms-demo down --remove-orphans
+            docker compose -p fms-pilot down --remove-orphans
+            set -e
 
-            docker compose \
-              -f docker-compose-pilot.yml \
-              -f deploy/pilot/docker-compose.live.yml \
-              --env-file "$ENV_FILE" \
-              up -d --build --remove-orphans
+            docker compose -f docker-compose-pilot-supabase.yml -f deploy/pilot/docker-compose.live-supabase.yml --env-file "$ENV_FILE" up -d --build --remove-orphans
 
-            WEB_PORT=$(grep -E '^WEB_PORT=' "$ENV_FILE" | cut -d= -f2- | tr -d "\"'" || true)
+            WEB_PORT=8080
+            if grep -qE '^WEB_PORT=' "$ENV_FILE"; then
+              WEB_PORT=$(grep -E '^WEB_PORT=' "$ENV_FILE")
+              WEB_PORT="${WEB_PORT#WEB_PORT=}"
+              WEB_PORT="${WEB_PORT%\"}"
+              WEB_PORT="${WEB_PORT#\"}"
+              WEB_PORT="${WEB_PORT%\'}"
+              WEB_PORT="${WEB_PORT#\'}"
+            fi
             WEB_PORT="${WEB_PORT:-8080}"
 
-            echo "Waiting for API health via nginx on 127.0.0.1:${WEB_PORT}…"
+            echo "Waiting for API health via nginx on 127.0.0.1:${WEB_PORT}"
             timeout 180 bash -c "until curl -sf http://127.0.0.1:${WEB_PORT}/api/v1/health; do sleep 5; done"
             echo "Local health check OK"
         env:
-          DEPLOY_PATH: ${{ secrets.PILOT_PATH || secrets.DEMO_PATH }}
+          DEPLOY_PATH: ${{ vars.PILOT_PATH || vars.DEMO_PATH || '/opt/fms' }}
           DEPLOY_REF: ${{ github.ref_name }}
 
+      # GitHub-hosted runners are often blocked by Cloudflare (1010); local health already ran over SSH.
       - name: Verify public pilot URL
         if: ${{ vars.PILOT_URL != '' || vars.DEMO_URL != '' }}
+        continue-on-error: true
         env:
           PUBLIC_URL: ${{ vars.PILOT_URL || vars.DEMO_URL }}
         run: |
-          echo "Checking ${PUBLIC_URL}/api/v1/health"
+          echo "Checking ${PUBLIC_URL}/api/v1/health (best-effort; CF may block Actions IPs)"
           timeout 60 bash -c 'until curl -fsS "${PUBLIC_URL}/api/v1/health"; do sleep 5; done'
           echo "Public health check OK"

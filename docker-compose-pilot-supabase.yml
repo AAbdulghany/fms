@@ -1,13 +1,18 @@
-# Pilot stack with external Postgres (e.g. Supabase) — no local db container.
+# Pilot stack with external Postgres (Supabase) — no local db container.
 #
-# 1. Copy deploy/pilot/.env.supabase.example → deploy/pilot/.env.supabase
-# 2. Fill DATABASE_URL, SECRET_KEY, CORS/PUBLIC_APP_URL
-# 3. From repo root:
+# Local:
+#   cp deploy/pilot/.env.supabase.example deploy/pilot/.env.supabase
+#   docker compose -f docker-compose-pilot-supabase.yml \
+#     --env-file deploy/pilot/.env.supabase up -d --build
+#   UI: http://localhost:9581  API: http://localhost:9501
 #
-#    docker compose -f docker-compose-pilot-supabase.yml --env-file deploy/pilot/.env.supabase up -d --build
+# Live VM (always-on):
+#   docker compose -f docker-compose-pilot-supabase.yml \
+#     -f deploy/pilot/docker-compose.live-supabase.yml \
+#     --env-file deploy/pilot/.env up -d --build
 #
-# UI: http://localhost:9581
-# API: http://localhost:9501
+# DATABASE_URL          = runtime (Transaction pooler :6543)
+# DATABASE_URL_MIGRATE  = Alembic/seed (Session/direct :5432); defaults to DATABASE_URL
 
 name: fms-pilot-supabase
 
@@ -20,10 +25,15 @@ services:
       - 8.8.8.8
       - 1.1.1.1
     environment:
-      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in deploy/pilot/.env.supabase}
+      DATABASE_URL: ${DATABASE_URL_MIGRATE:-${DATABASE_URL:?set DATABASE_URL}}
       SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY}
       APP_ENV: pilot
       SEED_MODULE: ${SEED_MODULE:-pilot}
+      SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-}
+      SUPER_ADMIN_USERNAME: ${SUPER_ADMIN_USERNAME:-}
+      SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-}
+      SUPER_ADMIN_FULL_NAME: ${SUPER_ADMIN_FULL_NAME:-}
+      SUPER_ADMIN_TENANT_NAME: ${SUPER_ADMIN_TENANT_NAME:-}
     command: python -m app.docker_migrate
     restart: "no"
 
@@ -35,7 +45,7 @@ services:
       - 8.8.8.8
       - 1.1.1.1
     environment:
-      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in deploy/pilot/.env.supabase}
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
       SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY}
       APP_ENV: pilot
       CORS_ORIGINS: ${CORS_ORIGINS:-https://demo.orbittech.co}
@@ -60,3 +70,4 @@ services:
       - "9581:8080"
     depends_on:
       - api
+    restart: on-failure

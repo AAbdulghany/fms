@@ -1,0 +1,32 @@
+# Pilot live overlay for Supabase-backed stack (no local db).
+# Usage (on server, from repo root):
+#   cp deploy/pilot/.env.supabase.example deploy/pilot/.env   # or merge URLs into .env
+#   docker compose -f docker-compose-pilot-supabase.yml \
+#     -f deploy/pilot/docker-compose.live-supabase.yml \
+#     --env-file deploy/pilot/.env up -d --build
+#
+# Only the web container is published; nginx proxies /api to the api service.
+# Point Cloudflare Tunnel at http://localhost:${WEB_PORT}
+
+services:
+  api:
+    ports: !reset []
+    environment:
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in deploy/pilot/.env}
+      CORS_ORIGINS: ${CORS_ORIGINS:?set CORS_ORIGINS}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:?set PUBLIC_APP_URL}
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
+
+  migrate:
+    environment:
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in deploy/pilot/.env}
+      DATABASE_URL: ${DATABASE_URL_MIGRATE:-${DATABASE_URL:?set DATABASE_URL}}
+      SEED_MODULE: ${SEED_MODULE:-super}
+      SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-aabdulghany@orbittech.co}
+      SUPER_ADMIN_USERNAME: ${SUPER_ADMIN_USERNAME:-aabdulghany}
+      SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-}
+
+
+  web:
+    ports: !override
+      - "${WEB_PORT:-8080}:8080"
