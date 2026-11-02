@@ -89,5 +89,7 @@ def server_time() -> dict[str, str]:
 
 
 @app.get("/health")
+@app.get(f"{api}/health")
 def health() -> dict[str, str]:
+    """Root and /api/v1/health (nginx same-origin smoke checks)."""
     return {"status": "ok"}

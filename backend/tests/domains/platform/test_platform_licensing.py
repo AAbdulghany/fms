@@ -164,3 +164,124 @@ def test_deactivate_package(api_client, db_session, platform_admin):
     )
     assert res.status_code == 200
     assert res.json()["is_active"] is False
+
+
+def test_provision_tenant_returns_temp_password(api_client, db_session, platform_admin):
+    packages = ensure_default_packages(db_session)
+    db_session.commit()
+    pkg_id = str(packages["starter"].id)
+    res = api_client.post(
+        "/api/v1/platform/tenants",
+        headers=auth_header(platform_admin),
+        json={
+            "tenant_name": "Smoke Maintenance Co",
+            "admin_email": "new.admin@smoke.co",
+            "admin_full_name": "New Admin",
+            "package_id": pkg_id,
+        },
+    )
+    assert res.status_code == 201, res.text
+    body = res.json()
+    assert body["tenant_id"]
+    assert body["initial_password"]
+    login = api_client.post(
+        "/api/v1/auth/login",
+        json={"identifier": "new.admin@smoke.co", "password": body["initial_password"]},
+    )
+    assert login.status_code == 200, login.text
+    assert login.json().get("access_token")
+
+
+def test_provision_tenant_duplicate_email_conflict(api_client, db_session, platform_admin):
+    packages = ensure_default_packages(db_session)
+    db_session.commit()
+    pkg_id = str(packages["starter"].id)
+    payload = {
+        "tenant_name": "First Co",
+        "admin_email": "dup.admin@smoke.co",
+        "admin_full_name": "Dup Admin",
+        "admin_password": "Password123!",
+        "package_id": pkg_id,
+    }
+    first = api_client.post(
+        "/api/v1/platform/tenants",
+        headers=auth_header(platform_admin),
+        json=payload,
+    )
+    assert first.status_code == 201, first.text
+    second = api_client.post(
+        "/api/v1/platform/tenants",
+        headers=auth_header(platform_admin),
+        json={**payload, "tenant_name": "Second Co"},
+    )
+    assert_api_error(second, status=409, code="EMAIL_ALREADY_EXISTS")
+
+
+def test_delete_tenant_soft_deletes_and_hides_from_list(api_client, db_session, platform_admin):
+    packages = ensure_default_packages(db_session)
+    db_session.commit()
+    created = api_client.post(
+        "/api/v1/platform/tenants",
+        headers=auth_header(platform_admin),
+        json={
+            "tenant_name": "Delete Me Co",
+            "admin_email": "delete.me@smoke.co",
+            "admin_full_name": "Delete Me",
+            "package_id": str(packages["starter"].id),
+            "valid_until": "2030-01-15",
+        },
+    )
+    assert created.status_code == 201, created.text
+    tenant_id = created.json()["tenant_id"]
+
+    deleted = api_client.delete(
+        f"/api/v1/platform/tenants/{tenant_id}",
+        headers=auth_header(platform_admin),
+    )
+    assert deleted.status_code == 200, deleted.text
+    assert deleted.json()["status"] == "deleted"
+
+    listed = api_client.get(
+        "/api/v1/platform/maintenance-companies",
+        headers=auth_header(platform_admin),
+    )
+    assert listed.status_code == 200
+    assert all(row["id"] != tenant_id for row in listed.json())
+
+
+def test_update_package_and_tenant_license(api_client, db_session, platform_admin):
+    packages = ensure_default_packages(db_session)
+    db_session.commit()
+    starter = packages["starter"]
+    patched = api_client.patch(
+        f"/api/v1/platform/packages/{starter.id}",
+        headers=auth_header(platform_admin),
+        json={"name": "Starter Plus", "limits_json": {"max_users": 42, "max_sites": 7}},
+    )
+    assert patched.status_code == 200, patched.text
+    assert patched.json()["name"] == "Starter Plus"
+    assert patched.json()["limits_json"]["max_users"] == 42
+
+    created = api_client.post(
+        "/api/v1/platform/tenants",
+        headers=auth_header(platform_admin),
+        json={
+            "tenant_name": "License Co",
+            "admin_email": "license.co@smoke.co",
+            "admin_full_name": "License Admin",
+            "package_id": str(starter.id),
+        },
+    )
+    assert created.status_code == 201, created.text
+    tenant_id = created.json()["tenant_id"]
+    pro = packages["pro"]
+    license_res = api_client.put(
+        f"/api/v1/platform/tenants/{tenant_id}/license",
+        headers=auth_header(platform_admin),
+        json={"package_id": str(pro.id), "status": "trial", "valid_until": "2031-06-01"},
+    )
+    assert license_res.status_code == 200, license_res.text
+    body = license_res.json()
+    assert body["plan"] == "pro"
+    assert body["status"] == "trial"
+    assert body["valid_until"] == "2031-06-01"

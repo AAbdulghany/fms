@@ -1,4 +1,4 @@
-"""Docker migrate entrypoint — schema then seed (SEED_MODULE=test | pilot)."""
+"""Docker migrate entrypoint — schema then seed (SEED_MODULE=test | pilot | super)."""
 
 from __future__ import annotations
 
@@ -37,6 +37,13 @@ def main() -> None:
             info = seed_pilot(db)
             db.commit()
             print("Pilot seeded:", info)
+    elif seed == "super":
+        from app.cli.seed_super import seed_super
+
+        with SessionLocal() as db:
+            info = seed_super(db)
+            db.commit()
+            print("Super seeded:", {k: v for k, v in info.items() if k != "password"})
     else:
         from app.cli.test_seed import seed_data
 

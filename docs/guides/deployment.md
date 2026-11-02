@@ -31,32 +31,41 @@ The backend rejects any other `APP_ENV` value at startup. `demo` is still accept
 | `docker-compose-local.yml` | Dev | db, migrate, api, web (`fms-local`) |
 | `docker-compose-hybrid.yml` | Dev | Overlay: DB + migrate only, for host API and Vite |
 | `docker-compose-pilot.yml` | Pilot | Self-contained stack (`fms-pilot`), `APP_ENV=pilot`, pilot seed |
-| `deploy/pilot/docker-compose.live.yml` | Pilot | Server overlay: publishes only web on `WEB_PORT`; secrets from `deploy/pilot/.env` |
-| `docker-compose-pilot-supabase.yml` | Pilot | Pilot against managed Postgres; no db container |
+| `deploy/pilot/docker-compose.live.yml` | Pilot | Overlay for embedded-Postgres compose (local/dev) |
+| `docker-compose-pilot-supabase.yml` | Pilot | **Canonical live** API+web against Supabase; no db container |
+| `deploy/pilot/docker-compose.live-supabase.yml` | Pilot | Live overlay: web only on `WEB_PORT`; secrets from `deploy/pilot/.env` |
 | `docker-compose-prod.yml` | Production | Prebuilt images; every secret required from the environment |
 
 ---
 
 ## Pilot server (`pilot/live` branch)
 
-1. Make sure tests pass (pytest, `npm run build`, a pilot compose smoke test).
-2. Merge pilot-ready work into **`pilot/live`**. Tag snapshots as `pilot-live-vX.Y.Z`.
-3. First-time server setup (for example, an Oracle Cloud free VM with Cloudflare Tunnel):
+**Always-on stack:** Docker API + nginx web on the VM, **Postgres on Supabase**, HTTPS via Cloudflare Tunnel (`demo.orbittech.co`).
+
+1. Create a Supabase project (Postgres only — not Auth). Copy **Transaction pooler** (`:6543`) and **Session/direct** (`:5432`) URIs; convert to `postgresql+psycopg2://…`.
+2. Make sure tests pass (pytest, `npm run build`).
+3. Merge pilot-ready work into **`pilot/live`**. Tag snapshots as `pilot-live-vX.Y.Z`.
+4. First-time server setup (for example, an Oracle Cloud free VM with Cloudflare Tunnel):
 
 ```bash
 git clone -b pilot/live <repo-url> /opt/fms
 cd /opt/fms
 sudo bash deploy/pilot/setup-ubuntu.sh
 cp deploy/pilot/.env.example deploy/pilot/.env && chmod 600 deploy/pilot/.env
-# set SECRET_KEY, PUBLIC_APP_URL, CORS_ORIGINS, WEB_PORT
-docker compose -f docker-compose-pilot.yml \
-  -f deploy/pilot/docker-compose.live.yml \
+# set SECRET_KEY, DATABASE_URL, DATABASE_URL_MIGRATE, PUBLIC_APP_URL, CORS_ORIGINS, WEB_PORT
+docker compose -f docker-compose-pilot-supabase.yml \
+  -f deploy/pilot/docker-compose.live-supabase.yml \
   --env-file deploy/pilot/.env up -d --build
+# stop leftover embedded db stack if present
+docker compose -p fms-pilot down --remove-orphans || true
 ```
 
-4. Subsequent deploys run automatically on push to `pilot/live` through [`.github/workflows/deploy-orbit-pilot.yml`](../../.github/workflows/deploy-orbit-pilot.yml).
+5. Subsequent deploys run automatically on push to `pilot/live` through [`.github/workflows/deploy-orbit-pilot.yml`](../../.github/workflows/deploy-orbit-pilot.yml).
+6. Smoke: `BASE_URL=https://demo.orbittech.co bash deploy/pilot/smoke-pilot.sh` (health + register company + company login).
 
-The live overlay publishes only the web container. nginx proxies `/api`, so the API and database have no host ports. Point the Cloudflare Tunnel at `http://localhost:${WEB_PORT}`.
+The live overlay publishes only the web container. nginx proxies `/api`, so the API has no host ports and the DB is remote. Point the Cloudflare Tunnel at `http://localhost:${WEB_PORT}`.
+
+**Company registration:** Platform admins use **Maintenance companies** in the app (`POST /api/v1/platform/tenants`). Keep nightly `POST /platform/pilot/reset` **off** once real companies are registered (see [pilot-stack.md](./pilot-stack.md) § Pilot reset policy).
 
 Server file reference: [deploy/pilot/README.md](../../deploy/pilot/README.md). Cutover from the old demo stack: [ENV_REORG_PLAN.md](../engineering/ENV_REORG_PLAN.md).
 

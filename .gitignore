@@ -246,3 +246,4 @@ backend/_test_report.pdf
 yarn.lock
 pnpm-lock.yaml
 bun.lockb
+deploy/pilot/.super-admin-temp.txt

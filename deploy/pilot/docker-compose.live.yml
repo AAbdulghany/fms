@@ -1,6 +1,7 @@
-# Pilot live overlay (public server)
-# Usage (on server, from repo root):
-#   cp deploy/pilot/.env.example deploy/pilot/.env   # edit secrets + PUBLIC_APP_URL
+# Pilot live overlay for EMBEDDED Postgres (docker-compose-pilot.yml).
+# Canonical always-on pilot uses Supabase — see docker-compose.live-supabase.yml.
+#
+# Usage (local/dev only):
 #   docker compose -f docker-compose-pilot.yml -f deploy/pilot/docker-compose.live.yml \
 #     --env-file deploy/pilot/.env up -d --build
 #

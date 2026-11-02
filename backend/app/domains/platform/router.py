@@ -7,6 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_platform_admin
@@ -33,7 +34,11 @@ from app.schemas import (
 from app.services.asset_types import apply_client_vertical
 from app.services.audit import write_audit
 from app.services.provisioning import generate_initial_password, next_client_code
-from app.services.subscription import assign_tenant_subscription, get_subscription
+from app.services.subscription import (
+    assign_tenant_subscription,
+    get_subscription,
+    invalidate_subscription_cache,
+)
 
 router = APIRouter(prefix="/platform", tags=["platform"])
 
@@ -59,6 +64,9 @@ def list_maintenance_companies(
     q = select(Tenant).order_by(Tenant.name)
     if status:
         q = q.where(Tenant.status == status)
+    else:
+        # Soft-deleted tenants stay out of the default platform list.
+        q = q.where(Tenant.status != "deleted")
     if search:
         like = f"%{search.strip()}%"
         q = q.where(Tenant.name.ilike(like))
@@ -136,7 +144,14 @@ def provision_tenant(
         entity_type="tenant",
         entity_id=str(tenant.id),
     )
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="EMAIL_ALREADY_EXISTS",
+        ) from None
     db.refresh(tenant)
     db.refresh(admin)
     return TenantProvisionOut(
@@ -145,6 +160,46 @@ def provision_tenant(
         initial_password=auto_password,
         subscription=SubscriptionOut.model_validate(get_subscription(db, tenant)),
     )
+
+
+@router.delete("/tenants/{tenant_id}", response_model=TenantBriefOut)
+def delete_tenant(
+    tenant_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current: Annotated[User, _platform],
+) -> Tenant:
+    """Soft-delete a maintenance company (tenant). Does not wipe historical data."""
+    tenant = db.get(Tenant, tenant_id)
+    if not tenant:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="NOT_FOUND")
+    if tenant.id == current.tenant_id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="CANNOT_DELETE_OWN_TENANT")
+    if tenant.status == "deleted":
+        return tenant
+
+    tenant.status = "deleted"
+    sub = tenant.subscription
+    if sub is not None:
+        sub.status = "cancelled"
+
+    # Disable company users so they cannot sign in after delete.
+    for user in db.scalars(select(User).where(User.tenant_id == tenant.id)).all():
+        if user.is_platform_admin:
+            continue
+        user.is_active = False
+
+    write_audit(
+        db,
+        tenant_id=tenant.id,
+        actor=current,
+        action="delete_tenant",
+        entity_type="tenant",
+        entity_id=str(tenant.id),
+    )
+    db.commit()
+    invalidate_subscription_cache(tenant.id)
+    db.refresh(tenant)
+    return tenant
 
 
 @router.post(

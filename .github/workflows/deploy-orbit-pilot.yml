@@ -1,8 +1,10 @@
-# Deploy Orbit Pilot
+# Deploy Orbit Pilot (always-on, Supabase Postgres)
 #
-# Pulls the pilot branch on the pilot VM and rebuilds the live Docker Compose stack
-# (docker-compose-pilot.yml + deploy/pilot/docker-compose.live.yml).
+# Pulls the pilot branch on the pilot VM and rebuilds:
+#   docker-compose-pilot-supabase.yml + deploy/pilot/docker-compose.live-supabase.yml
 # Cloudflare Tunnel provides HTTPS (currently demo.orbittech.co) — one-time host setup.
+#
+# Server env: deploy/pilot/.env (from .env.example) with DATABASE_URL + DATABASE_URL_MIGRATE.
 #
 # Secrets (PILOT_* preferred; legacy DEMO_* still read until renamed in GitHub):
 #   PILOT_HOST / DEMO_HOST                   — VM hostname or IP
@@ -14,6 +16,7 @@
 #
 # Branches: pilot/live (canonical). demo/live still deploys until it is retired.
 # Cutover and rollback: docs/engineering/ENV_REORG_PLAN.md
+# Runbook: docs/guides/pilot-stack.md
 
 name: Deploy Orbit Pilot
 
@@ -70,16 +73,21 @@ jobs:
               install -m 600 deploy/demo/.env "$ENV_FILE"
             fi
             if [ ! -f "$ENV_FILE" ]; then
-              echo "::error::$ENV_FILE missing — copy deploy/pilot/.env.example and fill it in"
+              echo "::error::$ENV_FILE missing — copy deploy/pilot/.env.example and fill Supabase DATABASE_URL(s)"
+              exit 1
+            fi
+            if ! grep -qE '^DATABASE_URL=' "$ENV_FILE"; then
+              echo "::error::$ENV_FILE must set DATABASE_URL (Supabase). See deploy/pilot/.env.example"
               exit 1
             fi
 
-            # The pre-reorg project (fms-demo) holds the same host ports. Stop it, keep its volume.
+            # Stop legacy stacks that may hold WEB_PORT / old embedded Postgres.
             docker compose -p fms-demo down --remove-orphans || true
+            docker compose -p fms-pilot down --remove-orphans || true
 
             docker compose \
-              -f docker-compose-pilot.yml \
-              -f deploy/pilot/docker-compose.live.yml \
+              -f docker-compose-pilot-supabase.yml \
+              -f deploy/pilot/docker-compose.live-supabase.yml \
               --env-file "$ENV_FILE" \
               up -d --build --remove-orphans
 

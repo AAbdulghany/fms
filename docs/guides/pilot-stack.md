@@ -81,17 +81,44 @@ The endpoint returns `403 PILOT_ENV_ONLY` unless `APP_ENV=pilot`. The old path `
 
 ---
 
-## 2. Pilot with managed Postgres (Supabase)
+## 2. Pilot with managed Postgres (Supabase) — canonical always-on
 
-This variant has no local database container.
+This variant has **no local database container**. The live VM and CD use it.
+
+### Supabase project (one-time)
+
+1. Create a project at https://supabase.com (region near Egypt/EU as preferred).
+2. **Settings → Database → Connection string**:
+   - **Transaction pooler** port `6543` → `DATABASE_URL` (API runtime)
+   - **Session** or **Direct** port `5432` → `DATABASE_URL_MIGRATE` (Alembic / seed)
+3. Convert `postgresql://` → `postgresql+psycopg2://` and URL-encode special characters in the password.
+4. Enable Supabase automated backups. Do not rely on a Docker volume for pilot data.
+
+### Local run
 
 ```powershell
 copy deploy\pilot\.env.supabase.example deploy\pilot\.env.supabase
-# Fill in DATABASE_URL and SECRET_KEY. The file is gitignored.
+# Fill DATABASE_URL, DATABASE_URL_MIGRATE, SECRET_KEY, CORS/PUBLIC_APP_URL
 docker compose -f docker-compose-pilot-supabase.yml --env-file deploy/pilot/.env.supabase up -d --build
 ```
 
 UI: http://localhost:9581 · API: http://localhost:9501
+
+### Live VM
+
+```bash
+# deploy/pilot/.env from .env.example with Supabase URLs
+docker compose -f docker-compose-pilot-supabase.yml \
+  -f deploy/pilot/docker-compose.live-supabase.yml \
+  --env-file deploy/pilot/.env up -d --build
+docker compose -p fms-pilot down --remove-orphans || true
+```
+
+Smoke (health + Platform register company + company admin login):
+
+```bash
+BASE_URL=https://demo.orbittech.co bash deploy/pilot/smoke-pilot.sh
+```
 
 If you have a local `deploy/demo/.env.supabase-demo` from before the reorg, move it to `deploy/pilot/.env.supabase`. Both paths are gitignored.
 
@@ -121,16 +148,41 @@ The seed passwords are public knowledge. Use a shared pilot only with seed data,
 
 ## 4. Pilot server (VM)
 
-The `Deploy Orbit Pilot` workflow deploys on every push to `pilot/live`. During the transition, pushes to `demo/live` also deploy. See [deploy/pilot/README.md](../../deploy/pilot/README.md) for the server files, and [ENV_REORG_PLAN.md](../engineering/ENV_REORG_PLAN.md) for the cutover steps.
+The `Deploy Orbit Pilot` workflow deploys on every push to `pilot/live` using the **Supabase** compose files. During the transition, pushes to `demo/live` also deploy. See [deploy/pilot/README.md](../../deploy/pilot/README.md) for the server files, and [ENV_REORG_PLAN.md](../engineering/ENV_REORG_PLAN.md) for the cutover steps.
 
 Manual equivalent on the server:
 
 ```bash
-docker compose -f docker-compose-pilot.yml -f deploy/pilot/docker-compose.live.yml \
+docker compose -f docker-compose-pilot-supabase.yml \
+  -f deploy/pilot/docker-compose.live-supabase.yml \
   --env-file deploy/pilot/.env up -d --build
 ```
 
 The live overlay publishes only the web container on `WEB_PORT` (default 8080). Point the Cloudflare Tunnel at `http://localhost:${WEB_PORT}`.
+
+### Register a maintenance company (Platform portal)
+
+1. Sign in as a platform admin (seed: `super@demo.com` / `super123` until you rotate it).
+2. Open **Maintenance companies**.
+3. Enter company name, package, admin email and full name → **Save**.
+4. Copy the temporary password from the notice (if password was left blank).
+5. Sign out and sign in as the new company admin.
+
+Automated check: `deploy/pilot/smoke-pilot.sh`.
+
+---
+
+## Pilot reset policy
+
+`POST /api/v1/platform/pilot/reset` (and legacy `/platform/demo/reset`) **wipes and re-seeds** the pilot database. That destroys any maintenance companies registered from the Platform portal.
+
+| Situation | Policy |
+|-----------|--------|
+| Sales pitch DB only (seed accounts) | Reset allowed; optional cron |
+| Real / invited pilot companies registered | **Cron off by default** — do not schedule reset |
+| Need a clean pitch again | Use a **separate** Supabase project or branch; do not reset the customer pilot DB |
+
+Set `PILOT_RESET_CRON=off` in `deploy/pilot/.env` as documentation for operators. Remove any host crontab / GitHub scheduled job that calls pilot reset once customer tenants exist.
 
 ---
 
