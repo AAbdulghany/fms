@@ -7,7 +7,17 @@ import { creatableRolesFor } from "@/lib/roles";
 
 function visibleRolesForFilter(actorRole: UserRole): UserRole[] {
   if (actorRole === "super_admin" || actorRole === "super_user" || actorRole === "sw_dev") {
-    return ["super_admin", "company_admin", "company_engineer", "client_admin", "site_manager", "technician", "manager"];
+    return [
+      "super_user",
+      "sw_dev",
+      "super_admin",
+      "company_admin",
+      "company_engineer",
+      "client_admin",
+      "site_manager",
+      "technician",
+      "manager",
+    ];
   }
   const creatable = creatableRolesFor(actorRole);
   const roles = new Set<UserRole>([...creatable, actorRole]);

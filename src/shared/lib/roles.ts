@@ -23,6 +23,9 @@ export const TENANT_STAFF_CREATABLE: UserRole[] = [
   "manager",
 ];
 
+/** Platform peers a Platform Super User may invite from Users. */
+export const PLATFORM_STAFF_CREATABLE: UserRole[] = ["sw_dev", "super_user"];
+
 export const COMPANY_ENGINEER_CREATABLE: UserRole[] = [
   "technician",
   "client_admin",
@@ -31,7 +34,11 @@ export const COMPANY_ENGINEER_CREATABLE: UserRole[] = [
 ];
 
 export function creatableRolesFor(actorRole: UserRole): UserRole[] {
-  if (actorRole === "company_admin" || actorRole === "super_admin" || actorRole === "super_user") {
+  // Platform Super User (and legacy platform super_admin) can invite SW Developers.
+  if (actorRole === "super_user") {
+    return [...PLATFORM_STAFF_CREATABLE, ...TENANT_STAFF_CREATABLE];
+  }
+  if (actorRole === "super_admin" || actorRole === "company_admin") {
     return TENANT_STAFF_CREATABLE;
   }
   if (actorRole === "company_engineer") {

@@ -11,6 +11,7 @@ from app.database import get_db
 from app.models import Tenant, User, UserRole
 from app.rbac import (
     COMPANY_ADMIN_CREATABLE,
+    PLATFORM_ROLES,
     can_create_role,
     can_manage_tenant_users,
     can_remove_members,
@@ -155,6 +156,8 @@ def create_user(
         pwd_hash = hash_password(auto_password)
         must_change = True
 
+    # Platform roles must carry is_platform_admin so /platform/* deps accept them.
+    platform_peer = user_in.role in PLATFORM_ROLES
     new_user = User(
         tenant_id=current.tenant_id,
         email=user_in.email,
@@ -163,9 +166,9 @@ def create_user(
         role=user_in.role,
         locale=user_in.locale,
         phone=user_in.phone,
-        client_id=user_in.client_id,
+        client_id=None if platform_peer else user_in.client_id,
         is_active=True,
-        is_platform_admin=False,
+        is_platform_admin=platform_peer,
         metadata_json={"must_change_password": must_change},
     )
     db.add(new_user)
@@ -239,6 +242,9 @@ def patch_user(
         user.is_active = body.is_active
     if body.role is not None:
         user.role = body.role
+        user.is_platform_admin = body.role in PLATFORM_ROLES
+        if user.is_platform_admin:
+            user.client_id = None
     if body.locale is not None:
         user.locale = body.locale
 

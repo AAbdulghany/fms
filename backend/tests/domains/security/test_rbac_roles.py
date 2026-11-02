@@ -130,6 +130,29 @@ def test_sw_dev_cannot_deactivate_user(db_session, platform_sw_dev, technician):
     assert exc.value.detail == "CANNOT_REMOVE_MEMBERS"
 
 
+def test_platform_super_can_create_sw_dev(db_session, platform_super):
+    from app.api.routes.users import create_user
+    from app.models import User
+    from app.schemas import UserCreateBody
+    from sqlalchemy import select
+
+    result = create_user(
+        UserCreateBody(
+            email="newdev@platform.test",
+            full_name="New SW Dev",
+            role=UserRole.sw_dev,
+            password="secure123",
+        ),
+        db_session,
+        platform_super,
+        platform_super,
+    )
+    assert result.user.role == UserRole.sw_dev
+    created = db_session.scalars(select(User).where(User.email == "newdev@platform.test")).first()
+    assert created is not None
+    assert created.is_platform_admin is True
+
+
 def test_company_admin_can_create_company_engineer(db_session, company_admin):
     from app.api.routes.users import create_user
     from app.schemas import UserCreateBody
