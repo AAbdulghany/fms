@@ -5,6 +5,7 @@ The **pilot** environment is the sales, UAT, and field-pilot stack. It uses data
 - Environment matrix: [environments.md](./environments.md)
 - Local coding (Vite + host API): [local-development.md](./local-development.md)
 - Seed profiles: [docker-seed-profiles.md](./docker-seed-profiles.md)
+- Pilot change log (major/minor/patch): [CHANGELOG.md](../../CHANGELOG.md)
 
 ---
 
