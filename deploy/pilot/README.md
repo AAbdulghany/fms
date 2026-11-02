@@ -28,7 +28,7 @@ docker compose -p fms-pilot down --remove-orphans || true
 
 Point the Cloudflare Tunnel at `http://localhost:${WEB_PORT}` (default `8080`).
 
-The `Deploy Orbit Pilot` workflow (`.github/workflows/deploy-orbit-pilot.yml`) runs these commands on every push to `pilot/live`.
+The `Deploy Orbit Pilot` workflow (`.github/workflows/deploy-orbit-pilot.yml`) runs these commands on every push to `main`.
 
 ### Smoke after deploy
 

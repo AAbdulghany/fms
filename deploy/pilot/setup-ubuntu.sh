@@ -30,7 +30,7 @@ if command -v ufw >/dev/null 2>&1 && ufw status | grep -q "Status: active"; then
 fi
 
 echo "==> Done. Next steps:"
-echo "  1. Clone repo branch pilot/live"
+echo "  1. Clone repo branch main"
 echo "  2. cp deploy/pilot/.env.example deploy/pilot/.env && chmod 600 deploy/pilot/.env && nano deploy/pilot/.env"
 echo "  3. docker compose -f docker-compose-pilot.yml -f deploy/pilot/docker-compose.live.yml --env-file deploy/pilot/.env up -d --build"
 echo "  4. HTTPS: Cloudflare Tunnel -> http://localhost:\${WEB_PORT} — see docs/guides/pilot-stack.md"
