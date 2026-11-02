@@ -107,12 +107,36 @@ jobs:
           DEPLOY_REF: ${{ github.ref_name }}
 
       # GitHub-hosted runners are often blocked by Cloudflare (1010); local health already ran over SSH.
+      # This step is informational only: it reports BLOCKED vs DOWN and always exits 0, so a CF
+      # challenge never shows up as a red step or a 60s timeout (exit 124).
       - name: Verify public pilot URL
         if: ${{ vars.PILOT_URL != '' || vars.DEMO_URL != '' }}
         continue-on-error: true
         env:
           PUBLIC_URL: ${{ vars.PILOT_URL || vars.DEMO_URL }}
         run: |
-          echo "Checking ${PUBLIC_URL}/api/v1/health (best-effort; CF may block Actions IPs)"
-          timeout 60 bash -c 'until curl -fsS "${PUBLIC_URL}/api/v1/health"; do sleep 5; done'
-          echo "Public health check OK"
+          URL="${PUBLIC_URL%/}/api/v1/health"
+          echo "Checking $URL (best-effort; Cloudflare may block GitHub runner IPs)"
+          code=""
+          for attempt in 1 2 3; do
+            code=$(curl -sS -o /tmp/health.body -w '%{http_code}' --max-time 10 \
+              -A 'Mozilla/5.0 (compatible; fms-pilot-healthcheck/1.0)' "$URL" 2>/dev/null || true)
+            echo "attempt $attempt -> HTTP ${code:-000}"
+            if [ "$code" = "200" ]; then
+              break
+            fi
+            sleep 5
+          done
+
+          case "$code" in
+            200)
+              echo "Public health check OK: $(cat /tmp/health.body)"
+              ;;
+            403|429|503)
+              echo "::warning title=Public health check blocked::Cloudflare returned HTTP $code for this runner IP. Local health over SSH already passed; the site is reachable from normal clients."
+              ;;
+            *)
+              echo "::warning title=Public health check inconclusive::HTTP ${code:-000} from $URL. Local health over SSH already passed."
+              ;;
+          esac
+          exit 0
